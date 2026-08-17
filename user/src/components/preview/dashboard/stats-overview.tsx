@@ -1,0 +1,287 @@
+// import React from "react";
+import PackageOverview from "@/components/package-overview";
+import ProfitBreakdownCard from "@/components/profit-breakdown-card";
+import {
+  fetchDashboardStats,
+  fetchDashboardToday,
+  fetchIncomeToday,
+  fetchUserTotalInvestment,
+  fetchLevelPackageAndIdWithMax,
+  fetchMatrixPackageAndIdWithMax,
+  fetchSponsorPackageAndIdWithMax,
+  PreviewModeApiCall,
+} from "@/lib/auth-api";
+import { useNavigate } from "@tanstack/react-router";
+import { Users, Rocket, HelpCircle, ArrowUpRight, User } from "lucide-react";
+import { useEffect, useState } from "react";
+
+interface statsProps {
+  userId?: string;
+  totalDirectIncome: number;
+  totalLevelIncome: number;
+  totalMatrixIncome: number;
+  totalProfit: number;
+}
+
+export function PreviewUserStatsOverview({
+  userId,
+  totalDirectIncome,
+  totalLevelIncome,
+  totalMatrixIncome,
+  totalProfit,
+}: statsProps) {
+  const navigate = useNavigate();
+  const [teamCount, setTeamCount] = useState<number>(0);
+
+  const [partnersCount, setPartnersCount] = useState<number>(0);
+  const [ratio, setRatio] = useState<number>(0);
+
+  const [teamCountInDay, setTeamCountInDay] = useState<number>(0);
+  const [partnersCountInDay, setPartnersCountInDay] = useState<number>(0);
+  const [ratioInDay, setRatioInDay] = useState<number>(0);
+  const [totalProfitInDay, setTotalProfitInDay] = useState<number>(0);
+  const [totalLevelIncomeInDay, setTotalLevelIncomeInDay] = useState<number>(0);
+  const [totalDirectIncomeInDay, setTotalDirectIncomeInDay] =
+    useState<number>(0);
+  const [totalMatrixIncomeInDay, setTotalMatrixIncomeInDay] =
+    useState<number>(0);
+
+  const [matrixPackage, setMatrixPackage] = useState({
+    pkgId: 1,
+    maxPkg: 1,
+    numericId: "",
+    stringId: "",
+    isRoot: false,
+  });
+  const [levelPackage, setLevelPackage] = useState({
+    pkgId: 1,
+    maxPkg: 1,
+    numericId: "",
+    stringId: "",
+    isRoot: false,
+  });
+  const [sponsorPackage, setSponsorPackage] = useState({
+    pkgId: 1,
+    maxPkg: 1,
+    numericId: "",
+    stringId: "",
+    isRoot: false,
+  });
+
+  useEffect(() => {
+    if (!userId) return;
+
+    let isMounted = true;
+
+    const loadData = async () => {
+      try {
+        // Team size + direct partners (indexer-maintained running totals)
+        const dashboardStats = await PreviewModeApiCall(userId, fetchDashboardStats);
+        if (isMounted && dashboardStats) {
+          setTeamCount(Number(dashboardStats.totalTeam));
+          setPartnersCount(Number(dashboardStats.directPartners));
+        }
+
+        // Today-joined counts (computed live, not stored)
+        const dashboardToday = await PreviewModeApiCall(userId, fetchDashboardToday);
+        if (isMounted && dashboardToday) {
+          setTeamCountInDay(Number(dashboardToday.totalTeamJoinedToday));
+          setPartnersCountInDay(Number(dashboardToday.todayJoinedDirectPartners));
+        }
+
+        // Today income, for the profit-breakdown card's "today" badges
+        const incomeToday = await PreviewModeApiCall(userId, fetchIncomeToday);
+        if (isMounted && incomeToday) {
+          setTotalDirectIncomeInDay(Number(incomeToday.todaySponsorIncome));
+          setTotalLevelIncomeInDay(Number(incomeToday.todayMagicLevelIncome));
+          setTotalMatrixIncomeInDay(Number(incomeToday.todayMagicGoldMatrixIncome));
+          setTotalProfitInDay(Number(incomeToday.todayTotalIncome));
+        }
+
+        // Ratio card: profit % vs total investment (same repurpose as the
+        // live dashboard's stats-overview.tsx — investment is fixed at
+        // registration, no "today" version of it exists).
+        const investment = await PreviewModeApiCall(userId, fetchUserTotalInvestment);
+        if (isMounted) {
+          const investmentValue = Number(investment) || 0;
+          const todayProfitValue = incomeToday ? Number(incomeToday.todayTotalIncome) : 0;
+          setRatio(investmentValue > 0 ? Math.round((totalProfit / investmentValue) * 100) : 0);
+          setRatioInDay(investmentValue > 0 ? Math.round((todayProfitValue / investmentValue) * 100) : 0);
+        }
+
+        const matrixPackageData = await PreviewModeApiCall(
+          userId,
+          fetchMatrixPackageAndIdWithMax,
+        );
+        if (isMounted && matrixPackageData) {
+          setMatrixPackage({
+            pkgId: matrixPackageData.pkgId,
+            maxPkg: matrixPackageData.maxPkg,
+            numericId: matrixPackageData.numericId,
+            stringId: matrixPackageData.stringId,
+            isRoot: matrixPackageData.isRoot,
+          });
+        }
+
+        // Level package + id with max
+        const levelPackageData = await PreviewModeApiCall(
+          userId,
+          fetchLevelPackageAndIdWithMax,
+        );
+        if (isMounted && levelPackageData) {
+          setLevelPackage({
+            pkgId: levelPackageData.pkgId,
+            maxPkg: levelPackageData.maxPkg,
+            numericId: levelPackageData.numericId,
+            stringId: levelPackageData.stringId,
+            isRoot: levelPackageData.isRoot,
+          });
+        }
+
+        // Sponsor package + id with max
+        const sponsorPackageData = await PreviewModeApiCall(
+          userId,
+          fetchSponsorPackageAndIdWithMax,
+        );
+        if (isMounted && sponsorPackageData) {
+          setSponsorPackage({
+            pkgId: sponsorPackageData.pkgId,
+            maxPkg: sponsorPackageData.maxPkg,
+            numericId: sponsorPackageData.numericId,
+            stringId: sponsorPackageData.stringId,
+            isRoot: sponsorPackageData.isRoot,
+          });
+        }
+
+      } catch (err) {
+        console.error("Error fetching stats:", err);
+      }
+    };
+
+    loadData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [userId, totalProfit]);
+
+  return (
+    <div className="flex flex-col gap-4 text-white py-6">
+      {/* SECTION 1: Top 4 Cards */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+        {/* Card 1: Partners */}
+        <div className="flex flex-col justify-between rounded-2xl bg-[#212123c9] p-5 border border-white/5">
+          <div className="flex items-center justify-between text-gray-400">
+            <div className="flex items-center gap-1.5 text-sm font-medium">
+              <span>Partners</span>
+              <HelpCircle className="h-4 w-4" />
+            </div>
+            <User className="h-5 w-5 text-gray-400" />
+          </div>
+          <div className="flex justify-between items-end">
+            <div className="mt-6 text-2xl font-bold tracking-tight text-white">
+              {partnersCount}
+            </div>
+            <span className="text-sm flex items-center gap-0.5 font-medium text-emerald-400">
+              {partnersCountInDay}<User size={14}/>
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: Team */}
+        <div className="flex flex-col justify-between rounded-2xl bg-[#212123c9] p-5 border border-white/5">
+          <div className="flex items-center justify-between text-gray-400">
+            <div className="flex items-center gap-1.5 text-sm font-medium">
+              <span>Team</span>
+              <HelpCircle className="h-4 w-4" />
+            </div>
+            <Users className="h-5 w-5 text-gray-400" />
+          </div>
+          {/* <div className="mt-6 text-2xl font-bold tracking-tight text-white">
+            {teamCount}
+          </div> */}
+          <div className="flex justify-between items-end">
+            <div className="mt-6 text-2xl font-bold tracking-tight text-white">
+              {teamCount}
+            </div>
+            <span className="text-sm flex items-center gap-0.5 font-medium text-emerald-400">
+              {teamCountInDay}<Users size={14}/>
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Ratio */}
+        <div className="flex flex-col justify-between rounded-2xl bg-[#212123c9] p-5 border border-white/5">
+          <div className="flex items-center justify-between text-gray-400">
+            <div className="flex items-center gap-1.5 text-sm font-medium">
+              <span>Ratio</span>
+              <HelpCircle className="h-4 w-4" />
+            </div>
+            <Rocket className="h-5 w-5 text-gray-400" />
+          </div>
+          {/* <div className="mt-6 text-2xl font-bold tracking-tight text-white">
+            {ratio} %
+          </div> */}
+          <div className="flex justify-between items-end">
+            <div className="mt-6 text-2xl font-bold tracking-tight text-white">
+              {ratio} %
+            </div>
+            <span className="text-sm font-medium text-emerald-400">
+              {ratioInDay}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 2: Middle 2 Big Cards */}
+      <div className="grid grid-cols-1 gap-4">
+        <div>
+          <ProfitBreakdownCard
+            showBuyPurchase={false}
+            totalProfit={totalProfit}
+            totalProfitInDay={totalProfitInDay}
+            levelIncome={totalLevelIncome}
+            levelIncomeInDay={totalLevelIncomeInDay}
+            matrixIncome={totalMatrixIncome}
+            matrixIncomeInDay={totalMatrixIncomeInDay}
+            sponsorIncome={totalDirectIncome}
+            sponsorIncomeInDay={totalDirectIncomeInDay}
+          />
+        </div>
+        <div className="relative overflow-hidden w-full rounded-2xl bg-linear-to-r from-[#212123c9] to-[#5e4c3a] p-5 border border-white/5">
+          <div className="flex items-center justify-between text-sm font-medium">
+            <span>Top 100 leaders</span>
+            <ArrowUpRight className="h-4 w-4 text-gray-400" />
+          </div>
+          <div className="mt-6">
+            <button
+              onClick={() => {
+                navigate({
+                  to: "/preview/leaderboard",
+                  search: (prev) => ({ ...prev }),
+                });
+              }}
+              className="rounded-xl bg-white/10 px-4 py-1.5 text-xs font-semibold backdrop-blur-md transition-colors hover:bg-white/20"
+            >
+              See Now
+            </button>
+          </div>
+          <img
+            src="/crown.png"
+            alt="crown"
+            className="absolute h-40 sm:h-50 -rotate-12 -bottom-10 sm:-bottom-15 -right-10 sm:-right-12 text-5xl pointer-events-none select-none opacity-80"
+          />
+          {/* <div className="absolute -bottom-2 -right-2 text-5xl pointer-events-none select-none opacity-80">
+          </div> */}
+        </div>
+      </div>
+      <PackageOverview
+        isPreviewMode={true}
+        magicLevelPurchased={levelPackage.pkgId}
+        magicGoldMatrixPurchased={matrixPackage.pkgId}
+        sponsorMagicPurchased={sponsorPackage.pkgId}
+      />
+      {/* <RankProgressCard currentValue={partnersCount} /> */}
+    </div>
+  );
+}

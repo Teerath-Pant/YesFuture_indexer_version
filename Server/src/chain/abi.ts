@@ -1,0 +1,48 @@
+// Minimal ABI: only the events the indexer decodes, plus the view functions /
+// public-mapping getters the API proxies live (mutable state we deliberately
+// did NOT duplicate in Postgres — see Server root notes in chat/changelog).
+export const CONTRACT_ABI = [
+  // events
+  "event UserRegistered(address indexed user, address indexed _sponsor, uint256 numericId, string stringId)",
+  "event MatrixIncome(address indexed receiver, address indexed from, uint8 level, uint256 amount)",
+  "event DirectIncome(address indexed receiver, address indexed from, uint8 packageId, uint256 cycle, uint256 amount)",
+  "event LevelIncome(address indexed receiver, address indexed from, uint8 level, uint256 amount)",
+  "event MatrixAutoUpgrade(address indexed user, uint8 fromPackageId, uint8 newPackageId, uint256 priceUsed)",
+  "event SponsorAutoUpgrade(address indexed sponsor, uint8 fromPackageId, uint8 newPackageId, uint256 priceUsed)",
+  "event ManualUpgrade(address indexed user, uint8 packageId, string track)",
+  "event MatrixPlaced(address indexed user, address indexed matrixParent, address indexed sponsor, uint8 packageId)",
+  "event Level5ReEntry(address indexed user, uint8 indexed packageId, uint256 cycleNumber, address phantomNode)",
+  "event SponsorReEntry(address indexed sponsor, uint8 indexed packageId)",
+  "event MatrixIncomeHeld(address indexed user, uint8 indexed packageId, uint256 amount, uint256 memberCount)",
+  "event SponsorIncomeHeld(address indexed sponsor, uint8 indexed packageId, uint256 amount, uint256 count)",
+
+  // live-state getters (public mappings / view functions kept on-chain)
+  "function adminWallet() view returns (address)",
+  "function memberAddress(uint256) view returns (address)",
+  "function memberId(address) view returns (uint256)",
+  "function memberStringId(address) view returns (string)",
+  "function sponsor(address) view returns (address)",
+  "function topupFlag(address) view returns (bool)",
+  "function activationDate(address) view returns (uint256)",
+  "function matrixPackageId(address) view returns (uint8)",
+  "function maxMatrixPackage(address) view returns (uint8)",
+  "function sponsorPackageId(address) view returns (uint8)",
+  "function maxSponsorPackage(address) view returns (uint8)",
+  "function levelPackageId(address) view returns (uint8)",
+  "function maxLevelPackage(address) view returns (uint8)",
+  "function referralCount(address) view returns (uint256)",
+  "function recycleCount(address) view returns (uint256)",
+  "function displayName(address) view returns (string)",
+  "function level5MemberCountByPkg(uint8, address) view returns (uint256)",
+  "function matrixHoldByPkg(uint8, address) view returns (uint256)",
+  "function sponsorCycleCountByPkg(uint8, address) view returns (uint256)",
+  "function sponsorHoldByPkg(uint8, address) view returns (uint256)",
+  "function packages(uint8) view returns (uint256 price)",
+  "function getMatrixPrice(uint8) view returns (uint256)",
+  "function getSponsorPrice(uint8) view returns (uint256)",
+  "function getLevelPrice(uint8) view returns (uint256)",
+  "function memberCounter() view returns (uint256)",
+  "function totalInvestment() view returns (uint256)",
+  "function userTotalInvestment(address) view returns (uint256)",
+  "function MAX_PACKAGE() view returns (uint8)",
+] as const;

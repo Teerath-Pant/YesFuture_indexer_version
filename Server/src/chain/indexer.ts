@@ -1,0 +1,498 @@
+import "dotenv/config";
+import { eq, inArray, sql } from "drizzle-orm";
+import { db, schema } from "../db/client.js";
+import { contract, provider } from "./contract.js";
+import { seedRootAdmin } from "../db/seed.js";
+
+const DEPLOY_BLOCK = BigInt(process.env.DEPLOY_BLOCK ?? "0");
+const LOG_BATCH_SIZE = BigInt(process.env.LOG_BATCH_SIZE ?? "2000");
+const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS ?? "5000");
+const MAX_ANCESTOR_CLIMB = 500; // safety bound, not a business rule
+
+type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// ethers decodes event args as checksummed (mixed-case) addresses; every API
+// route lowercases its :address param before querying. Normalize to lowercase
+// at ingestion so DB storage and route lookups always agree.
+const lc = (a: string): string => a.toLowerCase();
+
+const priceCache = new Map<string, bigint>(); // `${track}:${packageId}` -> price
+async function priceFor(track: "MATRIX" | "SPONSOR" | "LEVEL", packageId: number): Promise<bigint> {
+  const key = `${track}:${packageId}`;
+  const cached = priceCache.get(key);
+  if (cached !== undefined) return cached;
+  const price: bigint =
+    track === "MATRIX" ? await contract.getMatrixPrice(packageId)
+    : track === "SPONSOR" ? await contract.getSponsorPrice(packageId)
+    : await contract.getLevelPrice(packageId);
+  priceCache.set(key, price);
+  return price;
+}
+
+async function getLastProcessedBlock(): Promise<bigint> {
+  const rows = await db.select().from(schema.indexerState).where(eq(schema.indexerState.id, 1));
+  if (rows.length === 0) {
+    await db.insert(schema.indexerState).values({ id: 1, lastProcessedBlock: DEPLOY_BLOCK - 1n });
+    return DEPLOY_BLOCK - 1n;
+  }
+  return rows[0].lastProcessedBlock;
+}
+
+const blockTimestampCache = new Map<number, Date>();
+async function timestampOf(blockNumber: number): Promise<Date> {
+  const cached = blockTimestampCache.get(blockNumber);
+  if (cached) return cached;
+  const block = await provider.getBlock(blockNumber);
+  const ts = new Date(Number(block!.timestamp) * 1000);
+  blockTimestampCache.set(blockNumber, ts);
+  return ts;
+}
+
+function sumByKey(rows: { key: string; amount: bigint }[]): { key: string; amount: bigint }[] {
+  const totals = new Map<string, bigint>();
+  for (const r of rows) totals.set(r.key, (totals.get(r.key) ?? 0n) + r.amount);
+  return [...totals.entries()].map(([key, amount]) => ({ key, amount }));
+}
+
+function countByKey(keys: string[]): { key: string; count: bigint }[] {
+  const totals = new Map<string, bigint>();
+  for (const k of keys) totals.set(k, (totals.get(k) ?? 0n) + 1n);
+  return [...totals.entries()].map(([key, count]) => ({ key, count }));
+}
+
+// Batch-resolve each address's direct sponsor from user_details, for stamping
+// sponsorAddress onto transactions rows without a query per row.
+async function resolveSponsors(tx: Tx, addresses: string[]): Promise<Map<string, string | null>> {
+  const unique = [...new Set(addresses)];
+  const map = new Map<string, string | null>(unique.map((a) => [a, null]));
+  if (!unique.length) return map;
+  const rows = await tx.select({ userAddress: schema.userDetails.userAddress, sponsorAddress: schema.userDetails.sponsorAddress })
+    .from(schema.userDetails).where(inArray(schema.userDetails.userAddress, unique));
+  for (const r of rows) map.set(r.userAddress, r.sponsorAddress);
+  return map;
+}
+
+// --- registration processing (userDetails, dashboard, totalMembersByLevel) --
+
+async function processRegistration(
+  tx: Tx,
+  reg: { memberAddress: string; sponsorAddress: string; stringId: string; joinDate: Date },
+  sponsorStringIds: Map<string, string>,
+) {
+  await tx.insert(schema.userDetails).values({
+    userAddress: reg.memberAddress,
+    sponsorAddress: reg.sponsorAddress,
+    userName: null,
+    dateOfRegistration: reg.joinDate,
+  }).onConflictDoNothing();
+
+  await tx.insert(schema.dashboard).values({
+    userAddress: reg.memberAddress,
+    sponsorId: sponsorStringIds.get(reg.sponsorAddress) ?? reg.sponsorAddress,
+  }).onConflictDoNothing();
+
+  // walk every ancestor, +1 total team + total_members_by_level at that depth
+  // (mirrors the deleted on-chain _buildLevelTeam walk)
+  let ancestor = reg.sponsorAddress;
+  let depth = 1;
+  for (let i = 0; i < MAX_ANCESTOR_CLIMB && ancestor; i++) {
+    const ancestorRow = await tx.select({ sponsorAddress: schema.userDetails.sponsorAddress })
+      .from(schema.userDetails).where(eq(schema.userDetails.userAddress, ancestor));
+    if (ancestorRow.length === 0) break; // hit an unindexed root — stop climb
+
+    await tx
+      .update(schema.dashboard)
+      .set({ totalTeam: sql`${schema.dashboard.totalTeam} + 1`, updatedAt: sql`now()` })
+      .where(eq(schema.dashboard.userAddress, ancestor));
+
+    await tx.insert(schema.totalMembersByLevel).values({
+      userAddress: ancestor,
+      sponsorAddress: ancestorRow[0].sponsorAddress,
+      levelId: depth,
+      totalCount: 1n,
+    }).onConflictDoUpdate({
+      target: [schema.totalMembersByLevel.userAddress, schema.totalMembersByLevel.levelId],
+      set: { totalCount: sql`${schema.totalMembersByLevel.totalCount} + 1`, updatedAt: sql`now()` },
+    });
+
+    ancestor = ancestorRow[0].sponsorAddress;
+    depth++;
+  }
+}
+
+async function bumpDirectPartners(tx: Tx, sponsorAddresses: string[]) {
+  for (const { key: sponsorAddress, count } of countByKey(sponsorAddresses)) {
+    await tx
+      .update(schema.dashboard)
+      .set({ directPartners: sql`${schema.dashboard.directPartners} + ${count}`, updatedAt: sql`now()` })
+      .where(eq(schema.dashboard.userAddress, sponsorAddress));
+  }
+}
+
+async function bumpIncome(
+  tx: Tx,
+  events: { receiver: string; amount: string }[],
+  column: "totalMagicLevelIncome" | "totalMagicGoldMatrixIncome" | "totalSponsorIncome",
+) {
+  const totals = sumByKey(events.map((e) => ({ key: e.receiver, amount: BigInt(e.amount) })));
+  for (const { key: walletAddress, amount } of totals) {
+    await tx
+      .insert(schema.income)
+      .values({ walletAddress, [column]: amount.toString() } as any)
+      .onConflictDoUpdate({
+        target: schema.income.walletAddress,
+        set: {
+          [column]: sql`${schema.income[column]} + ${amount.toString()}`,
+          updatedAt: sql`now()`,
+        } as any,
+      });
+  }
+}
+
+// --- main chunk processor ---------------------------------------------------
+
+async function processChunk(fromBlock: bigint, toBlock: bigint) {
+  const [
+    registrations, matrixIncomes, directIncomes, levelIncomes,
+    manualUpgrades, matrixAutoUpgrades, sponsorAutoUpgrades,
+    matrixPlacements, level5Reentries, sponsorReentries,
+    matrixIncomeHelds, sponsorIncomeHelds,
+  ] = await Promise.all([
+    contract.queryFilter(contract.filters.UserRegistered(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.MatrixIncome(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.DirectIncome(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.LevelIncome(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.ManualUpgrade(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.MatrixAutoUpgrade(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.SponsorAutoUpgrade(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.MatrixPlaced(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.Level5ReEntry(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.SponsorReEntry(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.MatrixIncomeHeld(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.SponsorIncomeHeld(), fromBlock, toBlock),
+  ]);
+
+  const blockNumbers = new Set<number>();
+  for (const log of [
+    ...registrations, ...matrixIncomes, ...directIncomes, ...levelIncomes,
+    ...manualUpgrades, ...matrixAutoUpgrades, ...sponsorAutoUpgrades,
+    ...matrixPlacements, ...level5Reentries, ...sponsorReentries,
+    ...matrixIncomeHelds, ...sponsorIncomeHelds,
+  ]) blockNumbers.add(log.blockNumber);
+  await Promise.all([...blockNumbers].map((bn) => timestampOf(bn)));
+
+  await db.transaction(async (tx) => {
+    // ---- raw per-type event-history tables (back the dedicated per-page reads) ----
+    if (registrations.length) {
+      await tx.insert(schema.userRegistrations).values(
+        await Promise.all(registrations.map(async (log) => ({
+          memberAddress: lc((log as any).args.user),
+          sponsorAddress: lc((log as any).args._sponsor),
+          memberId: (log as any).args.numericId as bigint,
+          stringId: (log as any).args.stringId as string,
+          blockNumber: BigInt(log.blockNumber),
+          txHash: log.transactionHash,
+          logIndex: log.index,
+          blockTimestamp: await timestampOf(log.blockNumber),
+        })))
+      ).onConflictDoNothing();
+    }
+
+    if (matrixIncomes.length) {
+      await tx.insert(schema.matrixIncomeEvents).values(
+        await Promise.all(matrixIncomes.map(async (log) => ({
+          receiver: lc((log as any).args.receiver),
+          fromAddress: lc((log as any).args.from),
+          level: Number((log as any).args.level),
+          amount: ((log as any).args.amount as bigint).toString(),
+          blockNumber: BigInt(log.blockNumber),
+          txHash: log.transactionHash,
+          logIndex: log.index,
+          blockTimestamp: await timestampOf(log.blockNumber),
+        })))
+      ).onConflictDoNothing();
+    }
+
+    if (directIncomes.length) {
+      await tx.insert(schema.directIncomeEvents).values(
+        await Promise.all(directIncomes.map(async (log) => ({
+          receiver: lc((log as any).args.receiver),
+          fromAddress: lc((log as any).args.from),
+          packageId: Number((log as any).args.packageId),
+          cycle: (log as any).args.cycle as bigint,
+          amount: ((log as any).args.amount as bigint).toString(),
+          blockNumber: BigInt(log.blockNumber),
+          txHash: log.transactionHash,
+          logIndex: log.index,
+          blockTimestamp: await timestampOf(log.blockNumber),
+        })))
+      ).onConflictDoNothing();
+    }
+
+    if (levelIncomes.length) {
+      await tx.insert(schema.levelIncomeEvents).values(
+        await Promise.all(levelIncomes.map(async (log) => ({
+          receiver: lc((log as any).args.receiver),
+          fromAddress: lc((log as any).args.from),
+          level: Number((log as any).args.level),
+          amount: ((log as any).args.amount as bigint).toString(),
+          blockNumber: BigInt(log.blockNumber),
+          txHash: log.transactionHash,
+          logIndex: log.index,
+          blockTimestamp: await timestampOf(log.blockNumber),
+        })))
+      ).onConflictDoNothing();
+    }
+
+    const manualPurchaseRows: any[] = [];
+    for (const log of manualUpgrades) {
+      const track = (log as any).args.track as "MATRIX" | "SPONSOR" | "LEVEL";
+      const packageId = Number((log as any).args.packageId);
+      const amount = await priceFor(track, packageId);
+      manualPurchaseRows.push({
+        memberAddress: lc((log as any).args.user),
+        packageId, track, amount: amount.toString(), source: "MANUAL",
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index,
+        blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    if (manualPurchaseRows.length) {
+      await tx.insert(schema.packagePurchaseEvents).values(manualPurchaseRows).onConflictDoNothing();
+    }
+
+    const autoUpgradeRows: any[] = [];
+    for (const log of matrixAutoUpgrades) {
+      autoUpgradeRows.push({
+        memberAddress: lc((log as any).args.user),
+        packageId: Number((log as any).args.newPackageId), track: "MATRIX_AUTO",
+        amount: ((log as any).args.priceUsed as bigint).toString(), source: "AUTO",
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index,
+        blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    for (const log of sponsorAutoUpgrades) {
+      autoUpgradeRows.push({
+        memberAddress: lc((log as any).args.sponsor),
+        packageId: Number((log as any).args.newPackageId), track: "SPONSOR_AUTO",
+        amount: ((log as any).args.priceUsed as bigint).toString(), source: "AUTO",
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index,
+        blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    if (autoUpgradeRows.length) {
+      await tx.insert(schema.packagePurchaseEvents).values(autoUpgradeRows).onConflictDoNothing();
+    }
+
+    if (matrixPlacements.length) {
+      await tx.insert(schema.matrixPlacements).values(
+        await Promise.all(matrixPlacements.map(async (log) => ({
+          packageId: Number((log as any).args.packageId),
+          childAddress: lc((log as any).args.user),
+          parentAddress: lc((log as any).args.matrixParent),
+          sponsorAddress: lc((log as any).args.sponsor),
+          blockNumber: BigInt(log.blockNumber),
+          txHash: log.transactionHash,
+          logIndex: log.index,
+          blockTimestamp: await timestampOf(log.blockNumber),
+        })))
+      ).onConflictDoNothing();
+    }
+
+    if (level5Reentries.length) {
+      await tx.insert(schema.level5Reentries).values(
+        await Promise.all(level5Reentries.map(async (log) => ({
+          userAddress: lc((log as any).args.user),
+          packageId: Number((log as any).args.packageId),
+          cycleNumber: (log as any).args.cycleNumber as bigint,
+          phantomNode: lc((log as any).args.phantomNode),
+          blockNumber: BigInt(log.blockNumber),
+          txHash: log.transactionHash,
+          logIndex: log.index,
+          blockTimestamp: await timestampOf(log.blockNumber),
+        })))
+      ).onConflictDoNothing();
+    }
+
+    // ---- userDetails / dashboard / totalMembersByLevel ----
+    if (registrations.length) {
+      const sponsorAddrs = registrations.map((l) => lc((l as any).args._sponsor));
+      const sponsorRows = await tx.select({ memberAddress: schema.userRegistrations.memberAddress, stringId: schema.userRegistrations.stringId })
+        .from(schema.userRegistrations).where(inArray(schema.userRegistrations.memberAddress, [...new Set(sponsorAddrs)]));
+      const sponsorStringIds = new Map(sponsorRows.map((r) => [r.memberAddress, r.stringId]));
+
+      for (const log of registrations) {
+        await processRegistration(tx, {
+          memberAddress: lc((log as any).args.user),
+          sponsorAddress: lc((log as any).args._sponsor),
+          stringId: (log as any).args.stringId as string,
+          joinDate: await timestampOf(log.blockNumber),
+        }, sponsorStringIds);
+      }
+
+      await bumpDirectPartners(tx, sponsorAddrs);
+    }
+
+    // ---- income totals (all-time, backfill-safe running totals) ----
+    await bumpIncome(tx, matrixIncomes.map((l) => ({
+      receiver: lc((l as any).args.receiver), amount: ((l as any).args.amount as bigint).toString(),
+    })), "totalMagicGoldMatrixIncome");
+    await bumpIncome(tx, directIncomes.map((l) => ({
+      receiver: lc((l as any).args.receiver), amount: ((l as any).args.amount as bigint).toString(),
+    })), "totalSponsorIncome");
+    await bumpIncome(tx, levelIncomes.map((l) => ({
+      receiver: lc((l as any).args.receiver), amount: ((l as any).args.amount as bigint).toString(),
+    })), "totalMagicLevelIncome");
+
+    // ---- unified transactions feed ----
+    const walletsNeedingSponsor = [
+      ...registrations.map((l) => lc((l as any).args.user)),
+      ...matrixIncomes.map((l) => lc((l as any).args.receiver)),
+      ...directIncomes.map((l) => lc((l as any).args.receiver)),
+      ...levelIncomes.map((l) => lc((l as any).args.receiver)),
+      ...manualUpgrades.map((l) => lc((l as any).args.user)),
+      ...matrixAutoUpgrades.map((l) => lc((l as any).args.user)),
+      ...sponsorAutoUpgrades.map((l) => lc((l as any).args.sponsor)),
+      ...matrixPlacements.map((l) => lc((l as any).args.user)),
+      ...level5Reentries.map((l) => lc((l as any).args.user)),
+      ...sponsorReentries.map((l) => lc((l as any).args.sponsor)),
+      ...matrixIncomeHelds.map((l) => lc((l as any).args.user)),
+      ...sponsorIncomeHelds.map((l) => lc((l as any).args.sponsor)),
+    ];
+    const sponsorMap = await resolveSponsors(tx, walletsNeedingSponsor);
+    // registrations' own sponsor is already known from the event itself
+    for (const log of registrations) sponsorMap.set(lc((log as any).args.user), lc((log as any).args._sponsor));
+
+    const txRows: any[] = [];
+    for (const log of registrations) {
+      txRows.push({
+        type: "REGISTRATION", walletAddress: lc((log as any).args.user), sponsorAddress: lc((log as any).args._sponsor),
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    for (const log of matrixIncomes) {
+      const wallet = lc((log as any).args.receiver);
+      txRows.push({
+        type: "MATRIX_INCOME", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
+        counterpartyAddress: lc((log as any).args.from), level: Number((log as any).args.level),
+        amount: ((log as any).args.amount as bigint).toString(),
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    for (const log of directIncomes) {
+      const wallet = lc((log as any).args.receiver);
+      txRows.push({
+        type: "DIRECT_INCOME", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
+        counterpartyAddress: lc((log as any).args.from), packageId: Number((log as any).args.packageId),
+        cycle: (log as any).args.cycle as bigint, amount: ((log as any).args.amount as bigint).toString(),
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    for (const log of levelIncomes) {
+      const wallet = lc((log as any).args.receiver);
+      txRows.push({
+        type: "LEVEL_INCOME", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
+        counterpartyAddress: lc((log as any).args.from), level: Number((log as any).args.level),
+        amount: ((log as any).args.amount as bigint).toString(),
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    for (const row of manualPurchaseRows) {
+      txRows.push({
+        type: "PACKAGE_PURCHASE", walletAddress: row.memberAddress, sponsorAddress: sponsorMap.get(row.memberAddress) ?? null,
+        packageId: row.packageId, track: row.track, source: row.source, amount: row.amount,
+        blockNumber: row.blockNumber, txHash: row.txHash, logIndex: row.logIndex, blockTimestamp: row.blockTimestamp,
+      });
+    }
+    for (const row of autoUpgradeRows) {
+      txRows.push({
+        type: "PACKAGE_PURCHASE", walletAddress: row.memberAddress, sponsorAddress: sponsorMap.get(row.memberAddress) ?? null,
+        packageId: row.packageId, track: row.track, source: row.source, amount: row.amount,
+        blockNumber: row.blockNumber, txHash: row.txHash, logIndex: row.logIndex, blockTimestamp: row.blockTimestamp,
+      });
+    }
+    for (const log of matrixPlacements) {
+      const wallet = lc((log as any).args.user);
+      txRows.push({
+        type: "MATRIX_PLACEMENT", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
+        counterpartyAddress: lc((log as any).args.matrixParent), packageId: Number((log as any).args.packageId),
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    for (const log of level5Reentries) {
+      const wallet = lc((log as any).args.user);
+      txRows.push({
+        type: "LEVEL5_REENTRY", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
+        counterpartyAddress: lc((log as any).args.phantomNode), packageId: Number((log as any).args.packageId),
+        cycle: (log as any).args.cycleNumber as bigint,
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    for (const log of sponsorReentries) {
+      const wallet = lc((log as any).args.sponsor);
+      txRows.push({
+        type: "SPONSOR_REENTRY", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
+        packageId: Number((log as any).args.packageId),
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    for (const log of matrixIncomeHelds) {
+      const wallet = lc((log as any).args.user);
+      txRows.push({
+        type: "MATRIX_INCOME_HELD", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
+        packageId: Number((log as any).args.packageId), amount: ((log as any).args.amount as bigint).toString(),
+        cycle: (log as any).args.memberCount as bigint,
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    for (const log of sponsorIncomeHelds) {
+      const wallet = lc((log as any).args.sponsor);
+      txRows.push({
+        type: "SPONSOR_INCOME_HELD", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
+        packageId: Number((log as any).args.packageId), amount: ((log as any).args.amount as bigint).toString(),
+        cycle: (log as any).args.count as bigint,
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+
+    if (txRows.length) {
+      await tx.insert(schema.transactions).values(txRows).onConflictDoNothing();
+    }
+
+    await tx
+      .update(schema.indexerState)
+      .set({ lastProcessedBlock: toBlock })
+      .where(eq(schema.indexerState.id, 1));
+  });
+}
+
+export async function runIndexerLoop() {
+  await seedRootAdmin(); // self-heals on every startup, survives a DB reset
+
+  for (;;) {
+    // A transient RPC error here (timeout, dropped connection, node hiccup)
+    // must not take the whole process down — index.ts calls process.exit(1)
+    // on this function ever throwing, which previously meant one flaky RPC
+    // call killed the API too. Log and back off instead; the cursor already
+    // only advances after a chunk fully commits, so nothing is lost by retrying.
+    try {
+      const lastProcessed = await getLastProcessedBlock();
+      const head = BigInt(await provider.getBlockNumber());
+
+      let from = lastProcessed + 1n;
+      if (from > head) {
+        await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+        continue;
+      }
+
+      while (from <= head) {
+        const to = from + LOG_BATCH_SIZE - 1n > head ? head : from + LOG_BATCH_SIZE - 1n;
+        await processChunk(from, to);
+        console.log(`indexer: processed blocks ${from}-${to}`);
+        from = to + 1n;
+      }
+    } catch (err) {
+      console.error("indexer: chunk failed, retrying after backoff:", err);
+      await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
+    }
+  }
+}

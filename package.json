@@ -1,0 +1,25 @@
+{
+  "name": "yesfuture",
+  "private": true,
+  "workspaces": [
+    "Server",
+    "user"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,user -c blue,green \"npm:dev:server\" \"npm:dev:user\"",
+    "dev:user": "npm run dev --workspace=user",
+    "dev:server": "npm run dev --workspace=Server",
+    "build": "concurrently -n server,user -c blue,green \"npm:build:server\" \"npm:build:user\"",
+    "build:user": "npm run build --workspace=user",
+    "build:server": "npm run build --workspace=Server",
+    "i": "npm i --workspace=Server",
+    "db:generate": "npm run db:generate --workspace=Server",
+    "db:migrate": "npm run db:migrate --workspace=Server",
+    "db:push": "npm run db:push --workspace=Server",
+    "db:seed": "npm run db:seed --workspace=Server",
+    "db:studio": "npm run db:studio --workspace=Server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+* {
+  transition: all 0.2s ease-in-out;
+}
+
+html,
+body {
+  scrollbar-width: thin;
+  scrollbar-color: #3a3b3c transparent;
+}
+
+.card-gradient {
+  background: radial-gradient(
+    ellipse 80% 150% at 50% 0%,
+    var(--accent) 0%,
+    #1d1e1f 75%
+  );
+}
+
+.scrollbarNone {
+  scrollbar-width: none;
+}
+
+@media (min-width: 1280px) {
+  .card-gradient {
+    background: radial-gradient(
+      ellipse 95% 85% at 50% 0%,
+      var(--accent) 0%,
+      #1d1e1f 55%
+    );
+  }
+}
