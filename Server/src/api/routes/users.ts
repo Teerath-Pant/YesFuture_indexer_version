@@ -211,6 +211,92 @@ usersRouter.get("/:address/history/direct-income", async (req, res) => {
   res.json(rows);
 });
 
+// Real per-package recycle counts for the Sponsor Magic overview grid — one
+// row per SponsorReEntry event, grouped. The overview page used to derive
+// this from DirectIncome's own `cycle` field (1..4, the within-batch
+// position of a paid referral), which isn't a recycle count at all: with 2
+// partners it showed "2 cycles" when zero recycles had happened. A recycle
+// only actually occurs on SponsorReEntry (count==5), which pays the
+// sponsor's OWN upline, not the sponsor — so it never appears in the
+// sponsor's own DirectIncome feed to begin with.
+usersRouter.get("/:address/sponsor-recycle-counts", async (req, res) => {
+  const user = req.params.address.toLowerCase();
+  if (!isAddress(user)) return res.status(400).json({ error: "invalid address" });
+
+  const rows = await db.execute(sql`
+    SELECT package_id, count(*)::int AS count
+    FROM transactions
+    WHERE type = 'SPONSOR_REENTRY' AND wallet_address = ${user}
+    GROUP BY package_id
+  `);
+
+  const counts: Record<number, number> = {};
+  for (const r of rows as any[]) counts[r.package_id] = r.count;
+  res.json({ counts });
+});
+
+// Batched version of /history/sponsor-held/:packageId for the Sponsor Magic
+// overview grid — all 9 tiers' held-partner ids in one query instead of 9
+// requests. Same tx_hash join, grouped by package_id. Overview grid's
+// partnersCount/slots were built from DirectIncome only (paid referrals #1/#2
+// and any #3/#4 that already got paid), same held-partner blind spot already
+// fixed on the per-level detail page — a sponsor with 4 real partners was
+// showing only 2 dots here too.
+usersRouter.get("/:address/sponsor-held-summary", async (req, res) => {
+  const user = req.params.address.toLowerCase();
+  if (!isAddress(user)) return res.status(400).json({ error: "invalid address" });
+
+  const rows = await db.execute(sql`
+    SELECT held.package_id, ur.string_id AS from_string_id
+    FROM transactions held
+    JOIN transactions buyer
+      ON buyer.tx_hash = held.tx_hash
+      AND buyer.type = 'PACKAGE_PURCHASE'
+      AND buyer.track = 'SPONSOR'
+      AND buyer.package_id = held.package_id
+    LEFT JOIN user_registrations ur ON ur.member_address = buyer.wallet_address
+    WHERE held.type = 'SPONSOR_INCOME_HELD' AND held.wallet_address = ${user}
+    ORDER BY held.block_number, held.log_index
+  `);
+
+  const byPackage: Record<number, string[]> = {};
+  for (const r of rows as any[]) {
+    (byPackage[r.package_id] ??= []).push(r.from_string_id ?? "ID ...");
+  }
+  res.json({ byPackage });
+});
+
+// SponsorIncomeHeld (count 3/4, pre-upgrade) carries no buyer address on-chain
+// — event SponsorIncomeHeld(sponsor, packageId, amount, count) — unlike
+// DirectIncome which carries `from`. So the frontend's cyclePartnerIds (built
+// from /transactions?type=DIRECT_INCOME) silently drops partners #3/#4
+// whenever their income lands in the hold branch instead of getting paid out:
+// a sponsor with 4 real direct partners would only show 2 slots. Recover the
+// buyer the same way matrix-income-total does — join on tx_hash against the
+// PACKAGE_PURCHASE(SPONSOR) row from the SAME transaction (every purchase
+// that can trigger a hold, registration included, always emits one).
+usersRouter.get("/:address/history/sponsor-held/:packageId", async (req, res) => {
+  const user = req.params.address.toLowerCase();
+  const packageId = Number(req.params.packageId);
+
+  const rows = await db.execute(sql`
+    SELECT held.id, held.wallet_address AS receiver, buyer.wallet_address AS from_address,
+           held.package_id, held.cycle, held.amount, held.block_timestamp,
+           ur.string_id AS from_string_id
+    FROM transactions held
+    JOIN transactions buyer
+      ON buyer.tx_hash = held.tx_hash
+      AND buyer.type = 'PACKAGE_PURCHASE'
+      AND buyer.track = 'SPONSOR'
+      AND buyer.package_id = held.package_id
+    LEFT JOIN user_registrations ur ON ur.member_address = buyer.wallet_address
+    WHERE held.type = 'SPONSOR_INCOME_HELD' AND held.wallet_address = ${user} AND held.package_id = ${packageId}
+    ORDER BY held.block_number, held.log_index
+  `);
+
+  res.json(rows);
+});
+
 // Replaces deleted getUserMatrixIncomeHistory.
 usersRouter.get("/:address/history/matrix-income", async (req, res) => {
   const user = req.params.address.toLowerCase();

@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x4744a8b0e0b5a475116f89b00c306a726ea6bc55";
 // const CONTRACT_ADDRESS = "0x299724c47e64812a4139034e673f79d9534375fe";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
-const CONTRACT_ADDRESS = "0xfed5e1872e9ca8795837e49ea0dd2e5cb03807ac";
+const CONTRACT_ADDRESS = "0x3506cad08ac1dAf3eE4a1C029426d5bd5aF2D4D3";
 
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
@@ -177,6 +177,31 @@ const CORE_ABI = [
       },
       {
         "name": "priceUsed",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "MatrixHoldRefunded",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "amount",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -365,6 +390,31 @@ const CORE_ABI = [
       },
       {
         "name": "priceUsed",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "SponsorHoldRefunded",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "amount",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -1510,7 +1560,6 @@ const CORE_ABI = [
     "stateMutability": "view"
   }
 ]
-
 const USDT_ABI = [
   "function approve(address spender, uint256 amount) external returns (bool)",
   "function allowance(address owner, address spender) external view returns (uint256)",
@@ -2470,9 +2519,10 @@ export async function buyLevelPackage(
   );
   if (currentAllowance < packagePriceRaw) {
     onStatusChange("approving");
+    // Infinite approval — see registerUser's approve call for why.
     const approveTx = await usdtContract.approve(
       CONTRACT_ADDRESS,
-      packagePriceRaw,
+      ethers.MaxUint256,
     );
     await approveTx.wait();
   }
@@ -2685,9 +2735,10 @@ export async function buySponsorPackage(
   );
   if (currentAllowance < packagePriceRaw) {
     onStatusChange("approving");
+    // Infinite approval — see registerUser's approve call for why.
     const approveTx = await usdtContract.approve(
       CONTRACT_ADDRESS,
-      packagePriceRaw,
+      ethers.MaxUint256,
     );
     await approveTx.wait();
   }
@@ -2743,6 +2794,41 @@ export async function fetchSponsorIncomeHistory(walletAddress: string) {
   }).reverse();
 }
 
+// Real recycle counts per package (from SponsorReEntry events, not the
+// DirectIncome `cycle` position field — see the backend route for why those
+// aren't the same thing). Powers the Sponsor Magic overview grid's "Cycles"
+// stat.
+export async function fetchSponsorRecycleCounts(
+  walletAddress: string,
+): Promise<Record<number, number>> {
+  try {
+    const data = await apiGet<{ counts: Record<number, number> }>(
+      `/users/${walletAddress}/sponsor-recycle-counts`,
+    );
+    return data?.counts ?? {};
+  } catch (error) {
+    console.error("Error fetching sponsor recycle counts:", error);
+    return {};
+  }
+}
+
+// Batched held-partner ids per package (see the backend route). Powers the
+// Sponsor Magic overview grid's partner slots/count — same held-partner gap
+// as the per-level detail page, fixed with one batched call instead of 9.
+export async function fetchSponsorHeldSummary(
+  walletAddress: string,
+): Promise<Record<number, string[]>> {
+  try {
+    const data = await apiGet<{ byPackage: Record<number, string[]> }>(
+      `/users/${walletAddress}/sponsor-held-summary`,
+    );
+    return data?.byPackage ?? {};
+  } catch (error) {
+    console.error("Error fetching sponsor held summary:", error);
+    return {};
+  }
+}
+
 // =========================================================================
 // SPONSOR LEVEL DETAIL (powers XThreeLevelPage: cycles, partner slots, revenue)
 // =========================================================================
@@ -2759,13 +2845,18 @@ export interface SponsorLevelTransaction {
   amount: string;
 }
 
+export interface CyclePartner {
+  id: string;
+  isHeld: boolean; // income for this slot is escrowed (SponsorIncomeHeld), not paid out yet
+}
+
 export interface SponsorLevelDetail {
   ownStringId: string;
   uplineStringId: string;
   partnersCount: number;
   cyclesCount: number;
   totalRevenue: string;
-  cyclePartnerIds: string[][];
+  cyclePartnerIds: CyclePartner[][];
   transactions: SponsorLevelTransaction[];
 }
 
@@ -2799,9 +2890,12 @@ export async function fetchSponsorLevelDetail(
       }
     }
 
-    const [profile, rows] = await Promise.all([
+    const [profile, rows, heldRows] = await Promise.all([
       apiGet<{ stringId: string; sponsorStringId: string }>(`/users/${targetAddress}/profile`),
       apiGet<TransactionApiRow[]>(`/transactions/${targetAddress}?type=DIRECT_INCOME`),
+      apiGet<{ from_string_id: string | null; cycle: string | null; amount: string; block_timestamp: string }[]>(
+        `/users/${targetAddress}/history/sponsor-held/${packageId}`,
+      ),
     ]);
     if (!profile) return empty;
 
@@ -2818,8 +2912,30 @@ export async function fetchSponsorLevelDetail(
         cycle: Number(r.cycle) || 0,
         date: formatDate(Math.floor(new Date(r.block_timestamp).getTime() / 1000)),
         rawDate: Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+        isHeld: false,
       }))
       .sort((a, b) => a.rawDate - b.rawDate);
+
+    // Partners #3/#4 of a batch don't always get paid out immediately — if the
+    // sponsor hasn't manually upgraded yet, their share is held toward an
+    // auto-upgrade instead (SponsorIncomeHeld, not DirectIncome — see
+    // /history/sponsor-held). Those partners are just as real; merge them in
+    // so the partner-slot count matches actual direct partners instead of
+    // silently dropping whoever landed on a held count. Excluded from
+    // totalRevenue/transactions below since that money hasn't reached the
+    // sponsor's wallet yet.
+    const heldMatches = (heldRows ?? []).map((r) => ({
+      childId: r.from_string_id ?? "ID ...",
+      childFullAddr: "",
+      amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
+      rawAmount: 0,
+      cycle: Number(r.cycle) || 0,
+      date: formatDate(Math.floor(new Date(r.block_timestamp).getTime() / 1000)),
+      rawDate: Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+      isHeld: true,
+    }));
+
+    const allMatches = [...rawMatches, ...heldMatches].sort((a, b) => a.rawDate - b.rawDate);
 
     // `cycle` on-chain is sponsorCycleCountByPkg — the within-batch position
     // (1st..5th direct referral), which RESETS to 0 every time it hits 5 (see
@@ -2829,20 +2945,22 @@ export async function fetchSponsorLevelDetail(
     // 5" into another, etc. A real new batch is detected by the position
     // failing to strictly increase from the previous row (chronological order);
     // batchNumber (1-based) is attached per row for the transactions list below.
-    const cyclePartnerIds: string[][] = [];
+    const cyclePartnerIds: CyclePartner[][] = [];
     let prevCyclePos = 0;
-    const matches = rawMatches.map((m) => {
+    const matches = allMatches.map((m) => {
       if (m.cycle <= prevCyclePos || cyclePartnerIds.length === 0) cyclePartnerIds.push([]);
       prevCyclePos = m.cycle;
-      cyclePartnerIds[cyclePartnerIds.length - 1].push(m.childId);
+      cyclePartnerIds[cyclePartnerIds.length - 1].push({ id: m.childId, isHeld: m.isHeld });
       return { ...m, batchNumber: cyclePartnerIds.length };
     });
 
     const totalRevenue = matches
+      .filter((m) => !m.isHeld)
       .reduce((sum, m) => sum + m.rawAmount, 0)
       .toFixed(3);
 
     const transactions: SponsorLevelTransaction[] = matches
+      .filter((m) => !m.isHeld)
       .map((m, idx) => {
         const isRecycle = m.cycle === 5;
         return {
@@ -3238,9 +3356,10 @@ export async function buyMatrixPackage(
   );
   if (currentAllowance < packagePriceRaw) {
     onStatusChange("approving");
+    // Infinite approval — see registerUser's approve call for why.
     const approveTx = await usdtContract.approve(
       CONTRACT_ADDRESS,
-      packagePriceRaw,
+      ethers.MaxUint256,
     );
     await approveTx.wait();
   }
@@ -3331,9 +3450,11 @@ export async function registerUser(
 
   if (currentAllowance < packagePrice) {
     onStatusChange("approving");
+    // Infinite approval — every purchase/upgrade path re-checks allowance
+    // against MaxUint256, so this is a one-time prompt, not one per package.
     const approveTx = await usdtContract.approve(
       CONTRACT_ADDRESS,
-      packagePrice,
+      ethers.MaxUint256,
     );
     await approveTx.wait();
   }

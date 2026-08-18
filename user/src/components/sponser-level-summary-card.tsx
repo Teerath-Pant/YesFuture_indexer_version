@@ -1,16 +1,12 @@
 // import React from "react";
 import { Link } from "@tanstack/react-router";
-import { Users, RefreshCw, Wallet } from "lucide-react";
-
-// export interface PartnerSlot {
-//   id?: string; // undefined => renders as an empty/greyed placeholder slot
-//   href?: string; // route to that partner's stats page; if omitted, slot isn't clickable
-// }
+import { Users, RefreshCw, Wallet, Lock } from "lucide-react";
 
 export interface PartnerSlot {
   id?: string;
   to?: string;
   searchId?: string;
+  isHeld?: boolean; // income for this partner is escrowed, not paid out yet
 }
 
 export interface LevelSummaryCardProps {
@@ -50,30 +46,41 @@ export default function SponsorLevelSummaryCard({
 
       {/* Partner avatar slots */}
       <div className="flex justify-between sm:w-9/11 mx-auto mb-10">
-        {partners.map((slot, i) =>
-          slot.id ? (
-            slot.to ? (
-              <Link
-                key={i}
-                to={slot.to}
-                search={{ id: slot.searchId }} 
-                className="sm:w-16 sm:h-16 h-12 w-12 rounded-full bg-white flex items-center justify-center text-[10px] sm:text-xs font-semibold text-neutral-900 hover:scale-105 transition-transform cursor-pointer"
-                title={`View ID ${slot.id}'s stats`}
-              >
-                {slot.id}
-              </Link>
-            ) : (
-              <div
-                key={i}
-                className="sm:w-16 sm:h-16 h-12 w-12 rounded-full bg-white flex items-center justify-center text-xs font-semibold text-neutral-900"
-              >
-                {slot.id}
-              </div>
-            )
+        {partners.map((slot, i) => {
+          if (!slot.id) {
+            return <div key={i} className="sm:w-16 sm:h-16 h-12 w-12 rounded-full bg-white/25" />;
+          }
+
+          // Held: income for this partner is escrowed toward an auto-upgrade,
+          // not paid out yet — same circle position/size, muted + lock badge
+          // instead of the solid-white "paid" look, so it reads as pending
+          // rather than identical to an already-earning partner.
+          const circleClass = slot.isHeld
+            ? "bg-amber-400/30 border border-amber-400/60 text-amber-200"
+            : "bg-white text-neutral-900";
+          const title = slot.isHeld
+            ? `ID ${slot.id} — income held, pending auto-upgrade`
+            : `View ID ${slot.id}'s stats`;
+          const content = (
+            <>
+              {slot.id}
+              {slot.isHeld && (
+                <Lock className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-amber-500 p-0.5 text-white" />
+              )}
+            </>
+          );
+          const className = `relative sm:w-16 sm:h-16 h-12 w-12 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-semibold transition-transform ${circleClass} ${slot.to && !slot.isHeld ? "hover:scale-105 cursor-pointer" : ""}`;
+
+          return slot.to && !slot.isHeld ? (
+            <Link key={i} to={slot.to} search={{ id: slot.searchId }} className={className} title={title}>
+              {content}
+            </Link>
           ) : (
-            <div key={i} className="sm:w-16 sm:h-16 h-12 w-12 rounded-full bg-white/25" />
-          )
-        )}
+            <div key={i} className={className} title={title}>
+              {content}
+            </div>
+          );
+        })}
       </div>
 
       {/* Footer stats */}

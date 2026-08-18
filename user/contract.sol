@@ -50,12 +50,18 @@ contract meta16 is ReentrancyGuard {
         _;
     }
 
+    // FIX: registration guard, reused across all purchase functions
+    modifier onlyRegistered() {
+        require(memberId[msg.sender] != 0, "NOT_REGISTERED");
+        _;
+    }
+
     function renounceOwnership() external onlyOwner {
         owner = address(0);
         emit OwnershipRenounced(msg.sender);
     }
 
-    function rescueTokens(address tokenAddress, uint256 amount) external onlyOwner {
+    function rescueTokens(address tokenAddress, uint256 amount) external onlyOwner nonReentrant {
         require(tokenAddress != address(usdt), "CANNOT_RESCUE_USDT");
         IERC20(tokenAddress).safeTransfer(adminWallet, amount);
     }
@@ -179,6 +185,10 @@ contract meta16 is ReentrancyGuard {
     event Level5ReEntry(address indexed user, uint8 indexed packageId, uint256 cycleNumber, address phantomNode);
     event SponsorReEntry(address indexed sponsor, uint8 indexed packageId);
 
+    // FIX: new events for stuck-hold refunds on manual/self upgrade
+    event SponsorHoldRefunded(address indexed user, uint8 packageId, uint256 amount);
+    event MatrixHoldRefunded(address indexed user, uint8 packageId, uint256 amount);
+
     // ---------------------------------------------------------------
     // CONSTRUCTOR
     // ---------------------------------------------------------------
@@ -238,9 +248,6 @@ contract meta16 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // REGISTRATION (Auto-buys Package 1 for all 3 tracks)
-    // FIX OPTION 2: registerMember now also accepts display name, so
-    // frontend fires ONE tx here instead of registerMember + setDisplayName
-    // as two separate signatures.
     // ---------------------------------------------------------------
     function registerMember(string calldata sponsorStringId, string calldata name) external nonReentrant {
         require(memberId[msg.sender] == 0, "ALREADY_REGISTERED");
@@ -264,7 +271,6 @@ contract meta16 is ReentrancyGuard {
         topupFlag[msg.sender] = true;
         activationDate[msg.sender] = block.timestamp;
         
-        // Unlock Package 1 for all tracks
         matrixPackageId[msg.sender] = 1;
         maxMatrixPackage[msg.sender] = 1;
         sponsorPackageId[msg.sender] = 1;
@@ -275,18 +281,14 @@ contract meta16 is ReentrancyGuard {
         totalInvestment += fullPrice;
         userTotalInvestment[msg.sender] += fullPrice;
 
-        // Emit per-track package-1 grants so indexer can reconstruct the split
-        // (amounts are deterministic via getMatrixPrice/getSponsorPrice/getLevelPrice(1))
         emit ManualUpgrade(msg.sender, 1, "MATRIX");
         emit ManualUpgrade(msg.sender, 1, "SPONSOR");
         emit ManualUpgrade(msg.sender, 1, "LEVEL");
 
-        // ========== SET DISPLAY NAME, SAME TX, NO EXTRA POPUP ==========
         if (bytes(name).length > 0 && bytes(name).length <= 32) {
             displayName[msg.sender] = name;
             emit NameUpdated(msg.sender, name);
         }
-        // =================================================================
 
         emit UserRegistered(msg.sender, sponsorAddr, memberCounter, newStringId);
 
@@ -297,10 +299,9 @@ contract meta16 is ReentrancyGuard {
     }
 
     // ---------------------------------------------------------------
-    // DISPLAY NAME (set/change after registration, separate call)
+    // DISPLAY NAME
     // ---------------------------------------------------------------
-    function setDisplayName(string calldata newName) external {
-        require(memberId[msg.sender] != 0, "NOT_A_MEMBER");
+    function setDisplayName(string calldata newName) external onlyRegistered {
         require(bytes(newName).length > 0 && bytes(newName).length <= 32, "INVALID_NAME_LENGTH");
         displayName[msg.sender] = newName;
         emit NameUpdated(msg.sender, newName);
@@ -308,24 +309,48 @@ contract meta16 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // MANUAL PURCHASES (For upgrading specific tracks)
+    // FIX: onlyRegistered guard added to all 3
+    // FIX: settle stuck hold from old tier before jumping to new tier
     // ---------------------------------------------------------------
-   function purchaseMatrixPackage(uint8 packageId) external nonReentrant {
-    require(packageId >= 1 && packageId <= MAX_PACKAGE, "INVALID_PACKAGE_ID");
-    require(matrixPackageId[msg.sender] == packageId - 1, "MUST_BUY_SEQUENTIAL");
-    uint256 price = getMatrixPrice(packageId);
-    usdt.safeTransferFrom(msg.sender, address(this), price);
-    
-    matrixPackageId[msg.sender] = packageId;
-    if (packageId > maxMatrixPackage[msg.sender]) maxMatrixPackage[msg.sender] = packageId;
+    function purchaseMatrixPackage(uint8 packageId) external onlyRegistered nonReentrant {
+        require(packageId >= 1 && packageId <= MAX_PACKAGE, "INVALID_PACKAGE_ID");
+        require(matrixPackageId[msg.sender] == packageId - 1, "MUST_BUY_SEQUENTIAL");
 
-    _placeInPackageTreeIfNeeded(msg.sender, packageId);
-    _releaseMatrixIncome(msg.sender, packageId);
-    emit ManualUpgrade(msg.sender, packageId, "MATRIX");
-}
+        uint8 oldPkg = matrixPackageId[msg.sender];
+        if (oldPkg >= 1) {
+            uint256 held = matrixHoldByPkg[oldPkg][msg.sender];
+            if (held > 0) {
+                matrixHoldByPkg[oldPkg][msg.sender] = 0;
+                usdt.safeTransfer(msg.sender, held);
+                emit MatrixHoldRefunded(msg.sender, oldPkg, held);
+            }
+        }
 
-    function purchaseSponsorPackage(uint8 packageId) external nonReentrant {
+        uint256 price = getMatrixPrice(packageId);
+        usdt.safeTransferFrom(msg.sender, address(this), price);
+
+        matrixPackageId[msg.sender] = packageId;
+        if (packageId > maxMatrixPackage[msg.sender]) maxMatrixPackage[msg.sender] = packageId;
+
+        _placeInPackageTreeIfNeeded(msg.sender, packageId);
+        _releaseMatrixIncome(msg.sender, packageId);
+        emit ManualUpgrade(msg.sender, packageId, "MATRIX");
+    }
+
+    function purchaseSponsorPackage(uint8 packageId) external onlyRegistered nonReentrant {
         require(packageId >= 1 && packageId <= MAX_PACKAGE, "INVALID_PACKAGE_ID");
         require(sponsorPackageId[msg.sender] == packageId - 1, "MUST_BUY_SEQUENTIAL");
+
+        uint8 oldPkg = sponsorPackageId[msg.sender];
+        if (oldPkg >= 1) {
+            uint256 held = sponsorHoldByPkg[oldPkg][msg.sender];
+            if (held > 0) {
+                sponsorHoldByPkg[oldPkg][msg.sender] = 0;
+                usdt.safeTransfer(msg.sender, held);
+                emit SponsorHoldRefunded(msg.sender, oldPkg, held);
+            }
+        }
+
         uint256 price = getSponsorPrice(packageId);
         usdt.safeTransferFrom(msg.sender, address(this), price);
         
@@ -336,7 +361,7 @@ contract meta16 is ReentrancyGuard {
         emit ManualUpgrade(msg.sender, packageId, "SPONSOR");
     }
 
-    function purchaseLevelPackage(uint8 packageId) external nonReentrant {
+    function purchaseLevelPackage(uint8 packageId) external onlyRegistered nonReentrant {
         require(packageId >= 1 && packageId <= MAX_PACKAGE, "INVALID_PACKAGE_ID");
         require(levelPackageId[msg.sender] == packageId - 1, "MUST_BUY_SEQUENTIAL");
         uint256 price = getLevelPrice(packageId);
@@ -351,10 +376,6 @@ contract meta16 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // MATRIX PLACEMENT
-    // Persistent FIFO queue per (packageId, teamSponsor root). Each root
-    // keeps its own queue + head pointer in storage, so placement cost is
-    // O(1) instead of re-walking the tree via BFS. No fixed array, no
-    // node-count cap — scales to unlimited members.
     // ---------------------------------------------------------------
     function _placeInMatrixForPackage(uint8 packageId, address _user, address _teamSponsor) internal {
         address[] storage queue = matrixOpenQueue[packageId][_teamSponsor];
@@ -418,10 +439,7 @@ contract meta16 is ReentrancyGuard {
                     ? realOwnerByPkg[packageId][currentParent]
                     : currentParent;
                 usdt.safeTransfer(payoutWallet, share);
-                
-                // ========== TRACK MATRIX INCOME ==========
                 userTotalMatrixIncome[payoutWallet] += share;
-                // ========================================
                 emit MatrixIncome(payoutWallet, buyer, level, share);
             }
 
@@ -457,11 +475,7 @@ contract meta16 is ReentrancyGuard {
             emit MatrixIncomeHeld(userA, packageId, share, count);
         } else {
             usdt.safeTransfer(userA, share);
-            
-            // ========== TRACK MATRIX INCOME ==========
             userTotalMatrixIncome[userA] += share;
-            // ========================================
-            
             emit MatrixIncome(userA, buyer, 5, share);
         }
 
@@ -516,7 +530,6 @@ contract meta16 is ReentrancyGuard {
         address anchor = sponsor[userA] != address(0) ? sponsor[userA] : adminWallet;
         _placeInMatrixForPackage(packageId, phantomNode, anchor);
 
-        //record new cycle root on re-entry for magic gold matrix structure
         cycleRootByPkg[packageId][userA].push(phantomNode);
 
         emit Level5ReEntry(userA, packageId, recycleCount[userA], phantomNode);
@@ -549,34 +562,16 @@ contract meta16 is ReentrancyGuard {
         if (count == 1 || count == 2) {
             usdt.safeTransfer(directSponsor, sponsorNet);
             usdt.safeTransfer(adminWallet, adminCut);
-            
-            // ========== TRACK DIRECT INCOME ==========
             userTotalDirectIncome[directSponsor] += sponsorNet;
-            // ========================================
-            
             emit DirectIncome(directSponsor, buyer, packageId, count, sponsorNet);
         }
         else if (count == 3) {
             if (upgraded) {
                 usdt.safeTransfer(directSponsor, sponsorNet);
                 usdt.safeTransfer(adminWallet, adminCut);
-                
-                // ========== TRACK DIRECT INCOME ==========
                 userTotalDirectIncome[directSponsor] += sponsorNet;
-                // ========================================
-                
                 emit DirectIncome(directSponsor, buyer, packageId, count, sponsorNet);
             } else {
-                // Hold the full gross share, not the 90% net — the 90/10 split
-                // is for money actually paid out, not money in escrow. Holding
-                // net left auto-upgrade permanently unreachable: two held counts
-                // at 90% (0.3006x price) never covers the next tier's cost
-                // (0.334x price, since prices double every tier), so the admin
-                // cut was silently eating the exact margin the upgrade needed.
-                // Same "hold gross, split only on payout" pattern the Matrix
-                // track already uses (matrixHoldByPkg, _handleLevel5Share).
-                // Admin still gets paid — via the leftover sweep below once the
-                // hold is consumed — just not upfront.
                 sponsorHoldByPkg[packageId][directSponsor] += sponsorShare;
                 emit SponsorIncomeHeld(directSponsor, packageId, sponsorShare, count);
             }
@@ -585,21 +580,15 @@ contract meta16 is ReentrancyGuard {
             if (upgraded) {
                 usdt.safeTransfer(directSponsor, sponsorNet);
                 usdt.safeTransfer(adminWallet, adminCut);
-
-                // ========== TRACK DIRECT INCOME ==========
                 userTotalDirectIncome[directSponsor] += sponsorNet;
-                // ========================================
-
                 emit DirectIncome(directSponsor, buyer, packageId, count, sponsorNet);
             } else {
-                // See count==3 branch above — hold gross, not net.
                 sponsorHoldByPkg[packageId][directSponsor] += sponsorShare;
                 emit SponsorIncomeHeld(directSponsor, packageId, sponsorShare, count);
                 _trySponsorAutoUpgrade(packageId, directSponsor);
             }
         }
         else if (count == 5) {
-            // 1. INCOME TO SPONSOR'S UPLINE
             address sponsorOfSponsor = sponsor[directSponsor];
             if (sponsorOfSponsor == address(0)) {
                 sponsorOfSponsor = adminWallet;
@@ -609,11 +598,9 @@ contract meta16 is ReentrancyGuard {
             userTotalDirectIncome[sponsorOfSponsor] += sponsorNet;
             emit DirectIncome(sponsorOfSponsor, buyer, packageId, count, sponsorNet);
 
-            // 2. RESET CYCLE
             sponsorCycleCountByPkg[packageId][directSponsor] = 0;
             recycleCount[directSponsor]++;
             
-            // 3. CREATE PHANTOM & PLACE IN TREE
             phantomCounter++;
             address phantom = address(uint160(uint256(keccak256(
                 abi.encodePacked("SPONSOR_RE", packageId, directSponsor, phantomCounter, block.timestamp)
@@ -623,7 +610,6 @@ contract meta16 is ReentrancyGuard {
             topupFlag[phantom] = true;
             maxSponsorPackage[phantom] = maxSponsorPackage[directSponsor];
             
-            // Place phantom in matrix tree under sponsor's parent
             address treeAnchor = sponsor[directSponsor] != address(0) ? sponsor[directSponsor] : adminWallet;
             _placeInMatrixForPackage(packageId, phantom, treeAnchor);
             
@@ -653,8 +639,6 @@ contract meta16 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // 3. LEVEL INCOME (10 Levels)
-    // Rule: to earn level-N income, upline must have >= N direct referrals.
-    // Otherwise share redirects to adminWallet (root). Admin always qualifies.
     // ---------------------------------------------------------------
     function _releaseLevelIncome(address buyer, uint256 fullAmount) internal {
         address parent = sponsor[buyer];
@@ -689,8 +673,6 @@ contract meta16 is ReentrancyGuard {
             level++;
         }
 
-        // levelPercent[1..10] sums to 800000 (80%). Remaining 20% of the pool
-        // was never allocated — sweep it to admin here.
         uint256 unallocatedPool = levelPoolAmount - (levelPoolAmount * 800000 / PERCENT_DENOMINATOR);
         adminLeftover += unallocatedPool;
 
