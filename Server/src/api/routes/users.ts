@@ -15,6 +15,26 @@ function isAddress(v: string) {
 // handler with its own path pattern. Caused a real bug: mixed-case
 // (checksummed, e.g. from ethers) addresses silently missed every DB row.
 
+// Sum of every package purchase (all 3 tracks, manual + auto) — replaces the
+// on-chain userTotalInvestment as the "total invested" figure for ratio-type
+// stats. userTotalInvestment only ever gets set once, at registration
+// (package 1's price) — it's never touched by purchaseMatrixPackage/
+// purchaseSponsorPackage/purchaseLevelPackage, so a member who's upgraded
+// since registration shows income growing against a denominator frozen at
+// their very first purchase (e.g. 260%+ "profit ratio").
+usersRouter.get("/:address/total-invested", async (req, res) => {
+  const user = req.params.address.toLowerCase();
+  if (!isAddress(user)) return res.status(400).json({ error: "invalid address" });
+
+  const rows = await db.execute(sql`
+    SELECT COALESCE(SUM(amount), 0) AS total
+    FROM package_purchase_events
+    WHERE member_address = ${user}
+  `);
+
+  res.json({ total: String((rows[0] as any)?.total ?? "0") });
+});
+
 // Batch address->stringId lookup, DB-only (user_registrations). Replaces
 // per-address live memberStringId RPC loops (e.g. resolving up to 62 matrix
 // tree node addresses one call at a time) with a single query.

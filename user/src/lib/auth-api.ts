@@ -1768,6 +1768,22 @@ export async function fetchUserTotalInvestment(
   }
 }
 
+// DB-sourced sum of every package purchase (all 3 tracks) — see the backend
+// route for why this replaces fetchUserTotalInvestment for ratio-type stats:
+// the on-chain figure is frozen at registration, this one tracks every
+// upgrade since.
+export async function fetchUserTotalInvested(
+  walletAddress: string,
+): Promise<string> {
+  try {
+    const data = await apiGet<{ total: string }>(`/users/${walletAddress}/total-invested`);
+    return ethers.formatUnits(data?.total ?? "0", 18);
+  } catch (error) {
+    console.error("Error fetching user total invested:", error);
+    return "0";
+  }
+}
+
 // =========================================================================
 // HELPER FUNCTIONS
 // =========================================================================

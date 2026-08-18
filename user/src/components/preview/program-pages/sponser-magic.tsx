@@ -10,6 +10,9 @@ import {
   fetchSponsorIncomeHistory,
   fetchTotalSponsorIncome,
   fetchSponsorPackageAndIdWithMax,
+  fetchSponsorRecycleCounts,
+  fetchDirectPartners,
+  fetchSponsorHeldSummary,
 } from "@/lib/auth-api";
 import { useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -78,34 +81,46 @@ const PreviewUserSponserMagic = ({ program }: pageProps) => {
     return foundIndex !== -1 ? foundIndex + 1 : 1;
   };
 
-  // ✅ UPDATED: Build levels data package-wise for Sponsor Magic
-  const buildLevelsData = (currentPkg: number, transactionData: TransactionRow[], isRootUser = false): LevelData[] => {
+  // Build levels data package-wise for Sponsor Magic — mirrors the live
+  // program-pages/sponser-magic.tsx (see there for the full reasoning):
+  // recycle count comes from real SponsorReEntry events (not a tx-count
+  // heuristic), partner count includes held (not-yet-paid) referrals and is
+  // scoped to the current open cycle, and isDamage reflects a real direct
+  // child's live sponsorPackageId instead of a guessed tier distance.
+  const buildLevelsData = (
+    currentPkg: number,
+    transactionData: TransactionRow[],
+    isRootUser = false,
+    recycleCounts: Record<number, number> = {},
+    childAheadTiers: Set<number> = new Set(),
+    heldByPackage: Record<number, string[]> = {},
+  ): LevelData[] => {
     // Sponsor Magic package prices (Direct Income portion)
-    const packagePrices = [
-      12.525, 25.05, 50.10, 100.20, 200.40, 400.80, 801.60, 1603.20, 3206.40,
-    ];
+    const packagePrices = sponsorMagicPackages;
     const levels: LevelData[] = [];
 
-    // Count unique referrers & transaction counts specifically per package level
     const levelReferrers: { [key: number]: Set<string> } = {};
-    const levelTransactionCount: { [key: number]: number } = {};
 
     transactionData.forEach((item) => {
       const level = item.level;
       if (!levelReferrers[level]) {
         levelReferrers[level] = new Set();
-        levelTransactionCount[level] = 0;
       }
       levelReferrers[level].add(item.refId);
-      levelTransactionCount[level] += 1;
     });
+
+    for (const [pkg, ids] of Object.entries(heldByPackage)) {
+      const level = Number(pkg);
+      if (!levelReferrers[level]) levelReferrers[level] = new Set();
+      for (const idStr of ids) levelReferrers[level].add(idStr.replace(/^ID\s*/i, ""));
+    }
 
     for (let i = 1; i <= 9; i++) {
       const isUnlocked = isRootUser || i <= currentPkg;
       const price = packagePrices[i - 1] || 0;
-      const partnersCount = levelReferrers[i]?.size || 0;
-      const totalTxForLevel = levelTransactionCount[i] || 0;
-      const cyclesCount = Math.floor(totalTxForLevel / 5);
+      const cyclesCount = recycleCounts[i] || 0;
+      const totalVisible = levelReferrers[i]?.size || 0;
+      const partnersCount = Math.max(totalVisible - 4 * cyclesCount, 0);
 
       // Generate 5 slots based on partners count for package level i
       const slots = generateSlots(i, partnersCount);
@@ -118,7 +133,7 @@ const PreviewUserSponserMagic = ({ program }: pageProps) => {
         partnersCount: partnersCount,
         recycleCount: cyclesCount,
         isFreeze: isRootUser ? false : !isUnlocked,
-        isDamage: isRootUser ? false : i > currentPkg + 1,
+        isDamage: isRootUser ? false : childAheadTiers.has(i),
       });
     }
 
@@ -154,13 +169,26 @@ const PreviewUserSponserMagic = ({ program }: pageProps) => {
           setUserStringId("ID ...");
         }
 
-        const [history, total] = await Promise.all([
+        const [history, total, recycleCounts, directPartners, heldByPackage] = await Promise.all([
           PreviewModeApiCall(userId, fetchSponsorIncomeHistory),
           PreviewModeApiCall(userId, fetchTotalSponsorIncome),
+          PreviewModeApiCall(userId, fetchSponsorRecycleCounts),
+          PreviewModeApiCall(userId, fetchDirectPartners),
+          PreviewModeApiCall(userId, fetchSponsorHeldSummary),
         ]);
 
         const safeHistory = history ?? [];
         const safeTotal = total ?? "0";
+        const safeRecycleCounts = recycleCounts ?? {};
+        const safeDirectPartners = directPartners ?? [];
+        const safeHeldByPackage = heldByPackage ?? {};
+
+        // Tiers above the current user's own sponsor package that at least
+        // one direct child has already reached.
+        const childAheadTiers = new Set<number>();
+        for (const p of safeDirectPartners) {
+          for (let t = pkgId + 1; t <= p.x3; t++) childAheadTiers.add(t);
+        }
 
         const formattedData: TransactionRow[] = safeHistory.map(
           (item, index) => {
@@ -182,7 +210,7 @@ const PreviewUserSponserMagic = ({ program }: pageProps) => {
         setData(formattedData);
         setTotalIncome(safeTotal);
 
-        const levels = buildLevelsData(pkgId, formattedData, isRootUser);
+        const levels = buildLevelsData(pkgId, formattedData, isRootUser, safeRecycleCounts, childAheadTiers, safeHeldByPackage);
         setLevelsData(levels);
       } catch (err) {
         toast.error("❌ Failed to load sponsor income data:");
