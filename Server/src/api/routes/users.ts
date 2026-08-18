@@ -348,11 +348,102 @@ usersRouter.get("/:address/magic-gold/:packageId/:cycleIndex", async (req, res) 
       const kids = childrenByParent.get(parent) ?? [];
       kids.forEach((child, c) => {
         nodes[start + p * 2 + c] = child;
-        nextLevelParents[p * 2 + c] = child;
+        nextLevelParents.push(child); // push, not indexed assign — a partly-filled
+        // level (some parents with 1 child, some with 2) left gaps via
+        // nextLevelParents[p*2+c], producing a sparse array; inArray() over a
+        // sparse array desyncs drizzle's placeholder count from its params
+        // and Postgres throws "syntax error at or near ','" on the next query.
       });
     });
     currentLevelParents = nextLevelParents.length ? nextLevelParents : new Array(Math.pow(2, lvl)).fill("");
   }
 
   res.json({ root, nodes });
+});
+
+// Same per-package computation as matrix-tree + magic-gold/cycles +
+// magic-gold/:cycleIndex + matrix-income-total above, factored out so the
+// summary route below can run it for all 9 tiers in one request instead of
+// the frontend firing 4 requests x 9 packages (36+ calls, capped at ~6
+// concurrent by the browser's per-origin connection limit no matter how much
+// the frontend parallelizes with Promise.all).
+async function computePackageMatrixSummary(user: string, packageId: number) {
+  const [partnersCountRow, reentries, incomeRows] = await Promise.all([
+    db.select({ count: sql<number>`count(*)::int` }).from(schema.matrixPlacements)
+      .where(and(eq(schema.matrixPlacements.parentAddress, user), eq(schema.matrixPlacements.packageId, packageId))),
+    db.select({ phantomNode: schema.level5Reentries.phantomNode })
+      .from(schema.level5Reentries)
+      .where(and(eq(schema.level5Reentries.userAddress, user), eq(schema.level5Reentries.packageId, packageId)))
+      .orderBy(schema.level5Reentries.cycleNumber),
+    db.execute(sql`
+      SELECT COALESCE(SUM(mi.amount), 0) AS total
+      FROM matrix_income_events mi
+      JOIN package_purchase_events pp
+        ON pp.tx_hash = mi.tx_hash
+        AND pp.track = 'MATRIX'
+        AND pp.member_address = mi.from_address
+      WHERE mi.receiver = ${user} AND pp.package_id = ${packageId}
+    `),
+  ]);
+
+  const roots = [user, ...reentries.map((r) => r.phantomNode)];
+  const latestRoot = roots[roots.length - 1];
+
+  const nodes: (string | null)[] = new Array(62).fill(null);
+  const levelStart = [0, 0, 2, 6, 14, 30];
+  let currentLevelParents = [latestRoot];
+
+  for (let lvl = 1; lvl <= 5; lvl++) {
+    const start = levelStart[lvl];
+    const rows = currentLevelParents.length
+      ? await db.select({
+          parentAddress: schema.matrixPlacements.parentAddress,
+          childAddress: schema.matrixPlacements.childAddress,
+        }).from(schema.matrixPlacements)
+        .where(and(
+          eq(schema.matrixPlacements.packageId, packageId),
+          inArray(schema.matrixPlacements.parentAddress, currentLevelParents)
+        ))
+        .orderBy(schema.matrixPlacements.blockNumber, schema.matrixPlacements.logIndex)
+      : [];
+
+    const childrenByParent = new Map<string, string[]>();
+    for (const row of rows) {
+      const list = childrenByParent.get(row.parentAddress) ?? [];
+      if (list.length < 2) list.push(row.childAddress);
+      childrenByParent.set(row.parentAddress, list);
+    }
+
+    const nextLevelParents: string[] = [];
+    currentLevelParents.forEach((parent, p) => {
+      const kids = childrenByParent.get(parent) ?? [];
+      kids.forEach((child, c) => {
+        nodes[start + p * 2 + c] = child;
+        nextLevelParents.push(child); // see comment in the matrix-tree/:cycleIndex route above
+      });
+    });
+    currentLevelParents = nextLevelParents.length ? nextLevelParents : new Array(Math.pow(2, lvl)).fill("");
+  }
+
+  return {
+    packageId,
+    partnersCount: partnersCountRow[0]?.count ?? 0,
+    cycleCount: roots.length,
+    nodes,
+    revenue: String((incomeRows[0] as any)?.total ?? "0"),
+  };
+}
+
+// Batches all 9 package tiers' matrix-tree/cycles/income into one request —
+// see comment on computePackageMatrixSummary. Frontend still filters to
+// packageId <= maxActivePkg (that boundary is a live contract read, not DB).
+usersRouter.get("/:address/magic-gold-summary", async (req, res) => {
+  const user = req.params.address.toLowerCase();
+  if (!isAddress(user)) return res.status(400).json({ error: "invalid address" });
+
+  const packages = await Promise.all(
+    Array.from({ length: 9 }, (_, i) => i + 1).map((packageId) => computePackageMatrixSummary(user, packageId)),
+  );
+
+  res.json({ packages });
 });

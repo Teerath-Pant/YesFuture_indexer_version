@@ -6,7 +6,7 @@ import WalletCell from "../wallet-cell";
 import { RefreshCw, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { magicGoldMatrixPackages, type ProgramTypes } from "@/constants/programs";
-import { fetchPackageAndId, fetchPurchaseHistory, fetchPackageMatrixDetails, fetchMaxActivePackage } from "@/lib/auth-api";
+import { fetchPackageAndId, fetchPurchaseHistory, fetchMagicGoldMatrixSummary, fetchMaxActivePackage } from "@/lib/auth-api";
 import { useWallet } from "@/lib/use-wallet";
 
 interface pageProps {
@@ -59,16 +59,19 @@ const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
         setMaxActivePkg(Math.max(activeMax, 1));
 
         // 2. Fetch specific matrix metrics + income for each package tier up to maxActivePkg
+        // — one batched backend call for all 9 tiers instead of 9 x 4 requests
+        // (that many concurrent fetches still queued behind the browser's
+        // ~6-per-origin connection cap even when fired via Promise.all).
+        const unlockedMax = Math.max(activeMax, 1);
+        const summary = await fetchMagicGoldMatrixSummary(activeWalletAddress);
         const metricsMap: Record<number, any> = {};
         let allTimeRevenue = 0;
         for (let i = 1; i <= 9; i++) {
-          if (i <= Math.max(activeMax, 1)) {
-            const details = await fetchPackageMatrixDetails(activeWalletAddress, i);
-            metricsMap[i] = details;
-            allTimeRevenue += details.revenue ?? 0;
-          } else {
-            metricsMap[i] = { partnersCount: 0, level5Count: 0, recycleCount: 0, revenue: 0 };
-          }
+          const details = i <= unlockedMax
+            ? (summary[i] ?? { partnersCount: 0, level5Count: 0, recycleCount: 0, revenue: 0 })
+            : { partnersCount: 0, level5Count: 0, recycleCount: 0, revenue: 0 };
+          metricsMap[i] = details;
+          allTimeRevenue += details.revenue ?? 0;
         }
         setPackageMetrics(metricsMap);
         setTotalRevenue(allTimeRevenue);
