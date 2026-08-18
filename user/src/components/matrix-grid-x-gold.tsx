@@ -27,21 +27,21 @@ export function MatrixGridXGold({ levels }: MatrixGridProps) {
             <span className="h-3.5 w-3.5 rounded-full bg-yellow-300" />
             <span className="font-medium text-gray-300">Spillover from above</span>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="h-3.5 w-3.5 rounded-full bg-orange-400" />
-            <span className="font-medium text-gray-300">Spillover from below</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-3.5 w-3.5 rounded-full bg-cyan-300" />
-            <span className="font-medium text-gray-300">Gift</span>
-          </div>
+          {/* <div className="flex items-center gap-2">
+            <span className="h-3.5 w-3.5 rounded-full bg-rose-400" />
+            <span className="font-medium text-gray-300">Package Damage</span>
+          </div> */}
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-gray-400" />
-            <span className="font-medium text-gray-300">Partners on level</span>
+            <span className="font-medium text-gray-300">Partners on Package</span>
           </div>
+          <div className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4 text-gray-400" />
+              <span className="font-medium text-gray-300">Level Cycle</span>
+            </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-4">
+        {/* <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-6">
             <div className="flex items-center gap-2">
               <RefreshCw className="h-4 w-4 text-gray-400" />
@@ -57,7 +57,7 @@ export function MatrixGridXGold({ levels }: MatrixGridProps) {
             <HelpCircle className="h-3.5 w-3.5" />
             <span>Marketing legend</span>
           </button>
-        </div>
+        </div> */}
       </div>
     </div>
   );
