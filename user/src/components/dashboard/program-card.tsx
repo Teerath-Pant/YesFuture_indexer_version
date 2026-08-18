@@ -1,6 +1,5 @@
 import type { ProgramTypes } from "@/constants/programs";
 import { formatAmount } from "@/lib/helper";
-import { formatLabel } from "@/lib/utils";
 import { useNavigate } from "@tanstack/react-router";
 import type { CSSProperties } from "react";
 
@@ -70,7 +69,7 @@ export function ProgramCard({
             {description}
           </p>
         ) : (
-          <div className="flex w-full flex-col sm:flex-row gap-5 sm:justify-between sm:items-end">
+          <div className="flex w-full py-5 flex-col sm:flex-row gap-5 sm:justify-between sm:items-end">
             <div className="grid grid-cols-5 gap-2 w-full sm:max-w-55">
               {Array.from({ length: totalLevels }).map((_, index) => {
                 const isActive = index < activeLevels;

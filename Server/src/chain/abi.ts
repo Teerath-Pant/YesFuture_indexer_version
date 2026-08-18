@@ -4,1617 +4,1617 @@
 
 export const CONTRACT_ABI = [
   {
-    "type": "constructor",
-    "inputs": [
+    type: "constructor",
+    inputs: [
       {
-        "name": "_usdtAddress",
-        "type": "address",
-        "internalType": "address"
+        name: "_usdtAddress",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "_adminWallet",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "_adminWallet",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "nonpayable"
+    stateMutability: "nonpayable",
   },
   {
-    "name": "DirectIncome",
-    "type": "event",
-    "inputs": [
+    name: "DirectIncome",
+    type: "event",
+    inputs: [
       {
-        "name": "receiver",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "receiver",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "from",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "from",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "cycle",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        name: "cycle",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "Level5ReEntry",
-    "type": "event",
-    "inputs": [
+    name: "Level5ReEntry",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: true,
+        internalType: "uint8",
       },
       {
-        "name": "cycleNumber",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        name: "cycleNumber",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
       },
       {
-        "name": "phantomNode",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
+        name: "phantomNode",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "LevelIncome",
-    "type": "event",
-    "inputs": [
+    name: "LevelIncome",
+    type: "event",
+    inputs: [
       {
-        "name": "receiver",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "receiver",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "from",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "from",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "level",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "level",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "LevelIncomeRedirected",
-    "type": "event",
-    "inputs": [
+    name: "LevelIncomeRedirected",
+    type: "event",
+    inputs: [
       {
-        "name": "wouldBeReceiver",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "wouldBeReceiver",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "from",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "from",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "level",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "level",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "ManualUpgrade",
-    "type": "event",
-    "inputs": [
+    name: "ManualUpgrade",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "track",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      }
+        name: "track",
+        type: "string",
+        indexed: false,
+        internalType: "string",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "MatrixAutoUpgrade",
-    "type": "event",
-    "inputs": [
+    name: "MatrixAutoUpgrade",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "fromPackageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "fromPackageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "newPackageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "newPackageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "priceUsed",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "priceUsed",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "MatrixHoldRefunded",
-    "type": "event",
-    "inputs": [
+    name: "MatrixHoldRefunded",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "MatrixIncome",
-    "type": "event",
-    "inputs": [
+    name: "MatrixIncome",
+    type: "event",
+    inputs: [
       {
-        "name": "receiver",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "receiver",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "from",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "from",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "level",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "level",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "MatrixIncomeHeld",
-    "type": "event",
-    "inputs": [
+    name: "MatrixIncomeHeld",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: true,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
       },
       {
-        "name": "memberCount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "memberCount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "MatrixPlaced",
-    "type": "event",
-    "inputs": [
+    name: "MatrixPlaced",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "matrixParent",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "matrixParent",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "sponsor",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "sponsor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "NameUpdated",
-    "type": "event",
-    "inputs": [
+    name: "NameUpdated",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "newName",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      }
+        name: "newName",
+        type: "string",
+        indexed: false,
+        internalType: "string",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "OwnerSet",
-    "type": "event",
-    "inputs": [
+    name: "OwnerSet",
+    type: "event",
+    inputs: [
       {
-        "name": "owner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
+        name: "owner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "OwnershipRenounced",
-    "type": "event",
-    "inputs": [
+    name: "OwnershipRenounced",
+    type: "event",
+    inputs: [
       {
-        "name": "previousOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
+        name: "previousOwner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "OwnershipTransferred",
-    "type": "event",
-    "inputs": [
+    name: "OwnershipTransferred",
+    type: "event",
+    inputs: [
       {
-        "name": "previousOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "previousOwner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "newOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
+        name: "newOwner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "SponsorAutoUpgrade",
-    "type": "event",
-    "inputs": [
+    name: "SponsorAutoUpgrade",
+    type: "event",
+    inputs: [
       {
-        "name": "sponsor",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "sponsor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "fromPackageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "fromPackageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "newPackageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "newPackageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "priceUsed",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "priceUsed",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "SponsorHoldRefunded",
-    "type": "event",
-    "inputs": [
+    name: "SponsorHoldRefunded",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "SponsorIncomeHeld",
-    "type": "event",
-    "inputs": [
+    name: "SponsorIncomeHeld",
+    type: "event",
+    inputs: [
       {
-        "name": "sponsor",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "sponsor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: true,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
       },
       {
-        "name": "count",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "count",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "SponsorIncomeRedirected",
-    "type": "event",
-    "inputs": [
+    name: "SponsorIncomeRedirected",
+    type: "event",
+    inputs: [
       {
-        "name": "wouldBeReceiver",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "wouldBeReceiver",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "from",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "from",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "SponsorReEntry",
-    "type": "event",
-    "inputs": [
+    name: "SponsorReEntry",
+    type: "event",
+    inputs: [
       {
-        "name": "sponsor",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "sponsor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        indexed: true,
+        internalType: "uint8",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "UserRegistered",
-    "type": "event",
-    "inputs": [
+    name: "UserRegistered",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "_sponsor",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "_sponsor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "numericId",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        name: "numericId",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
       },
       {
-        "name": "stringId",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      }
+        name: "stringId",
+        type: "string",
+        indexed: false,
+        internalType: "string",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "DIRECT_INCOME_PERCENT",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "DIRECT_INCOME_PERCENT",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "LEVEL_POOL_PERCENT",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "LEVEL_POOL_PERCENT",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "MATRIX_POOL_PERCENT",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "MATRIX_POOL_PERCENT",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "MAX_PACKAGE",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "MAX_PACKAGE",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "PERCENT_DENOMINATOR",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "PERCENT_DENOMINATOR",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "activationDate",
-    "type": "function",
-    "inputs": [
+    name: "activationDate",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "adminWallet",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "adminWallet",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "cycleRootByPkg",
-    "type": "function",
-    "inputs": [
+    name: "cycleRootByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
+        name: "",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "displayName",
-    "type": "function",
-    "inputs": [
+    name: "displayName",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
+        name: "",
+        type: "string",
+        internalType: "string",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "getLevelPrice",
-    "type": "function",
-    "inputs": [
+    name: "getLevelPrice",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "getMatrixPrice",
-    "type": "function",
-    "inputs": [
+    name: "getMatrixPrice",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "getSponsorPrice",
-    "type": "function",
-    "inputs": [
+    name: "getSponsorPrice",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "level5MemberCountByPkg",
-    "type": "function",
-    "inputs": [
+    name: "level5MemberCountByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "levelPackageId",
-    "type": "function",
-    "inputs": [
+    name: "levelPackageId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "levelPercent",
-    "type": "function",
-    "inputs": [
+    name: "levelPercent",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixChildrenByPkg",
-    "type": "function",
-    "inputs": [
+    name: "matrixChildrenByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
+        name: "",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixHoldByPkg",
-    "type": "function",
-    "inputs": [
+    name: "matrixHoldByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixOpenQueue",
-    "type": "function",
-    "inputs": [
+    name: "matrixOpenQueue",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
+        name: "",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixPackageId",
-    "type": "function",
-    "inputs": [
+    name: "matrixPackageId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixParentByPkg",
-    "type": "function",
-    "inputs": [
+    name: "matrixParentByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixPercent",
-    "type": "function",
-    "inputs": [
+    name: "matrixPercent",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixQueueHead",
-    "type": "function",
-    "inputs": [
+    name: "matrixQueueHead",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "maxLevelPackage",
-    "type": "function",
-    "inputs": [
+    name: "maxLevelPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "maxMatrixPackage",
-    "type": "function",
-    "inputs": [
+    name: "maxMatrixPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "maxSponsorPackage",
-    "type": "function",
-    "inputs": [
+    name: "maxSponsorPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "memberAddress",
-    "type": "function",
-    "inputs": [
+    name: "memberAddress",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "memberByStringId",
-    "type": "function",
-    "inputs": [
+    name: "memberByStringId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
+        name: "",
+        type: "string",
+        internalType: "string",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "memberCounter",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "memberCounter",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "memberId",
-    "type": "function",
-    "inputs": [
+    name: "memberId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "memberStringId",
-    "type": "function",
-    "inputs": [
+    name: "memberStringId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
+        name: "",
+        type: "string",
+        internalType: "string",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "owner",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "owner",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "packages",
-    "type": "function",
-    "inputs": [
+    name: "packages",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "price",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "price",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "phantomCounter",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "phantomCounter",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "purchaseLevelPackage",
-    "type": "function",
-    "inputs": [
+    name: "purchaseLevelPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "purchaseMatrixPackage",
-    "type": "function",
-    "inputs": [
+    name: "purchaseMatrixPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "purchaseSponsorPackage",
-    "type": "function",
-    "inputs": [
+    name: "purchaseSponsorPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "realOwnerByPkg",
-    "type": "function",
-    "inputs": [
+    name: "realOwnerByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "recycleCount",
-    "type": "function",
-    "inputs": [
+    name: "recycleCount",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "referralCount",
-    "type": "function",
-    "inputs": [
+    name: "referralCount",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "registerMember",
-    "type": "function",
-    "inputs": [
+    name: "registerMember",
+    type: "function",
+    inputs: [
       {
-        "name": "sponsorStringId",
-        "type": "string",
-        "internalType": "string"
+        name: "sponsorStringId",
+        type: "string",
+        internalType: "string",
       },
       {
-        "name": "name",
-        "type": "string",
-        "internalType": "string"
-      }
+        name: "name",
+        type: "string",
+        internalType: "string",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "renounceOwnership",
-    "type": "function",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    name: "renounceOwnership",
+    type: "function",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "rescueTokens",
-    "type": "function",
-    "inputs": [
+    name: "rescueTokens",
+    type: "function",
+    inputs: [
       {
-        "name": "tokenAddress",
-        "type": "address",
-        "internalType": "address"
+        name: "tokenAddress",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "setAdminWallet",
-    "type": "function",
-    "inputs": [
+    name: "setAdminWallet",
+    type: "function",
+    inputs: [
       {
-        "name": "newAdminWallet",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "newAdminWallet",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "setDisplayName",
-    "type": "function",
-    "inputs": [
+    name: "setDisplayName",
+    type: "function",
+    inputs: [
       {
-        "name": "newName",
-        "type": "string",
-        "internalType": "string"
-      }
+        name: "newName",
+        type: "string",
+        internalType: "string",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "sponsor",
-    "type": "function",
-    "inputs": [
+    name: "sponsor",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "sponsorCycleCountByPkg",
-    "type": "function",
-    "inputs": [
+    name: "sponsorCycleCountByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "sponsorHoldByPkg",
-    "type": "function",
-    "inputs": [
+    name: "sponsorHoldByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "sponsorPackageId",
-    "type": "function",
-    "inputs": [
+    name: "sponsorPackageId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "topupFlag",
-    "type": "function",
-    "inputs": [
+    name: "topupFlag",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
+        name: "",
+        type: "bool",
+        internalType: "bool",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "totalInvestment",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "totalInvestment",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "totalLevelIncomeByLevel",
-    "type": "function",
-    "inputs": [
+    name: "totalLevelIncomeByLevel",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "transferOwnership",
-    "type": "function",
-    "inputs": [
+    name: "transferOwnership",
+    type: "function",
+    inputs: [
       {
-        "name": "newOwner",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "newOwner",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "usdt",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "usdt",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
+        name: "",
+        type: "address",
+        internalType: "contract IERC20",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "userLevelIncome",
-    "type": "function",
-    "inputs": [
+    name: "userLevelIncome",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
+        name: "",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "userTotalDirectIncome",
-    "type": "function",
-    "inputs": [
+    name: "userTotalDirectIncome",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "userTotalInvestment",
-    "type": "function",
-    "inputs": [
+    name: "userTotalInvestment",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "userTotalLevelProfit",
-    "type": "function",
-    "inputs": [
+    name: "userTotalLevelProfit",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "userTotalMatrixIncome",
-    "type": "function",
-    "inputs": [
+    name: "userTotalMatrixIncome",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
-  }
+    stateMutability: "view",
+  },
 ] as const;

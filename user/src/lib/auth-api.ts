@@ -9,1625 +9,1624 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
 const CONTRACT_ADDRESS = "0x3edbeba9d05f4572c4d80e9ca2d9bbf77fc4ed65";
 
-
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
 
 const CORE_ABI = [
   {
-    "type": "constructor",
-    "inputs": [
+    type: "constructor",
+    inputs: [
       {
-        "name": "_usdtAddress",
-        "type": "address",
-        "internalType": "address"
+        name: "_usdtAddress",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "_adminWallet",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "_adminWallet",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "nonpayable"
+    stateMutability: "nonpayable",
   },
   {
-    "name": "DirectIncome",
-    "type": "event",
-    "inputs": [
+    name: "DirectIncome",
+    type: "event",
+    inputs: [
       {
-        "name": "receiver",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "receiver",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "from",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "from",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "cycle",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        name: "cycle",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "Level5ReEntry",
-    "type": "event",
-    "inputs": [
+    name: "Level5ReEntry",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: true,
+        internalType: "uint8",
       },
       {
-        "name": "cycleNumber",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        name: "cycleNumber",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
       },
       {
-        "name": "phantomNode",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
-      }
+        name: "phantomNode",
+        type: "address",
+        indexed: false,
+        internalType: "address",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "LevelIncome",
-    "type": "event",
-    "inputs": [
+    name: "LevelIncome",
+    type: "event",
+    inputs: [
       {
-        "name": "receiver",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "receiver",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "from",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "from",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "level",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "level",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "LevelIncomeRedirected",
-    "type": "event",
-    "inputs": [
+    name: "LevelIncomeRedirected",
+    type: "event",
+    inputs: [
       {
-        "name": "wouldBeReceiver",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "wouldBeReceiver",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "from",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "from",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "level",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "level",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "ManualUpgrade",
-    "type": "event",
-    "inputs": [
+    name: "ManualUpgrade",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "track",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      }
+        name: "track",
+        type: "string",
+        indexed: false,
+        internalType: "string",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "MatrixAutoUpgrade",
-    "type": "event",
-    "inputs": [
+    name: "MatrixAutoUpgrade",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "fromPackageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "fromPackageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "newPackageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "newPackageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "priceUsed",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "priceUsed",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "MatrixHoldRefunded",
-    "type": "event",
-    "inputs": [
+    name: "MatrixHoldRefunded",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "MatrixIncome",
-    "type": "event",
-    "inputs": [
+    name: "MatrixIncome",
+    type: "event",
+    inputs: [
       {
-        "name": "receiver",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "receiver",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "from",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "from",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "level",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "level",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "MatrixIncomeHeld",
-    "type": "event",
-    "inputs": [
+    name: "MatrixIncomeHeld",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: true,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
       },
       {
-        "name": "memberCount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "memberCount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "MatrixPlaced",
-    "type": "event",
-    "inputs": [
+    name: "MatrixPlaced",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "matrixParent",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "matrixParent",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "sponsor",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "sponsor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "NameUpdated",
-    "type": "event",
-    "inputs": [
+    name: "NameUpdated",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "newName",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      }
+        name: "newName",
+        type: "string",
+        indexed: false,
+        internalType: "string",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "OwnerSet",
-    "type": "event",
-    "inputs": [
+    name: "OwnerSet",
+    type: "event",
+    inputs: [
       {
-        "name": "owner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
+        name: "owner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "OwnershipRenounced",
-    "type": "event",
-    "inputs": [
+    name: "OwnershipRenounced",
+    type: "event",
+    inputs: [
       {
-        "name": "previousOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
+        name: "previousOwner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "OwnershipTransferred",
-    "type": "event",
-    "inputs": [
+    name: "OwnershipTransferred",
+    type: "event",
+    inputs: [
       {
-        "name": "previousOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "previousOwner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "newOwner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      }
+        name: "newOwner",
+        type: "address",
+        indexed: true,
+        internalType: "address",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "SponsorAutoUpgrade",
-    "type": "event",
-    "inputs": [
+    name: "SponsorAutoUpgrade",
+    type: "event",
+    inputs: [
       {
-        "name": "sponsor",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "sponsor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "fromPackageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "fromPackageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "newPackageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "newPackageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "priceUsed",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "priceUsed",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "SponsorHoldRefunded",
-    "type": "event",
-    "inputs": [
+    name: "SponsorHoldRefunded",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "SponsorIncomeHeld",
-    "type": "event",
-    "inputs": [
+    name: "SponsorIncomeHeld",
+    type: "event",
+    inputs: [
       {
-        "name": "sponsor",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "sponsor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: true,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
       },
       {
-        "name": "count",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "count",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "SponsorIncomeRedirected",
-    "type": "event",
-    "inputs": [
+    name: "SponsorIncomeRedirected",
+    type: "event",
+    inputs: [
       {
-        "name": "wouldBeReceiver",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "wouldBeReceiver",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "from",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "from",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
+        name: "packageId",
+        type: "uint8",
+        indexed: false,
+        internalType: "uint8",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "SponsorReEntry",
-    "type": "event",
-    "inputs": [
+    name: "SponsorReEntry",
+    type: "event",
+    inputs: [
       {
-        "name": "sponsor",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "sponsor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        indexed: true,
+        internalType: "uint8",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "UserRegistered",
-    "type": "event",
-    "inputs": [
+    name: "UserRegistered",
+    type: "event",
+    inputs: [
       {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "user",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "_sponsor",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
+        name: "_sponsor",
+        type: "address",
+        indexed: true,
+        internalType: "address",
       },
       {
-        "name": "numericId",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
+        name: "numericId",
+        type: "uint256",
+        indexed: false,
+        internalType: "uint256",
       },
       {
-        "name": "stringId",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      }
+        name: "stringId",
+        type: "string",
+        indexed: false,
+        internalType: "string",
+      },
     ],
-    "anonymous": false
+    anonymous: false,
   },
   {
-    "name": "DIRECT_INCOME_PERCENT",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "DIRECT_INCOME_PERCENT",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "LEVEL_POOL_PERCENT",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "LEVEL_POOL_PERCENT",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "MATRIX_POOL_PERCENT",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "MATRIX_POOL_PERCENT",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "MAX_PACKAGE",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "MAX_PACKAGE",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "PERCENT_DENOMINATOR",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "PERCENT_DENOMINATOR",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "activationDate",
-    "type": "function",
-    "inputs": [
+    name: "activationDate",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "adminWallet",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "adminWallet",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "cycleRootByPkg",
-    "type": "function",
-    "inputs": [
+    name: "cycleRootByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
+        name: "",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "displayName",
-    "type": "function",
-    "inputs": [
+    name: "displayName",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
+        name: "",
+        type: "string",
+        internalType: "string",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "getLevelPrice",
-    "type": "function",
-    "inputs": [
+    name: "getLevelPrice",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "getMatrixPrice",
-    "type": "function",
-    "inputs": [
+    name: "getMatrixPrice",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "getSponsorPrice",
-    "type": "function",
-    "inputs": [
+    name: "getSponsorPrice",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "level5MemberCountByPkg",
-    "type": "function",
-    "inputs": [
+    name: "level5MemberCountByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "levelPackageId",
-    "type": "function",
-    "inputs": [
+    name: "levelPackageId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "levelPercent",
-    "type": "function",
-    "inputs": [
+    name: "levelPercent",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixChildrenByPkg",
-    "type": "function",
-    "inputs": [
+    name: "matrixChildrenByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
+        name: "",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixHoldByPkg",
-    "type": "function",
-    "inputs": [
+    name: "matrixHoldByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixOpenQueue",
-    "type": "function",
-    "inputs": [
+    name: "matrixOpenQueue",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
+        name: "",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixPackageId",
-    "type": "function",
-    "inputs": [
+    name: "matrixPackageId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixParentByPkg",
-    "type": "function",
-    "inputs": [
+    name: "matrixParentByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixPercent",
-    "type": "function",
-    "inputs": [
+    name: "matrixPercent",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "matrixQueueHead",
-    "type": "function",
-    "inputs": [
+    name: "matrixQueueHead",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "maxLevelPackage",
-    "type": "function",
-    "inputs": [
+    name: "maxLevelPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "maxMatrixPackage",
-    "type": "function",
-    "inputs": [
+    name: "maxMatrixPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "maxSponsorPackage",
-    "type": "function",
-    "inputs": [
+    name: "maxSponsorPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "memberAddress",
-    "type": "function",
-    "inputs": [
+    name: "memberAddress",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "memberByStringId",
-    "type": "function",
-    "inputs": [
+    name: "memberByStringId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
+        name: "",
+        type: "string",
+        internalType: "string",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "memberCounter",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "memberCounter",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "memberId",
-    "type": "function",
-    "inputs": [
+    name: "memberId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "memberStringId",
-    "type": "function",
-    "inputs": [
+    name: "memberStringId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "string",
-        "internalType": "string"
-      }
+        name: "",
+        type: "string",
+        internalType: "string",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "owner",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "owner",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "packages",
-    "type": "function",
-    "inputs": [
+    name: "packages",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "price",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "price",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "phantomCounter",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "phantomCounter",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "purchaseLevelPackage",
-    "type": "function",
-    "inputs": [
+    name: "purchaseLevelPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "purchaseMatrixPackage",
-    "type": "function",
-    "inputs": [
+    name: "purchaseMatrixPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "purchaseSponsorPackage",
-    "type": "function",
-    "inputs": [
+    name: "purchaseSponsorPackage",
+    type: "function",
+    inputs: [
       {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "packageId",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "realOwnerByPkg",
-    "type": "function",
-    "inputs": [
+    name: "realOwnerByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "recycleCount",
-    "type": "function",
-    "inputs": [
+    name: "recycleCount",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "referralCount",
-    "type": "function",
-    "inputs": [
+    name: "referralCount",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "registerMember",
-    "type": "function",
-    "inputs": [
+    name: "registerMember",
+    type: "function",
+    inputs: [
       {
-        "name": "sponsorStringId",
-        "type": "string",
-        "internalType": "string"
+        name: "sponsorStringId",
+        type: "string",
+        internalType: "string",
       },
       {
-        "name": "name",
-        "type": "string",
-        "internalType": "string"
-      }
+        name: "name",
+        type: "string",
+        internalType: "string",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "renounceOwnership",
-    "type": "function",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    name: "renounceOwnership",
+    type: "function",
+    inputs: [],
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "rescueTokens",
-    "type": "function",
-    "inputs": [
+    name: "rescueTokens",
+    type: "function",
+    inputs: [
       {
-        "name": "tokenAddress",
-        "type": "address",
-        "internalType": "address"
+        name: "tokenAddress",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "amount",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "setAdminWallet",
-    "type": "function",
-    "inputs": [
+    name: "setAdminWallet",
+    type: "function",
+    inputs: [
       {
-        "name": "newAdminWallet",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "newAdminWallet",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "setDisplayName",
-    "type": "function",
-    "inputs": [
+    name: "setDisplayName",
+    type: "function",
+    inputs: [
       {
-        "name": "newName",
-        "type": "string",
-        "internalType": "string"
-      }
+        name: "newName",
+        type: "string",
+        internalType: "string",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "sponsor",
-    "type": "function",
-    "inputs": [
+    name: "sponsor",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "sponsorCycleCountByPkg",
-    "type": "function",
-    "inputs": [
+    name: "sponsorCycleCountByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "sponsorHoldByPkg",
-    "type": "function",
-    "inputs": [
+    name: "sponsorHoldByPkg",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
       },
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "sponsorPackageId",
-    "type": "function",
-    "inputs": [
+    name: "sponsorPackageId",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "topupFlag",
-    "type": "function",
-    "inputs": [
+    name: "topupFlag",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
-      }
+        name: "",
+        type: "bool",
+        internalType: "bool",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "totalInvestment",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "totalInvestment",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "totalLevelIncomeByLevel",
-    "type": "function",
-    "inputs": [
+    name: "totalLevelIncomeByLevel",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "transferOwnership",
-    "type": "function",
-    "inputs": [
+    name: "transferOwnership",
+    type: "function",
+    inputs: [
       {
-        "name": "newOwner",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "newOwner",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
+    outputs: [],
+    stateMutability: "nonpayable",
   },
   {
-    "name": "usdt",
-    "type": "function",
-    "inputs": [],
-    "outputs": [
+    name: "usdt",
+    type: "function",
+    inputs: [],
+    outputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "contract IERC20"
-      }
+        name: "",
+        type: "address",
+        internalType: "contract IERC20",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "userLevelIncome",
-    "type": "function",
-    "inputs": [
+    name: "userLevelIncome",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
+        name: "",
+        type: "address",
+        internalType: "address",
       },
       {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "userTotalDirectIncome",
-    "type": "function",
-    "inputs": [
+    name: "userTotalDirectIncome",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "userTotalInvestment",
-    "type": "function",
-    "inputs": [
+    name: "userTotalInvestment",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "userTotalLevelProfit",
-    "type": "function",
-    "inputs": [
+    name: "userTotalLevelProfit",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
+    stateMutability: "view",
   },
   {
-    "name": "userTotalMatrixIncome",
-    "type": "function",
-    "inputs": [
+    name: "userTotalMatrixIncome",
+    type: "function",
+    inputs: [
       {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
+        name: "",
+        type: "address",
+        internalType: "address",
+      },
     ],
-    "outputs": [
+    outputs: [
       {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
     ],
-    "stateMutability": "view"
-  }
-] 
+    stateMutability: "view",
+  },
+];
 const USDT_ABI = [
   "function approve(address spender, uint256 amount) external returns (bool)",
   "function allowance(address owner, address spender) external view returns (uint256)",
@@ -1692,7 +1691,9 @@ export async function fetchDashboardStats(
 export async function fetchDashboardToday(
   walletAddress: string,
 ): Promise<DashboardToday> {
-  const data = await apiGet<DashboardToday>(`/dashboard/${walletAddress}/today`);
+  const data = await apiGet<DashboardToday>(
+    `/dashboard/${walletAddress}/today`,
+  );
   return data ?? { todayJoinedDirectPartners: "0", totalTeamJoinedToday: "0" };
 }
 
@@ -1714,7 +1715,10 @@ export async function fetchIncomeStats(walletAddress: string): Promise<{
   }
   return {
     totalMagicLevelIncome: ethers.formatUnits(data.totalMagicLevelIncome, 18),
-    totalMagicGoldMatrixIncome: ethers.formatUnits(data.totalMagicGoldMatrixIncome, 18),
+    totalMagicGoldMatrixIncome: ethers.formatUnits(
+      data.totalMagicGoldMatrixIncome,
+      18,
+    ),
     totalSponsorIncome: ethers.formatUnits(data.totalSponsorIncome, 18),
     totalIncome: ethers.formatUnits(data.totalIncome, 18),
   };
@@ -1738,7 +1742,10 @@ export async function fetchIncomeToday(walletAddress: string): Promise<{
   }
   return {
     todayMagicLevelIncome: ethers.formatUnits(data.todayMagicLevelIncome, 18),
-    todayMagicGoldMatrixIncome: ethers.formatUnits(data.todayMagicGoldMatrixIncome, 18),
+    todayMagicGoldMatrixIncome: ethers.formatUnits(
+      data.todayMagicGoldMatrixIncome,
+      18,
+    ),
     todaySponsorIncome: ethers.formatUnits(data.todaySponsorIncome, 18),
     todayTotalIncome: ethers.formatUnits(data.todayTotalIncome, 18),
   };
@@ -1969,7 +1976,9 @@ interface DirectPartnerApiRow {
 export async function fetchDirectPartners(
   walletAddress: string,
 ): Promise<DirectPartnerRow[]> {
-  const rows = await apiGet<DirectPartnerApiRow[]>(`/users/${walletAddress}/direct-partners`);
+  const rows = await apiGet<DirectPartnerApiRow[]>(
+    `/users/${walletAddress}/direct-partners`,
+  );
   return (rows ?? []).map((r) => {
     const dateSeconds = Math.floor(new Date(r.date).getTime() / 1000);
     const directCount = Number(r.directPartners) || 0;
@@ -2249,15 +2258,19 @@ export async function fetchUserTotalDirectIncome(
 // not changing that quirk here, out of scope).
 export async function fetchPackageAndId(walletAddress: string) {
   const [profile, packages] = await Promise.all([
-    apiGet<{ stringId: string; numericId: string;sponsorStringId:string }>(`/users/${walletAddress}/profile`),
+    apiGet<{ stringId: string; numericId: string; sponsorStringId: string }>(
+      `/users/${walletAddress}/profile`,
+    ),
     // package ids come back as strings (server serializes bigint -> string);
     // Number(...) here is load-bearing, not cosmetic — `currentPkg + 1`
     // silently does string concatenation ("1"+1="11") without it.
-    apiGet<{ level: { current: string; max: string } }>(`/users/${walletAddress}/packages`),
+    apiGet<{ level: { current: string; max: string } }>(
+      `/users/${walletAddress}/packages`,
+    ),
   ]);
   return {
     pkgId: Number(packages?.level.current) || 1,
-    uplineId:profile?.sponsorStringId,
+    uplineId: profile?.sponsorStringId,
     maxPkg: Number(packages?.level.max) || 1,
     numericId: profile?.numericId ?? "...",
     stringId: profile?.stringId ?? "...",
@@ -2274,17 +2287,30 @@ async function fetchTrackPackageWithMax(
   track: "matrix" | "level" | "sponsor",
 ) {
   const [profile, packages] = await Promise.all([
-    apiGet<{ stringId: string; numericId: string }>(`/users/${walletAddress}/profile`),
+    apiGet<{ stringId: string; numericId: string }>(
+      `/users/${walletAddress}/profile`,
+    ),
     // package ids come back as strings (server serializes bigint -> string);
     // Number(...) below is load-bearing — `currentPkg + 1` silently does
     // string concatenation ("1"+1="11") without it.
-    apiGet<{ [k in typeof track]: { current: string; max: string } }>(`/users/${walletAddress}/packages`),
+    apiGet<{ [k in typeof track]: { current: string; max: string } }>(
+      `/users/${walletAddress}/packages`,
+    ),
   ]);
   if (!profile || !packages) {
-    return { pkgId: 1, maxPkg: 1, numericId: "...", stringId: "...", isRoot: false };
+    return {
+      pkgId: 1,
+      maxPkg: 1,
+      numericId: "...",
+      stringId: "...",
+      isRoot: false,
+    };
   }
 
-  const cleanStrId = (profile.stringId || "").replace(/^ID\s*/i, "").trim().toUpperCase();
+  const cleanStrId = (profile.stringId || "")
+    .replace(/^ID\s*/i, "")
+    .trim()
+    .toUpperCase();
   const isRoot =
     profile.numericId === "1" || cleanStrId === RootID || cleanStrId === "1";
 
@@ -2360,16 +2386,22 @@ interface TransactionApiRow {
 export async function fetchLevelIncomeHistory(
   walletAddress: string,
 ): Promise<LevelIncomeRow[]> {
-  const rows = await apiGet<TransactionApiRow[]>(`/transactions/${walletAddress}?type=LEVEL_INCOME`);
-  return (rows ?? []).map((r) => {
-    const dateSeconds = Math.floor(new Date(r.block_timestamp).getTime() / 1000);
-    return {
-      level: r.level ?? 0,
-      childId: r.counterparty_string_id ?? "ID ...",
-      amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
-      date: formatDate(dateSeconds),
-    };
-  }).reverse();
+  const rows = await apiGet<TransactionApiRow[]>(
+    `/transactions/${walletAddress}?type=LEVEL_INCOME`,
+  );
+  return (rows ?? [])
+    .map((r) => {
+      const dateSeconds = Math.floor(
+        new Date(r.block_timestamp).getTime() / 1000,
+      );
+      return {
+        level: r.level ?? 0,
+        childId: r.counterparty_string_id ?? "ID ...",
+        amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
+        date: formatDate(dateSeconds),
+      };
+    })
+    .reverse();
 }
 
 // =========================================================================
@@ -2389,19 +2421,25 @@ interface PackageHistoryApiRow {
 // event-sourced replacement (package_purchase_events table), oldest-first;
 // reversed here to match the original newest-first ordering.
 export async function fetchPurchaseHistory(walletAddress: string) {
-  const rows = await apiGet<PackageHistoryApiRow[]>(`/users/${walletAddress}/history/packages`);
-  return (rows ?? []).map((r, i) => {
-    const dateSeconds = Math.floor(new Date(r.blockTimestamp).getTime() / 1000);
-    return {
-      index: i + 1,
-      package: `Package ${r.packageId}`,
-      amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
-      date: formatDate(dateSeconds),
-      packageId: r.packageId,
-      track: r.track,
-      isLevelMagic: r.track === "LEVEL",
-    };
-  }).reverse();
+  const rows = await apiGet<PackageHistoryApiRow[]>(
+    `/users/${walletAddress}/history/packages`,
+  );
+  return (rows ?? [])
+    .map((r, i) => {
+      const dateSeconds = Math.floor(
+        new Date(r.blockTimestamp).getTime() / 1000,
+      );
+      return {
+        index: i + 1,
+        package: `Package ${r.packageId}`,
+        amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
+        date: formatDate(dateSeconds),
+        packageId: r.packageId,
+        track: r.track,
+        isLevelMagic: r.track === "LEVEL",
+      };
+    })
+    .reverse();
 }
 
 export async function fetchLevelOnlyHistory(
@@ -2524,10 +2562,18 @@ export async function fetchPlatformStats(): Promise<{
   totalUsdtInvested: string;
   totalInvestment: string;
 }> {
-  const stats = await apiGet<{ totalMembers: string; totalUsdtInvested: string }>("/system/stats");
-  if (!stats) return { totalMembers: "0", totalUsdtInvested: "0", totalInvestment: "0" };
+  const stats = await apiGet<{
+    totalMembers: string;
+    totalUsdtInvested: string;
+  }>("/system/stats");
+  if (!stats)
+    return { totalMembers: "0", totalUsdtInvested: "0", totalInvestment: "0" };
   const totalUsdtInvested = ethers.formatUnits(stats.totalUsdtInvested, 18);
-  return { totalMembers: stats.totalMembers, totalUsdtInvested, totalInvestment: totalUsdtInvested };
+  return {
+    totalMembers: stats.totalMembers,
+    totalUsdtInvested,
+    totalInvestment: totalUsdtInvested,
+  };
 }
 
 export async function fetchDailyRegistrations(dayOffset = 0): Promise<string> {
@@ -2667,9 +2713,19 @@ export interface PackageCosts {
 // Income distribution — how one package's price splits across the 3 tracks.
 // GET /system/packages/:id/costs is a live proxy (packages()/getMatrixPrice()/
 // getSponsorPrice()/getLevelPrice(), all kept on-chain, never deleted).
-export async function fetchPackageCosts(packageId: number): Promise<PackageCosts> {
-  const costs = await apiGet<PackageCosts>(`/system/packages/${packageId}/costs`);
-  if (!costs) return { fullPrice: "0", matrixPortion: "0", sponsorPortion: "0", levelPortion: "0" };
+export async function fetchPackageCosts(
+  packageId: number,
+): Promise<PackageCosts> {
+  const costs = await apiGet<PackageCosts>(
+    `/system/packages/${packageId}/costs`,
+  );
+  if (!costs)
+    return {
+      fullPrice: "0",
+      matrixPortion: "0",
+      sponsorPortion: "0",
+      levelPortion: "0",
+    };
   return {
     fullPrice: ethers.formatUnits(costs.fullPrice, 18),
     matrixPortion: ethers.formatUnits(costs.matrixPortion, 18),
@@ -2833,7 +2889,9 @@ export async function fetchTotalSponsorIncome(
   walletAddress: string,
 ): Promise<string> {
   try {
-    const row = await apiGet<{ totalSponsorIncome: string }>(`/income/${walletAddress}`);
+    const row = await apiGet<{ totalSponsorIncome: string }>(
+      `/income/${walletAddress}`,
+    );
     return ethers.formatUnits(row?.totalSponsorIncome ?? "0", 18);
   } catch (error) {
     console.error("Error fetching total sponsor income:", error);
@@ -2847,20 +2905,26 @@ export async function fetchTotalSponsorIncome(
 // (GET /transactions/:address?type=DIRECT_INCOME), counterparty resolved to a
 // string ID server-side.
 export async function fetchSponsorIncomeHistory(walletAddress: string) {
-  const rows = await apiGet<TransactionApiRow[]>(`/transactions/${walletAddress}?type=DIRECT_INCOME`);
-  return (rows ?? []).map((r, index) => {
-    const dateSeconds = Math.floor(new Date(r.block_timestamp).getTime() / 1000);
-    return {
-      id: index + 1,
-      childId: r.counterparty_string_id ?? "ID ...",
-      amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
-      cycle: Number(r.cycle) || 0,
-      // DirectIncome is the one income event that carries its own packageId
-      // (no tx_hash-join heuristic needed, unlike Matrix/Level income).
-      packageId: r.package_id ?? 0,
-      date: formatDate(dateSeconds),
-    };
-  }).reverse();
+  const rows = await apiGet<TransactionApiRow[]>(
+    `/transactions/${walletAddress}?type=DIRECT_INCOME`,
+  );
+  return (rows ?? [])
+    .map((r, index) => {
+      const dateSeconds = Math.floor(
+        new Date(r.block_timestamp).getTime() / 1000,
+      );
+      return {
+        id: index + 1,
+        childId: r.counterparty_string_id ?? "ID ...",
+        amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
+        cycle: Number(r.cycle) || 0,
+        // DirectIncome is the one income event that carries its own packageId
+        // (no tx_hash-join heuristic needed, unlike Matrix/Level income).
+        packageId: r.package_id ?? 0,
+        date: formatDate(dateSeconds),
+      };
+    })
+    .reverse();
 }
 
 // Real recycle counts per package (from SponsorReEntry events, not the
@@ -2959,19 +3023,31 @@ export async function fetchSponsorLevelDetail(
       }
     }
 
-    const [profile, rows, heldRows, recycleCounts, directPartners] = await Promise.all([
-      apiGet<{ stringId: string; sponsorStringId: string }>(`/users/${targetAddress}/profile`),
-      apiGet<TransactionApiRow[]>(`/transactions/${targetAddress}?type=DIRECT_INCOME`),
-      apiGet<{ from_string_id: string | null; cycle: string | null; amount: string; block_timestamp: string }[]>(
-        `/users/${targetAddress}/history/sponsor-held/${packageId}`,
-      ),
-      fetchSponsorRecycleCounts(targetAddress),
-      // Only meaningful for packageId 1: everyone auto-buys sponsor package 1
-      // at registration, so registration order === package-1 cycle order.
-      // For packageId > 1, purchase order isn't known from this endpoint, so
-      // it's not used there.
-      packageId === 1 ? fetchDirectPartners(targetAddress) : Promise.resolve([]),
-    ]);
+    const [profile, rows, heldRows, recycleCounts, directPartners] =
+      await Promise.all([
+        apiGet<{ stringId: string; sponsorStringId: string }>(
+          `/users/${targetAddress}/profile`,
+        ),
+        apiGet<TransactionApiRow[]>(
+          `/transactions/${targetAddress}?type=DIRECT_INCOME`,
+        ),
+        apiGet<
+          {
+            from_string_id: string | null;
+            cycle: string | null;
+            amount: string;
+            block_timestamp: string;
+          }[]
+        >(`/users/${targetAddress}/history/sponsor-held/${packageId}`),
+        fetchSponsorRecycleCounts(targetAddress),
+        // Only meaningful for packageId 1: everyone auto-buys sponsor package 1
+        // at registration, so registration order === package-1 cycle order.
+        // For packageId > 1, purchase order isn't known from this endpoint, so
+        // it's not used there.
+        packageId === 1
+          ? fetchDirectPartners(targetAddress)
+          : Promise.resolve([]),
+      ]);
     if (!profile) return empty;
 
     const ownStringId = profile.stringId || "...";
@@ -2985,7 +3061,9 @@ export async function fetchSponsorLevelDetail(
         amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
         rawAmount: parseFloat(ethers.formatUnits(r.amount, 18)),
         cycle: Number(r.cycle) || 0,
-        date: formatDate(Math.floor(new Date(r.block_timestamp).getTime() / 1000)),
+        date: formatDate(
+          Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+        ),
         rawDate: Math.floor(new Date(r.block_timestamp).getTime() / 1000),
         isHeld: false,
       }))
@@ -3005,12 +3083,16 @@ export async function fetchSponsorLevelDetail(
       amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
       rawAmount: 0,
       cycle: Number(r.cycle) || 0,
-      date: formatDate(Math.floor(new Date(r.block_timestamp).getTime() / 1000)),
+      date: formatDate(
+        Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+      ),
       rawDate: Math.floor(new Date(r.block_timestamp).getTime() / 1000),
       isHeld: true,
     }));
 
-    const allMatches = [...rawMatches, ...heldMatches].sort((a, b) => a.rawDate - b.rawDate);
+    const allMatches = [...rawMatches, ...heldMatches].sort(
+      (a, b) => a.rawDate - b.rawDate,
+    );
 
     // `cycle` on-chain is sponsorCycleCountByPkg — the within-batch position
     // (1st..5th direct referral), which RESETS to 0 every time it hits 5 (see
@@ -3023,9 +3105,13 @@ export async function fetchSponsorLevelDetail(
     const cyclePartnerIds: CyclePartner[][] = [];
     let prevCyclePos = 0;
     const matches = allMatches.map((m) => {
-      if (m.cycle <= prevCyclePos || cyclePartnerIds.length === 0) cyclePartnerIds.push([]);
+      if (m.cycle <= prevCyclePos || cyclePartnerIds.length === 0)
+        cyclePartnerIds.push([]);
       prevCyclePos = m.cycle;
-      cyclePartnerIds[cyclePartnerIds.length - 1].push({ id: m.childId, isHeld: m.isHeld });
+      cyclePartnerIds[cyclePartnerIds.length - 1].push({
+        id: m.childId,
+        isHeld: m.isHeld,
+      });
       return { ...m, batchNumber: cyclePartnerIds.length };
     });
 
@@ -3060,7 +3146,8 @@ export async function fetchSponsorLevelDetail(
     // cycle so the page defaults to showing it instead of the stale,
     // already-recycled batch.
     const realRecycleCount = recycleCounts[packageId] ?? 0;
-    while (cyclePartnerIds.length < realRecycleCount + 1) cyclePartnerIds.push([]);
+    while (cyclePartnerIds.length < realRecycleCount + 1)
+      cyclePartnerIds.push([]);
 
     // The 5th referral of a closed batch is invisible to this sponsor's own
     // data — DirectIncome for count==5 pays the sponsor's OWN upline, not
@@ -3411,11 +3498,15 @@ export async function fetchUserMatrixIncomeHistory(
   walletAddress: string,
   packageId: number,
 ): Promise<MatrixCycleIncomeRow[]> {
-  const rows = await apiGet<MatrixIncomeApiRow[]>(`/users/${walletAddress}/history/matrix-income`);
+  const rows = await apiGet<MatrixIncomeApiRow[]>(
+    `/users/${walletAddress}/history/matrix-income`,
+  );
   return (rows ?? [])
     .filter((r) => Number(r.package_id) === packageId)
     .map((r, index) => {
-      const dateSeconds = Math.floor(new Date(r.block_timestamp).getTime() / 1000);
+      const dateSeconds = Math.floor(
+        new Date(r.block_timestamp).getTime() / 1000,
+      );
       const amountValue = Number(ethers.formatUnits(r.amount, 18));
       const refId = r.from_string_id ?? "ID ...";
       return {
@@ -3424,7 +3515,7 @@ export async function fetchUserMatrixIncomeHistory(
         refId,
         level: Number(r.package_id) || packageId,
         wallet: refId,
-        fullWallet: r.from_address,   // ← ye fix hua
+        fullWallet: r.from_address, // ← ye fix hua
         type: "join" as const,
         amount: `${amountValue.toLocaleString()} USDT`,
         amountValue,
@@ -3438,10 +3529,15 @@ export async function fetchLevelIncomeTotal(
   packageId: number,
 ): Promise<number> {
   try {
-    const row = await apiGet<{ total: string }>(`/users/${walletAddress}/level-income-total/${packageId}`);
+    const row = await apiGet<{ total: string }>(
+      `/users/${walletAddress}/level-income-total/${packageId}`,
+    );
     return Number(ethers.formatUnits(row?.total ?? "0", 18));
   } catch (error) {
-    console.error(`Error fetching level income total for package ${packageId}:`, error);
+    console.error(
+      `Error fetching level income total for package ${packageId}:`,
+      error,
+    );
     return 0;
   }
 }
@@ -3556,7 +3652,9 @@ export async function registerUser(
   // 3. Check native gas balance
   const nativeBalance = await provider.getBalance(userAddress);
   if (nativeBalance === 0n) {
-    throw new Error("Insufficient gas fee. You need native network token (gas) in your wallet.");
+    throw new Error(
+      "Insufficient gas fee. You need native network token (gas) in your wallet.",
+    );
   }
 
   const contract = new ethers.Contract(CONTRACT_ADDRESS, CORE_ABI, signer);
@@ -3569,7 +3667,7 @@ export async function registerUser(
   if (usdtBalance < packagePrice) {
     const formattedBalance = ethers.formatUnits(usdtBalance, 18);
     throw new Error(
-      `Insufficient USDT balance. You have ${formattedBalance} USDT, but 75 USDT is required.`
+      `Insufficient USDT balance. You have ${formattedBalance} USDT, but 75 USDT is required.`,
     );
   }
 
@@ -3590,9 +3688,12 @@ export async function registerUser(
     await approveTx.wait();
   }
 
- // 6. Register member + display name, single tx
+  // 6. Register member + display name, single tx
   onStatusChange("registering");
-  const registerTx = await contract.registerMember(sponsorStringId, name.trim());
+  const registerTx = await contract.registerMember(
+    sponsorStringId,
+    name.trim(),
+  );
   await registerTx.wait();
 }
 
@@ -3650,7 +3751,9 @@ interface ProfileApiResponse {
 // exists on the trimmed contract. Sourced from GET /users/:address/profile
 // (live proxy for stringId/numericId/sponsor/joinDate, DB for userName).
 export async function fetchDashboardData(walletAddress: string) {
-  const profile = await apiGet<ProfileApiResponse>(`/users/${walletAddress}/profile`);
+  const profile = await apiGet<ProfileApiResponse>(
+    `/users/${walletAddress}/profile`,
+  );
   if (!profile) return null;
 
   const joinDateSeconds = Number(profile.joinDate);
@@ -3659,7 +3762,8 @@ export async function fetchDashboardData(walletAddress: string) {
     numericId: profile.numericId,
     sponsorId: profile.sponsorStringId || "NONE",
     userName: profile.userName ?? "",
-    activationDate: joinDateSeconds > 0 ? formatDate(joinDateSeconds) : "Pending",
+    activationDate:
+      joinDateSeconds > 0 ? formatDate(joinDateSeconds) : "Pending",
   };
 }
 
@@ -3827,17 +3931,34 @@ export async function fetchPackageMatrixDetails(
 export async function fetchMagicGoldMatrixSummary(walletAddress: string) {
   try {
     const data = await apiGet<{
-      packages: { packageId: number; partnersCount: number; cycleCount: number; nodes: (string | null)[]; revenue: string }[];
+      packages: {
+        packageId: number;
+        partnersCount: number;
+        cycleCount: number;
+        nodes: (string | null)[];
+        revenue: string;
+      }[];
     }>(`/users/${walletAddress}/magic-gold-summary`);
 
-    const toSlot = (address: string | null): MatrixSlotType => (address ? "direct" : "empty");
-    const result: Record<number, { partnersCount: number; level5Count: number; recycleCount: number; tree: MatrixSlotType[][]; revenue: number }> = {};
+    const toSlot = (address: string | null): MatrixSlotType =>
+      address ? "direct" : "empty";
+    const result: Record<
+      number,
+      {
+        partnersCount: number;
+        level5Count: number;
+        recycleCount: number;
+        tree: MatrixSlotType[][];
+        revenue: number;
+      }
+    > = {};
 
     for (const pkg of data?.packages ?? []) {
       const visibleNodes = pkg.nodes.slice(0, 30);
       result[pkg.packageId] = {
         partnersCount: pkg.partnersCount,
-        level5Count: visibleNodes.filter((address: string | null) => address).length,
+        level5Count: visibleNodes.filter((address: string | null) => address)
+          .length,
         recycleCount: pkg.cycleCount,
         tree: [
           visibleNodes.slice(0, 2).map(toSlot),
@@ -3851,7 +3972,16 @@ export async function fetchMagicGoldMatrixSummary(walletAddress: string) {
     return result;
   } catch (error) {
     console.error("Error fetching magic gold matrix summary:", error);
-    return {} as Record<number, { partnersCount: number; level5Count: number; recycleCount: number; tree: MatrixSlotType[][]; revenue: number }>;
+    return {} as Record<
+      number,
+      {
+        partnersCount: number;
+        level5Count: number;
+        recycleCount: number;
+        tree: MatrixSlotType[][];
+        revenue: number;
+      }
+    >;
   }
 }
 
@@ -3895,7 +4025,9 @@ export async function fetchUserLevelIncomeForLevel(
   walletAddress: string,
   level: number,
 ): Promise<string> {
-  const rows = await apiGet<TransactionApiRow[]>(`/transactions/${walletAddress}?type=LEVEL_INCOME`);
+  const rows = await apiGet<TransactionApiRow[]>(
+    `/transactions/${walletAddress}?type=LEVEL_INCOME`,
+  );
   const total = (rows ?? [])
     .filter((r) => r.level === level)
     .reduce((sum, r) => sum + BigInt(r.amount), 0n);
@@ -3953,7 +4085,9 @@ export async function fetchLevelPurchasers(
 ): Promise<LevelPurchasersResult> {
   const [profile, purchasers] = await Promise.all([
     apiGet<{ sponsorStringId: string }>(`/users/${walletAddress}/profile`),
-    apiGet<LevelPurchaserApiRow[]>(`/team/${walletAddress}/level-purchasers/${depth}/${packageId}?track=LEVEL`),
+    apiGet<LevelPurchaserApiRow[]>(
+      `/team/${walletAddress}/level-purchasers/${depth}/${packageId}?track=LEVEL`,
+    ),
   ]);
 
   const rows: TeamLevelRow[] = (purchasers ?? []).map((r) => {
@@ -3970,7 +4104,10 @@ export async function fetchLevelPurchasers(
     };
   });
 
-  const totalRevenue = (purchasers ?? []).reduce((sum, r) => sum + BigInt(r.amount), 0n);
+  const totalRevenue = (purchasers ?? []).reduce(
+    (sum, r) => sum + BigInt(r.amount),
+    0n,
+  );
 
   return {
     uplineStringId: profile?.sponsorStringId || "NONE",
@@ -4126,7 +4263,9 @@ async function getSponsorIncome24h(
       const record = await contract.referralIncomeHistory(walletAddress, i);
 
       const childId =
-        record.childId !== undefined ? Number(record.childId) : Number(record[0]);
+        record.childId !== undefined
+          ? Number(record.childId)
+          : Number(record[0]);
       const amount = record.amount !== undefined ? record.amount : record[1];
       let date =
         record.date !== undefined ? Number(record.date) : Number(record[3]);
@@ -4206,7 +4345,6 @@ export async function fetchIncome24hSummary(
     };
   }
 }
-
 
 export interface TeamMembershipResult {
   valid: boolean;
@@ -4317,7 +4455,9 @@ export async function PreviewModeApiCall<T, Args extends unknown[]>(
 export async function UserMaxPackagesSummery(address: string) {
   try {
     const [profile, packages] = await Promise.all([
-      apiGet<{ stringId: string; numericId: string }>(`/users/${address}/profile`),
+      apiGet<{ stringId: string; numericId: string }>(
+        `/users/${address}/profile`,
+      ),
       apiGet<{
         matrix: { current: string; max: string };
         sponsor: { current: string; max: string };
@@ -4373,9 +4513,13 @@ export async function fetchMatrixIncomeByAddress(
   userAddress: string,
   maxItems?: number,
 ): Promise<MatrixIncomeItem[]> {
-  const rows = await apiGet<MatrixIncomeApiRow[]>(`/transactions/${userAddress}?type=MATRIX_INCOME`);
+  const rows = await apiGet<MatrixIncomeApiRow[]>(
+    `/transactions/${userAddress}?type=MATRIX_INCOME`,
+  );
   const items: MatrixIncomeItem[] = (rows ?? []).map((r, index) => {
-    const dateSeconds = Math.floor(new Date(r.block_timestamp).getTime() / 1000);
+    const dateSeconds = Math.floor(
+      new Date(r.block_timestamp).getTime() / 1000,
+    );
     const amountValue = parseFloat(ethers.formatUnits(r.amount, 18));
     return {
       id: `M-${dateSeconds}-${index}`,
@@ -4389,7 +4533,9 @@ export async function fetchMatrixIncomeByAddress(
     };
   });
 
-  return items.sort((a, b) => b.rawDate - a.rawDate).slice(0, maxItems ?? undefined);
+  return items
+    .sort((a, b) => b.rawDate - a.rawDate)
+    .slice(0, maxItems ?? undefined);
 }
 // =========================================================================
 // PREVIEW MODE FUNCTIONS
@@ -4406,11 +4552,15 @@ export interface TeamCountByLevel {
 export async function fetchTeamCountUpToLevel7(
   walletAddress: string,
 ): Promise<TeamCountByLevel[]> {
-  const rows = await apiGet<{ level: number; count: string }[]>(`/team/${walletAddress}/levels`);
+  const rows = await apiGet<{ level: number; count: string }[]>(
+    `/team/${walletAddress}/levels`,
+  );
   const byLevel = new Map((rows ?? []).map((r) => [r.level, Number(r.count)]));
-  return [1, 2, 3, 4, 5, 6, 7].map((level) => ({ level, count: byLevel.get(level) ?? 0 }));
+  return [1, 2, 3, 4, 5, 6, 7].map((level) => ({
+    level,
+    count: byLevel.get(level) ?? 0,
+  }));
 }
-
 
 export interface GlobalActivityItem {
   id: string;
@@ -4636,17 +4786,20 @@ async function fetchUserMatrixIncomeList(
 export async function fetchGlobalIncomeActivity(
   maxItems?: number,
 ): Promise<GlobalIncomeItem[]> {
-  const rows = await apiGet<{
-    id: string;
-    receiverId: string;
-    fromId: string;
-    amount: string;
-    rawDate: number;
-    incomeType: "LEVEL" | "SPONSOR" | "MATRIX" | "PACKAGE_PURCHASE" | "AUTO_UPGRADE";
-    level?: number;
-    packageId?: number;
-    track?: string;
-  }[]>(`/transactions?limit=${maxItems ?? 50}`);
+  const rows = await apiGet<
+    {
+      id: string;
+      receiverId: string;
+      fromId: string;
+      amount: string;
+      rawDate: number;
+      incomeType:
+        "LEVEL" | "SPONSOR" | "MATRIX" | "PACKAGE_PURCHASE" | "AUTO_UPGRADE";
+      level?: number;
+      packageId?: number;
+      track?: string;
+    }[]
+  >(`/transactions?limit=${maxItems ?? 50}`);
 
   return (rows ?? []).map((r) => ({
     ...r,
@@ -4662,8 +4815,12 @@ export interface Platform24hStats {
 }
 
 export async function fetchPlatform24hStats(): Promise<Platform24hStats> {
-  const stats = await apiGet<{ todayMembers: string; todayUsdtInvested: string }>("/system/stats/today");
-  if (!stats) return { membersChange: "0", transactionsChange: "0", turnoverChange: "0" };
+  const stats = await apiGet<{
+    todayMembers: string;
+    todayUsdtInvested: string;
+  }>("/system/stats/today");
+  if (!stats)
+    return { membersChange: "0", transactionsChange: "0", turnoverChange: "0" };
   return {
     membersChange: stats.todayMembers,
     transactionsChange: "0",
@@ -4703,7 +4860,9 @@ export async function fetchTeamAllLevels(
   walletAddress: string,
   maxLevel = 10,
 ): Promise<TeamLevelRow[]> {
-  const rows = await apiGet<TeamApiRow[]>(`/team/${walletAddress}/team?maxLevel=${maxLevel}`);
+  const rows = await apiGet<TeamApiRow[]>(
+    `/team/${walletAddress}/team?maxLevel=${maxLevel}`,
+  );
   return (rows ?? []).map((r) => {
     const dateSeconds = Math.floor(new Date(r.date).getTime() / 1000);
     return {
@@ -4755,9 +4914,7 @@ export async function fetchTeamCountLast24h(
       if (frontier.length === 0) break;
 
       const activationResults = await Promise.all(
-        frontier.map((addr) =>
-          contract.activationDate(addr).catch(() => 0),
-        ),
+        frontier.map((addr) => contract.activationDate(addr).catch(() => 0)),
       );
 
       for (const activationTs of activationResults) {
@@ -4802,7 +4959,9 @@ interface LeaderboardApiRow {
 export async function fetchGlobalLeaderboard(
   limit = 100,
 ): Promise<GlobalLeaderRow[]> {
-  const rows = await apiGet<LeaderboardApiRow[]>(`/system/leaderboard?limit=${limit}`);
+  const rows = await apiGet<LeaderboardApiRow[]>(
+    `/system/leaderboard?limit=${limit}`,
+  );
   return (rows ?? []).map((r) => ({
     place: r.place,
     name: r.userName ?? "",
@@ -4848,4 +5007,21 @@ export async function setDisplayNameOnChain(
   onStatusChange("updating");
   const tx = await contract.setDisplayName(newName);
   await tx.wait();
+}
+
+// dev-mukesh ------------------
+
+
+export async function fetchProgramMaxLevels(walletAddress: string) {
+  const data = await apiGet<{
+    matrix: { current: string; max: string };
+    sponsor: { current: string; max: string };
+    level: { current: string; max: string };
+  }>(`/users/${walletAddress}/packages`);
+
+  return {
+    matrixMax: Number(data?.matrix.max) || 0,
+    sponsorMax: Number(data?.sponsor.max) || 0,
+    levelMax: Number(data?.level.max) || 0,
+  };
 }
