@@ -77,12 +77,10 @@ const PreviewSponsorMagicPackagePage = ({
 
   const activeCyclePartners = detail?.cyclePartnerIds?.[activeCycle - 1] || [];
   const partnerSlots: PartnerSlot[] = Array.from({ length: 5 }, (_, i) => {
-    const partnerIdStr = activeCyclePartners[i];
-    if (partnerIdStr) {
-      const cleanId = partnerIdStr.replace(/^ID\s*/i, "");
+    const partner = activeCyclePartners[i];
+    if (partner) {
+      const cleanId = partner.id.replace(/^ID\s*/i, "");
       return {
-        // id: cleanId,
-        // href: `/preview/dashboard/${program}/${levelNum}?id=${cleanId}`,
         id: cleanId,
         to: `/preview/dashboard/${program}/${levelNum}`, // sirf path
         searchId: cleanId,
