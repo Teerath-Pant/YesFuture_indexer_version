@@ -1627,7 +1627,7 @@ const CORE_ABI = [
     ],
     "stateMutability": "view"
   }
-]
+] 
 const USDT_ABI = [
   "function approve(address spender, uint256 amount) external returns (bool)",
   "function allowance(address owner, address spender) external view returns (uint256)",
@@ -1856,14 +1856,7 @@ export interface LevelIncomeRow {
   date: string;
 }
 
-// export type MatrixSlotType = "direct" | "empty";
-
-type MatrixSlotType =
-  | "direct"
-  | "spilloverAbove"
-  | "spilloverBelow"
-  | "gift"
-  | "empty";
+export type MatrixSlotType = "direct" | "empty";
 
 export interface MagicGoldMatrixStructure {
   root: string;
@@ -2272,7 +2265,7 @@ export async function fetchUserTotalDirectIncome(
 // not changing that quirk here, out of scope).
 export async function fetchPackageAndId(walletAddress: string) {
   const [profile, packages] = await Promise.all([
-    apiGet<{ stringId: string; numericId: string }>(`/users/${walletAddress}/profile`),
+    apiGet<{ stringId: string; numericId: string;sponsorStringId:string }>(`/users/${walletAddress}/profile`),
     // package ids come back as strings (server serializes bigint -> string);
     // Number(...) here is load-bearing, not cosmetic — `currentPkg + 1`
     // silently does string concatenation ("1"+1="11") without it.
@@ -2280,6 +2273,7 @@ export async function fetchPackageAndId(walletAddress: string) {
   ]);
   return {
     pkgId: Number(packages?.level.current) || 1,
+    uplineId:profile?.sponsorStringId,
     maxPkg: Number(packages?.level.max) || 1,
     numericId: profile?.numericId ?? "...",
     stringId: profile?.stringId ?? "...",
@@ -3388,6 +3382,8 @@ interface MatrixIncomeApiRow {
   amount: string;
   block_timestamp: string;
   from_string_id: string | null;
+  from_address: string;
+  package_id: number;
 }
 
 /**
@@ -3399,33 +3395,60 @@ interface MatrixIncomeApiRow {
  * `packageId` is applied cosmetically to the `level` field, matching the
  * original function's behavior exactly (it had the same limitation).
  */
-export async function fetchUserMatrixIncomeHistory(
-  walletAddress: string,
-  packageId: number,
-): Promise<MatrixCycleIncomeRow[]> {
-  const rows = await apiGet<MatrixIncomeApiRow[]>(`/users/${walletAddress}/history/matrix-income`);
-  return (rows ?? []).map((r, index) => {
-    const dateSeconds = Math.floor(new Date(r.block_timestamp).getTime() / 1000);
-    const amountValue = Number(ethers.formatUnits(r.amount, 18));
-    const refId = r.from_string_id ?? "ID ...";
-    return {
-      id: index + 1,
-      date: formatDate(dateSeconds),
-      refId,
-      level: packageId,
-      wallet: refId,
-      fullWallet: "",
-      type: "join" as const,
-      amount: `${amountValue.toLocaleString()} USDT`,
-      amountValue,
-    };
-  }).reverse();
-}
+// export async function fetchUserMatrixIncomeHistory(
+//   walletAddress: string,
+//   packageId: number,
+// ): Promise<MatrixCycleIncomeRow[]> {
+//   const rows = await apiGet<MatrixIncomeApiRow[]>(`/users/${walletAddress}/history/matrix-income`);
+//   return (rows ?? []).map((r, index) => {
+//     const dateSeconds = Math.floor(new Date(r.block_timestamp).getTime() / 1000);
+//     const amountValue = Number(ethers.formatUnits(r.amount, 18));
+//     const refId = r.from_string_id ?? "ID ...";
+//     return {
+//       id: index + 1,
+//       date: formatDate(dateSeconds),
+//       refId,
+//       level: packageId,
+//       wallet: refId,
+//       fullWallet: "",
+//       type: "join" as const,
+//       amount: `${amountValue.toLocaleString()} USDT`,
+//       amountValue,
+//     };
+//   }).reverse();
+// }
 
 // LevelIncome events carry no packageId (their "level" field is sponsor-chain
 // depth, not package tier — see fetchLevelIncomeHistory), so per-package
 // totals can't be derived from history rows. GET /users/:address/level-income-total/:packageId
 // recovers the exact figure via the same tx_hash-join trick as matrix income.
+
+export async function fetchUserMatrixIncomeHistory(
+  walletAddress: string,
+  packageId: number,
+): Promise<MatrixCycleIncomeRow[]> {
+  const rows = await apiGet<MatrixIncomeApiRow[]>(`/users/${walletAddress}/history/matrix-income`);
+  return (rows ?? [])
+    .filter((r) => Number(r.package_id) === packageId)
+    .map((r, index) => {
+      const dateSeconds = Math.floor(new Date(r.block_timestamp).getTime() / 1000);
+      const amountValue = Number(ethers.formatUnits(r.amount, 18));
+      const refId = r.from_string_id ?? "ID ...";
+      return {
+        id: index + 1,
+        date: formatDate(dateSeconds),
+        refId,
+        level: Number(r.package_id) || packageId,
+        wallet: refId,
+        fullWallet: r.from_address,   // ← ye fix hua
+        type: "join" as const,
+        amount: `${amountValue.toLocaleString()} USDT`,
+        amountValue,
+      };
+    })
+    .reverse();
+}
+
 export async function fetchLevelIncomeTotal(
   walletAddress: string,
   packageId: number,
@@ -3817,62 +3840,20 @@ export async function fetchPackageMatrixDetails(
 // of 9 x 4 — the browser caps concurrent requests per origin (~6), so firing
 // 36+ in parallel from the frontend still queued in batches. Server does the
 // fan-out against its own DB pool instead, where it's cheap.
-// export async function fetchMagicGoldMatrixSummary(walletAddress: string) {
-//   try {
-//     const data = await apiGet<{
-//       packages: { packageId: number; partnersCount: number; cycleCount: number; nodes: (string | null)[]; revenue: string }[];
-//     }>(`/users/${walletAddress}/magic-gold-summary`);
-
-//     const toSlot = (address: string | null): MatrixSlotType => (address ? "direct" : "empty");
-//     const result: Record<number, { partnersCount: number; level5Count: number; recycleCount: number; tree: MatrixSlotType[][]; revenue: number }> = {};
-
-//     for (const pkg of data?.packages ?? []) {
-//       const visibleNodes = pkg.nodes.slice(0, 30);
-//       result[pkg.packageId] = {
-//         partnersCount: pkg.partnersCount,
-//         level5Count: visibleNodes.filter((address: string | null) => address).length,
-//         recycleCount: pkg.cycleCount,
-//         tree: [
-//           visibleNodes.slice(0, 2).map(toSlot),
-//           visibleNodes.slice(2, 6).map(toSlot),
-//           visibleNodes.slice(6, 14).map(toSlot),
-//           visibleNodes.slice(14, 30).map(toSlot),
-//         ],
-//         revenue: Number(ethers.formatUnits(pkg.revenue ?? "0", 18)),
-//       };
-//     }
-//     return result;
-//   } catch (error) {
-//     console.error("Error fetching magic gold matrix summary:", error);
-//     return {} as Record<number, { partnersCount: number; level5Count: number; recycleCount: number; tree: MatrixSlotType[][]; revenue: number }>;
-//   }
-// }
-
 export async function fetchMagicGoldMatrixSummary(walletAddress: string) {
   try {
     const data = await apiGet<{
-      packages: {
-        packageId: number;
-        partnersCount: number;
-        cycleCount: number;
-        level5Count: number;
-        nodes: ({ address: string; isDirectPlacement: boolean } | null)[];
-        revenue: string;
-      }[];
+      packages: { packageId: number; partnersCount: number; cycleCount: number; nodes: (string | null)[]; revenue: string }[];
     }>(`/users/${walletAddress}/magic-gold-summary`);
 
-    const toSlot = (node: { address: string; isDirectPlacement: boolean } | null): MatrixSlotType => {
-      if (!node) return "empty";
-      return node.isDirectPlacement ? "direct" : "spilloverAbove";
-    };
-
+    const toSlot = (address: string | null): MatrixSlotType => (address ? "direct" : "empty");
     const result: Record<number, { partnersCount: number; level5Count: number; recycleCount: number; tree: MatrixSlotType[][]; revenue: number }> = {};
 
     for (const pkg of data?.packages ?? []) {
       const visibleNodes = pkg.nodes.slice(0, 30);
       result[pkg.packageId] = {
         partnersCount: pkg.partnersCount,
-        level5Count: pkg.level5Count,
+        level5Count: visibleNodes.filter((address: string | null) => address).length,
         recycleCount: pkg.cycleCount,
         tree: [
           visibleNodes.slice(0, 2).map(toSlot),

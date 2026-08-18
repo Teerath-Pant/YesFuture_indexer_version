@@ -222,7 +222,7 @@ export interface PackageNavProps {
 
 export interface LevelPageLayoutProps {
   breadcrumb: BreadcrumbItem[];
-  title: string;
+  title?: string;
   uplineId?: string;
   level?: LevelNavProps;
   package?: PackageNavProps; // 👈 naya prop
