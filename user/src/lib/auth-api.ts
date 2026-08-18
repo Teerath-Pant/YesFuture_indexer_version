@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x4744a8b0e0b5a475116f89b00c306a726ea6bc55";
 // const CONTRACT_ADDRESS = "0x299724c47e64812a4139034e673f79d9534375fe";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
-const CONTRACT_ADDRESS = "0x3506cad08ac1dAf3eE4a1C029426d5bd5aF2D4D3";
+const CONTRACT_ADDRESS = "0x3edbeba9d05f4572c4d80e9ca2d9bbf77fc4ed65";
 
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
@@ -115,6 +115,43 @@ const CORE_ABI = [
       },
       {
         "name": "level",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "LevelIncomeRedirected",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "wouldBeReceiver",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "level",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "packageId",
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
@@ -446,6 +483,37 @@ const CORE_ABI = [
       },
       {
         "name": "count",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "SponsorIncomeRedirected",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "wouldBeReceiver",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "amount",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -2891,12 +2959,18 @@ export async function fetchSponsorLevelDetail(
       }
     }
 
-    const [profile, rows, heldRows] = await Promise.all([
+    const [profile, rows, heldRows, recycleCounts, directPartners] = await Promise.all([
       apiGet<{ stringId: string; sponsorStringId: string }>(`/users/${targetAddress}/profile`),
       apiGet<TransactionApiRow[]>(`/transactions/${targetAddress}?type=DIRECT_INCOME`),
       apiGet<{ from_string_id: string | null; cycle: string | null; amount: string; block_timestamp: string }[]>(
         `/users/${targetAddress}/history/sponsor-held/${packageId}`,
       ),
+      fetchSponsorRecycleCounts(targetAddress),
+      // Only meaningful for packageId 1: everyone auto-buys sponsor package 1
+      // at registration, so registration order === package-1 cycle order.
+      // For packageId > 1, purchase order isn't known from this endpoint, so
+      // it's not used there.
+      packageId === 1 ? fetchDirectPartners(targetAddress) : Promise.resolve([]),
     ]);
     if (!profile) return empty;
 
@@ -2977,6 +3051,33 @@ export async function fetchSponsorLevelDetail(
         };
       })
       .reverse();
+
+    // cyclePartnerIds is inferred purely from referral rows — it can't see a
+    // recycle until a 6th referral actually lands and produces a new
+    // cycle-position-1 row. If the real SponsorReEntry count (see
+    // fetchSponsorRecycleCounts) is ahead of what the inferred groups show,
+    // a cycle has completed with nobody new yet — pad in the empty new
+    // cycle so the page defaults to showing it instead of the stale,
+    // already-recycled batch.
+    const realRecycleCount = recycleCounts[packageId] ?? 0;
+    while (cyclePartnerIds.length < realRecycleCount + 1) cyclePartnerIds.push([]);
+
+    // The 5th referral of a closed batch is invisible to this sponsor's own
+    // data — DirectIncome for count==5 pays the sponsor's OWN upline, not
+    // this sponsor (see the contract's recycle branch), so it never shows up
+    // in either the paid or held feeds above. For packageId 1, recover it
+    // from registration order (everyone auto-buys package 1 at registration,
+    // so the Nth direct partner IS the Nth package-1 cycle slot) and fill it
+    // in as each closed batch's 5th slot, paid (that slot's income really
+    // was paid out — just to someone else, not held).
+    if (packageId === 1 && directPartners.length) {
+      for (let batch = 0; batch < realRecycleCount; batch++) {
+        const fifth = directPartners[batch * 5 + 4];
+        if (fifth && cyclePartnerIds[batch]) {
+          cyclePartnerIds[batch].push({ id: fifth.refId, isHeld: false });
+        }
+      }
+    }
 
     return {
       ownStringId,
