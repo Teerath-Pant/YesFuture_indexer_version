@@ -514,7 +514,7 @@ const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
         <>
           <MatrixGridXGold levels={levelsData} />
 
-          <div className="my-8">
+          {/* <div className="my-8">
             <DataTable<TransactionRow>
               columns={columns}
               data={purchaseHistory}
@@ -522,7 +522,7 @@ const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
               getRowKey={(row) => row.id}
               pageSize={10}
             />
-          </div>
+          </div> */}
         </>
       )}
     </div>

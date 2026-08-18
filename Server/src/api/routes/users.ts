@@ -298,18 +298,37 @@ usersRouter.get("/:address/history/sponsor-held/:packageId", async (req, res) =>
 });
 
 // Replaces deleted getUserMatrixIncomeHistory.
+// usersRouter.get("/:address/history/matrix-income", async (req, res) => {
+//   const user = req.params.address.toLowerCase();
+//   const rows = await db.execute(sql`
+//     SELECT e.id, e.receiver, e.from_address, e.level, e.amount, e.block_timestamp,
+//            ur.string_id AS from_string_id
+//     FROM matrix_income_events e
+//     LEFT JOIN user_registrations ur ON ur.member_address = e.from_address
+//     WHERE e.receiver = ${user}
+//     ORDER BY e.block_number, e.log_index
+//   `);
+//   res.json(rows);
+// });
+
 usersRouter.get("/:address/history/matrix-income", async (req, res) => {
   const user = req.params.address.toLowerCase();
   const rows = await db.execute(sql`
     SELECT e.id, e.receiver, e.from_address, e.level, e.amount, e.block_timestamp,
-           ur.string_id AS from_string_id
+           ur.string_id AS from_string_id,
+           pp.package_id AS package_id
     FROM matrix_income_events e
     LEFT JOIN user_registrations ur ON ur.member_address = e.from_address
+    LEFT JOIN package_purchase_events pp
+      ON pp.tx_hash = e.tx_hash
+      AND pp.track = 'MATRIX'
+      AND pp.member_address = e.from_address
     WHERE e.receiver = ${user}
     ORDER BY e.block_number, e.log_index
   `);
   res.json(rows);
 });
+
 
 // Replaces deleted getMatrixTreeInfo — parent/children rebuilt from MatrixPlaced events.
 usersRouter.get("/:address/matrix-tree/:packageId", async (req, res) => {
