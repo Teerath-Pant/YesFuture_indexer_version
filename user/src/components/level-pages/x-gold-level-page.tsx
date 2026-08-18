@@ -19,6 +19,7 @@ import {
   fetchUserMatrixIncomeHistory,
 } from "@/lib/auth-api";
 import type { ProgramTypes } from "@/constants/programs";
+import { formattedWalletAddress } from "@/lib/helper";
 
 interface TransactionRow {
   id: number;
@@ -322,11 +323,12 @@ export const XGoldLevelPage = ({
 
         const filledCount = structure.filledCount || metrics.partnersCount || 0;
         setOwnerId(profile.stringId || "...");
-        setUplineId(
-          structure.root && structure.root !== "0x0000000000000000000000000000000000000000"
-            ? `${structure.root.slice(0, 6)}...${structure.root.slice(-4)}`
-            : "Root",
-        );
+        setUplineId(profile.uplineId ?? "...");
+        // setUplineId(
+        //   structure.root && structure.root !== "0x0000000000000000000000000000000000000000"
+        //     ? `${structure.root.slice(0, 6)}...${structure.root.slice(-4)}`
+        //     : "Root",
+        // );
         setTree([
           visibleNodes.slice(0, 2).map(toNode),
           visibleNodes.slice(2, 6).map(toNode),
@@ -376,15 +378,15 @@ export const XGoldLevelPage = ({
         </span>
       ),
     },
-    { key: "level", label: "Level" },
+    { key: "level", label: "Package" },
     {
       key: "wallet",
       label: "Wallet",
       render: (r) => (
         <WalletCell
-          address={r.fullWallet ?? r.wallet}
-          displayAddress={r.wallet}
-          explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? r.wallet}`}
+          address={r.fullWallet ?? ""}
+          displayAddress={formattedWalletAddress(r.fullWallet ?? "")}
+          explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? ""}`}
         />
       ),
     },
@@ -402,6 +404,8 @@ export const XGoldLevelPage = ({
     },
   ];
 
+  console.log(incomeRows)
+
   return (
     <div className="w-full text-white">
       <LevelPageLayout
@@ -410,8 +414,8 @@ export const XGoldLevelPage = ({
           { label: program },
           { label: `Package ${level}` },
         ]}
-        title={`Package ${level}`}
-        uplineId={`Upline ${uplineId}`}
+        // title={`Package ${level}`}
+        uplineId={`${uplineId}`}
         isLoading={isNavigating || isLoadingMatrix}
         level={{
           current: levelNum,
