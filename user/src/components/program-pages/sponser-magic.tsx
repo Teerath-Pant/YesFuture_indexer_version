@@ -8,6 +8,9 @@ import {
   fetchSponsorIncomeHistory,
   fetchTotalSponsorIncome,
   fetchSponsorPackageAndIdWithMax,
+  fetchSponsorRecycleCounts,
+  fetchDirectPartners,
+  fetchSponsorHeldSummary,
 } from "@/lib/auth-api";
 import { ethers } from "ethers";
 import { RootID, sponsorMagicPackages } from "@/constants/programs";
@@ -75,31 +78,45 @@ const SponserMagic = ({ program }: pageProps) => {
     currentPkg: number,
     transactionData: TransactionRow[],
     isRootUser = false,
+    recycleCounts: Record<number, number> = {},
+    childAheadTiers: Set<number> = new Set(),
+    heldByPackage: Record<number, string[]> = {},
   ): LevelData[] => {
     // Sponsor Magic package prices (Direct Income portion)
     const packagePrices = sponsorMagicPackages;
     const levels: LevelData[] = [];
 
-    // Count unique referrers & real cycle count (DirectIncome's own `cycle`
-    // field, from db — not derived/guessed from transaction counts) per package.
+    // Count unique referrers per package. NOTE: recycle count is NOT derived
+    // from here — item.cycle is DirectIncome's within-batch position (1..4,
+    // "this was the Nth paid referral"), not a count of completed recycles.
+    // With 2 partners that's cycle=2, which used to get shown as "2 cycles"
+    // when zero recycles had happened. Real recycle count comes from
+    // recycleCounts (SponsorReEntry events), fetched separately below.
     const levelReferrers: { [key: number]: Set<string> } = {};
-    const levelMaxCycle: { [key: number]: number } = {};
 
     transactionData.forEach((item) => {
       const level = item.level;
       if (!levelReferrers[level]) {
         levelReferrers[level] = new Set();
-        levelMaxCycle[level] = 0;
       }
       levelReferrers[level].add(item.refId);
-      levelMaxCycle[level] = Math.max(levelMaxCycle[level], item.recycleCount || 0);
     });
+
+    // Referrals #3/#4 of a batch don't always get paid immediately (see
+    // SponsorIncomeHeld) — their DirectIncome row just doesn't exist yet, so
+    // they were invisible here even though they're real direct partners.
+    // Same fix as the per-level detail page.
+    for (const [pkg, ids] of Object.entries(heldByPackage)) {
+      const level = Number(pkg);
+      if (!levelReferrers[level]) levelReferrers[level] = new Set();
+      for (const id of ids) levelReferrers[level].add(id.replace(/^ID\s*/i, ""));
+    }
 
     for (let i = 1; i <= 9; i++) {
       const isUnlocked = isRootUser || i <= currentPkg;
       const price = packagePrices[i - 1] || 0;
       const partnersCount = levelReferrers[i]?.size || 0;
-      const cyclesCount = levelMaxCycle[i] || 0;
+      const cyclesCount = recycleCounts[i] || 0;
 
       // Generate 5 slots based on partners count for package level i
       const slots = generateSlots(partnersCount);
@@ -112,7 +129,9 @@ const SponserMagic = ({ program }: pageProps) => {
         partnersCount: partnersCount,
         recycleCount: cyclesCount,
         isFreeze: isRootUser ? false : !isUnlocked,
-        isDamage: isRootUser ? false : i > currentPkg + 1,
+        // A direct child bought this tier before the current user did — real
+        // signal (child's actual sponsorPackageId), not a guessed tier-distance.
+        isDamage: isRootUser ? false : childAheadTiers.has(i),
       });
     }
 
@@ -167,10 +186,20 @@ const SponserMagic = ({ program }: pageProps) => {
         }
 
         // ✅ Fetch ONLY Sponsor Income data
-        const [history, total] = await Promise.all([
+        const [history, total, recycleCounts, directPartners, heldByPackage] = await Promise.all([
           fetchSponsorIncomeHistory(walletAddress),
           fetchTotalSponsorIncome(walletAddress),
+          fetchSponsorRecycleCounts(walletAddress),
+          fetchDirectPartners(walletAddress),
+          fetchSponsorHeldSummary(walletAddress),
         ]);
+
+        // Tiers above the current user's own sponsor package that at least
+        // one direct child has already reached.
+        const childAheadTiers = new Set<number>();
+        for (const p of directPartners) {
+          for (let t = pkgId + 1; t <= p.x3; t++) childAheadTiers.add(t);
+        }
 
         // console.log("📊 Sponsor History:", history);
         // console.log("💰 Total Sponsor Income:", total);
@@ -195,7 +224,7 @@ const SponserMagic = ({ program }: pageProps) => {
         setData(formattedData.filter((row) => row.level === pkgId));
         setTotalIncome(total);
 
-        const levels = buildLevelsData(pkgId, formattedData, isRootUser);
+        const levels = buildLevelsData(pkgId, formattedData, isRootUser, recycleCounts, childAheadTiers, heldByPackage);
         setLevelsData(levels);
         // console.log("✅ Levels data:", levels);
         // console.log("✅ Levels data:", levels);

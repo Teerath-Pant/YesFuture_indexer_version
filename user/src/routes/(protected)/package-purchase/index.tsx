@@ -154,28 +154,37 @@ export default function PackagePurchasePage() {
       setSelectedPackageId(next.toString());
 
       const selId = next;
-      const selIdStr = next.toString();
+
+      // Each track's own next tier — NOT the shared carousel selection.
+      // Tracks can fall out of lockstep (sponsor auto-upgrades independently
+      // of matrix/level manual purchases), and purchaseSponsorPackage etc.
+      // require strictly sequential tiers on-chain (packageId - 1 check). A
+      // track that's behind must buy its own next step, not whatever tier
+      // the carousel happens to have selected — buying the wrong tier there
+      // reverts on-chain instead of just being a display mismatch.
+      const ownNext = (pkgId: number) => Math.min((pkgId ?? 0) + 1, 9);
+
       setProgramStatuses([
         {
           key: "matrix",
           label: "Magic Gold Matrix",
           currentPkg: matrixData?.pkgId ?? 0,
           isPurchasedForSelected: (matrixData?.pkgId ?? 0) >= selId,
-          amount: AMOUNT_MAP.matrix.find((x) => x.id === selIdStr)?.amount ?? "",
+          amount: AMOUNT_MAP.matrix.find((x) => x.id === String(ownNext(matrixData?.pkgId ?? 0)))?.amount ?? "",
         },
         {
           key: "level",
           label: "Magic Level",
           currentPkg: levelData?.pkgId ?? 0,
           isPurchasedForSelected: (levelData?.pkgId ?? 0) >= selId,
-          amount: AMOUNT_MAP.level.find((x) => x.id === selIdStr)?.amount ?? "",
+          amount: AMOUNT_MAP.level.find((x) => x.id === String(ownNext(levelData?.pkgId ?? 0)))?.amount ?? "",
         },
         {
           key: "sponsor",
           label: "Sponsor Magic",
           currentPkg: sponsorData?.pkgId ?? 0,
           isPurchasedForSelected: (sponsorData?.pkgId ?? 0) >= selId,
-          amount: AMOUNT_MAP.sponsor.find((x) => x.id === selIdStr)?.amount ?? "",
+          amount: AMOUNT_MAP.sponsor.find((x) => x.id === String(ownNext(sponsorData?.pkgId ?? 0)))?.amount ?? "",
         },
       ]);
     } catch (err) {
@@ -229,23 +238,26 @@ export default function PackagePurchasePage() {
     setIsSubmitting(true);
 
     try {
+      const targetId = Number(selectedPackage.id);
       for (const p of pendingPrograms) {
-        const splitPkg = AMOUNT_MAP[p.key].find(
-          (x) => x.id === selectedPackage.id,
-        );
-        if (!splitPkg) {
-          console.error(
-            `No split price found for ${p.key}, package ${selectedPackage.id}`,
-          );
-          continue;
-        }
+        // A track behind the selected tier must buy every step in between —
+        // purchaseSponsorPackage/etc. require strictly sequential tiers
+        // on-chain (packageId - 1 check). Buying straight to the selected
+        // tier while behind reverts; catch it up one tier at a time instead.
+        for (let tier = p.currentPkg + 1; tier <= targetId; tier++) {
+          const splitPkg = AMOUNT_MAP[p.key].find((x) => x.id === String(tier));
+          if (!splitPkg) {
+            console.error(`No split price found for ${p.key}, package ${tier}`);
+            continue;
+          }
 
-        setTxStatus(`purchasing-${p.key}`);
-        await BUY_FN_MAP[p.key](
-          Number(selectedPackage.id),
-          splitPkg.amount, // ✅ sahi — us program ka apna split amount
-          (status: string) => setTxStatus(status),
-        );
+          setTxStatus(`purchasing-${p.key}`);
+          await BUY_FN_MAP[p.key](
+            tier,
+            splitPkg.amount, // ✅ sahi — us program ka apna split amount
+            (status: string) => setTxStatus(status),
+          );
+        }
       }
 
       toast.success(
