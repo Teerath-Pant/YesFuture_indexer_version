@@ -453,8 +453,77 @@ usersRouter.get("/:address/magic-gold/:packageId/:cycleIndex", async (req, res) 
 // the frontend firing 4 requests x 9 packages (36+ calls, capped at ~6
 // concurrent by the browser's per-origin connection limit no matter how much
 // the frontend parallelizes with Promise.all).
+// async function computePackageMatrixSummary(user: string, packageId: number) {
+//   const [partnersCountRow, reentries, incomeRows] = await Promise.all([
+//     db.select({ count: sql<number>`count(*)::int` }).from(schema.matrixPlacements)
+//       .where(and(eq(schema.matrixPlacements.parentAddress, user), eq(schema.matrixPlacements.packageId, packageId))),
+//     db.select({ phantomNode: schema.level5Reentries.phantomNode })
+//       .from(schema.level5Reentries)
+//       .where(and(eq(schema.level5Reentries.userAddress, user), eq(schema.level5Reentries.packageId, packageId)))
+//       .orderBy(schema.level5Reentries.cycleNumber),
+//     db.execute(sql`
+//       SELECT COALESCE(SUM(mi.amount), 0) AS total
+//       FROM matrix_income_events mi
+//       JOIN package_purchase_events pp
+//         ON pp.tx_hash = mi.tx_hash
+//         AND pp.track = 'MATRIX'
+//         AND pp.member_address = mi.from_address
+//       WHERE mi.receiver = ${user} AND pp.package_id = ${packageId}
+//     `),
+//   ]);
+
+//   const roots = [user, ...reentries.map((r) => r.phantomNode)];
+//   const latestRoot = roots[roots.length - 1];
+
+//   const nodes: (string | null)[] = new Array(62).fill(null);
+//   const levelStart = [0, 0, 2, 6, 14, 30];
+//   let currentLevelParents = [latestRoot];
+
+//   for (let lvl = 1; lvl <= 5; lvl++) {
+//     const start = levelStart[lvl];
+//     const rows = currentLevelParents.length
+//       ? await db.select({
+//           parentAddress: schema.matrixPlacements.parentAddress,
+//           childAddress: schema.matrixPlacements.childAddress,
+//         }).from(schema.matrixPlacements)
+//         .where(and(
+//           eq(schema.matrixPlacements.packageId, packageId),
+//           inArray(schema.matrixPlacements.parentAddress, currentLevelParents)
+//         ))
+//         .orderBy(schema.matrixPlacements.blockNumber, schema.matrixPlacements.logIndex)
+//       : [];
+
+//     const childrenByParent = new Map<string, string[]>();
+//     for (const row of rows) {
+//       const list = childrenByParent.get(row.parentAddress) ?? [];
+//       if (list.length < 2) list.push(row.childAddress);
+//       childrenByParent.set(row.parentAddress, list);
+//     }
+
+//     const nextLevelParents: string[] = [];
+//     currentLevelParents.forEach((parent, p) => {
+//       const kids = childrenByParent.get(parent) ?? [];
+//       kids.forEach((child, c) => {
+//         nodes[start + p * 2 + c] = child;
+//         nextLevelParents.push(child); // see comment in the matrix-tree/:cycleIndex route above
+//       });
+//     });
+//     currentLevelParents = nextLevelParents.length ? nextLevelParents : new Array(Math.pow(2, lvl)).fill("");
+//   }
+
+//   return {
+//     packageId,
+//     partnersCount: partnersCountRow[0]?.count ?? 0,
+//     cycleCount: roots.length,
+//     nodes,
+//     revenue: String((incomeRows[0] as any)?.total ?? "0"),
+//   };
+// }
+
+type MatrixNode = { address: string; isDirectPlacement: boolean } | null;
+
 async function computePackageMatrixSummary(user: string, packageId: number) {
-  const [partnersCountRow, reentries, incomeRows] = await Promise.all([
+  const [partnersCountRow, reentries, incomeRows, level5CountRaw] = await Promise.all([
     db.select({ count: sql<number>`count(*)::int` }).from(schema.matrixPlacements)
       .where(and(eq(schema.matrixPlacements.parentAddress, user), eq(schema.matrixPlacements.packageId, packageId))),
     db.select({ phantomNode: schema.level5Reentries.phantomNode })
@@ -470,12 +539,13 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
         AND pp.member_address = mi.from_address
       WHERE mi.receiver = ${user} AND pp.package_id = ${packageId}
     `),
+    contract.level5MemberCountByPkg(packageId, user).catch(() => 0n),
   ]);
 
   const roots = [user, ...reentries.map((r) => r.phantomNode)];
   const latestRoot = roots[roots.length - 1];
 
-  const nodes: (string | null)[] = new Array(62).fill(null);
+  const nodes: MatrixNode[] = new Array(62).fill(null);
   const levelStart = [0, 0, 2, 6, 14, 30];
   let currentLevelParents = [latestRoot];
 
@@ -485,6 +555,7 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
       ? await db.select({
           parentAddress: schema.matrixPlacements.parentAddress,
           childAddress: schema.matrixPlacements.childAddress,
+          sponsorAddress: schema.matrixPlacements.sponsorAddress,
         }).from(schema.matrixPlacements)
         .where(and(
           eq(schema.matrixPlacements.packageId, packageId),
@@ -493,19 +564,22 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
         .orderBy(schema.matrixPlacements.blockNumber, schema.matrixPlacements.logIndex)
       : [];
 
-    const childrenByParent = new Map<string, string[]>();
+    const childrenByParent = new Map<string, typeof rows>();
     for (const row of rows) {
       const list = childrenByParent.get(row.parentAddress) ?? [];
-      if (list.length < 2) list.push(row.childAddress);
+      if (list.length < 2) list.push(row);
       childrenByParent.set(row.parentAddress, list);
     }
 
     const nextLevelParents: string[] = [];
     currentLevelParents.forEach((parent, p) => {
       const kids = childrenByParent.get(parent) ?? [];
-      kids.forEach((child, c) => {
-        nodes[start + p * 2 + c] = child;
-        nextLevelParents.push(child); // see comment in the matrix-tree/:cycleIndex route above
+      kids.forEach((row, c) => {
+        nodes[start + p * 2 + c] = {
+          address: row.childAddress,
+          isDirectPlacement: row.sponsorAddress === row.parentAddress,
+        };
+        nextLevelParents.push(row.childAddress); // see comment in the matrix-tree/:cycleIndex route above
       });
     });
     currentLevelParents = nextLevelParents.length ? nextLevelParents : new Array(Math.pow(2, lvl)).fill("");
@@ -514,11 +588,15 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
   return {
     packageId,
     partnersCount: partnersCountRow[0]?.count ?? 0,
+    level5Count: Number(level5CountRaw),
     cycleCount: roots.length,
     nodes,
     revenue: String((incomeRows[0] as any)?.total ?? "0"),
   };
 }
+
+
+
 
 // Batches all 9 package tiers' matrix-tree/cycles/income into one request —
 // see comment on computePackageMatrixSummary. Frontend still filters to
