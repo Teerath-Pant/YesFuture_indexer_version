@@ -3,7 +3,7 @@ import {
   fetchDashboardStats,
   fetchDashboardToday,
   fetchIncomeToday,
-  fetchUserTotalInvestment,
+  fetchUserTotalInvested,
   fetchLevelPackageAndIdWithMax,
   fetchMatrixPackageAndIdWithMax,
   fetchSponsorPackageAndIdWithMax,
@@ -101,11 +101,13 @@ export function StatsOverview(props: statsProps) {
           setTotalProfitInDay(Number(incomeToday.todayTotalIncome));
         }
 
-        // Ratio card repurposed to profit % vs total investment (investment
-        // is set once at registration and never changes, so no "today"
-        // version exists for it — today's ratio compares today's income
-        // against that same fixed investment base).
-        const investment = await fetchUserTotalInvestment(connectedWallet);
+        // Ratio card: profit % vs total invested. DB-sourced sum of every
+        // package purchase across all 3 tracks, not the on-chain
+        // userTotalInvestment (frozen at registration's package-1 price,
+        // never updated by later upgrades — was producing 260%+ ratios).
+        // No "today" version of investment exists, so today's ratio compares
+        // today's income against this same running total.
+        const investment = await fetchUserTotalInvested(connectedWallet);
         if (isMounted) {
           const investmentValue = Number(investment) || 0;
           const totalProfitValue = Number(props.totalProfit) || 0;

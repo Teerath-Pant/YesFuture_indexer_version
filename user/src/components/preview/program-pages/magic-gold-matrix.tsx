@@ -5,7 +5,7 @@ import WalletCell from "@/components/wallet-cell";
 import { RefreshCw, User } from "lucide-react";
 import { useState, useEffect } from "react";
 import { magicGoldMatrixPackages, type ProgramTypes } from "@/constants/programs";
-import { fetchPackageAndId, fetchPurchaseHistory, fetchPackageMatrixDetails, fetchMaxActivePackage, PreviewModeApiCall } from "@/lib/auth-api";
+import { fetchPackageAndId, fetchPurchaseHistory, fetchMagicGoldMatrixSummary, fetchMaxActivePackage, PreviewModeApiCall } from "@/lib/auth-api";
 import { useSearch } from "@tanstack/react-router";
 import { PreviewUserMatrixGridXGold } from "../magic-gold-matrix/matrix-grid-x-gold";
 
@@ -33,7 +33,8 @@ const PreviewUserMagicGoldMatrix = ({ program }: pageProps) => {
   const [userNumericId, setUserNumericId] = useState("0");
   const [maxActivePkg, setMaxActivePkg] = useState(1);
   const [purchaseHistory, setPurchaseHistory] = useState<TransactionRow[]>([]);
-  const [packageMetrics, setPackageMetrics] = useState<Record<number, { partnersCount: number; level5Count: number; recycleCount: number }>>({});
+  const [packageMetrics, setPackageMetrics] = useState<Record<number, { partnersCount: number; level5Count: number; recycleCount: number; tree?: LevelDataXGold["tree"]; revenue?: number }>>({});
+  const [totalRevenue, setTotalRevenue] = useState(0);
 
   const { id } = useSearch({ from: "/preview" });
 
@@ -60,25 +61,31 @@ useEffect(() => {
       const maxActivePkg = Math.max(safeActiveMax, 1);
       setMaxActivePkg(maxActivePkg);
 
-      // 2. Fetch specific matrix metrics for each package tier up to maxActivePkg
+      // 2. Fetch matrix metrics for ALL 9 tiers in one batched call — see the
+      // live program-pages/magic-gold-matrix.tsx for why: metrics for LOCKED
+      // tiers are what power the isDamage (red card) detection below, and a
+      // sequential per-package loop here was both a 9x request waterfall and
+      // never fetched locked-tier data at all (so isDamage could never be
+      // real, only guessed from lock state itself).
+      const summary = await PreviewModeApiCall(userId, fetchMagicGoldMatrixSummary);
+      const safeSummary = summary ?? {};
       const metricsMap: Record<number, any> = {};
+      let allTimeRevenue = 0;
       for (let i = 1; i <= 9; i++) {
+        const details = safeSummary[i] ?? {
+          partnersCount: 0,
+          level5Count: 0,
+          recycleCount: 0,
+          tree: [],
+          revenue: 0,
+        };
+        metricsMap[i] = details;
         if (i <= maxActivePkg) {
-          const metrics = await PreviewModeApiCall(
-            userId,
-            fetchPackageMatrixDetails,
-            i,
-          );
-          metricsMap[i] = metrics ?? {
-            partnersCount: 0,
-            level5Count: 0,
-            recycleCount: 0,
-          };
-        } else {
-          metricsMap[i] = { partnersCount: 0, level5Count: 0, recycleCount: 0 };
+          allTimeRevenue += details.revenue ?? 0;
         }
       }
       setPackageMetrics(metricsMap);
+      setTotalRevenue(allTimeRevenue);
 
       // 3. Fetch History Logs. fetchPurchaseHistory returns every track — this
       // page is Matrix-only, current package's purchase only, not every package mixed.
@@ -113,16 +120,16 @@ useEffect(() => {
     const pkgLevel = index + 1;
     // Explicitly check if package level is less than or equal to maxActivePkg fetched from contract
     const isUnlocked = pkgLevel <= maxActivePkg;
-    const metrics = packageMetrics[pkgLevel] || { partnersCount: 0, level5Count: 0, recycleCount: 0 };
+    const metrics = packageMetrics[pkgLevel] || { partnersCount: 0, level5Count: 0, recycleCount: 0, tree: [] };
 
-    const generateSlots = (startIndex: number, totalSlots: number) => {
-      const slots: string[] = [];
-      for (let s = 0; s < totalSlots; s++) {
-        const globalSlotIndex = startIndex + s;
-        slots.push(globalSlotIndex < metrics.level5Count ? "direct" : "empty");
-      }
-      return slots;
-    };
+    // A locked package's card turns red when the downline has already
+    // generated activity on it (placement, level-5 fill, or income) even
+    // though the logged-in user hasn't purchased/unlocked it themselves.
+    const hasDownlinePurchasedUpper =
+      !isUnlocked &&
+      ((metrics.partnersCount ?? 0) > 0 ||
+        (metrics.level5Count ?? 0) > 0 ||
+        (metrics.revenue ?? 0) > 0);
 
     return {
       level: pkgLevel,
@@ -130,13 +137,9 @@ useEffect(() => {
       isUnlocked: isUnlocked,
       partnersCount: metrics.partnersCount,
       recycleCount: metrics.recycleCount,
-      isDamage: !isUnlocked,
-      tree: isUnlocked ? [
-        generateSlots(0, 2),
-        generateSlots(2, 4),
-        generateSlots(6, 8),
-        generateSlots(14, 18)
-      ] : []
+      revenue: metrics.revenue,
+      isDamage: hasDownlinePurchasedUpper,
+      tree: metrics.tree && metrics.tree.length > 0 ? metrics.tree : [],
     } as LevelDataXGold;
   });
 
@@ -188,7 +191,7 @@ useEffect(() => {
         programName={program}
         activeLevelsCount={maxActivePkg}
         totalLevelsCount={9}
-        totalProfit="0 USDT"
+        totalProfit={`${totalRevenue.toLocaleString()} USDT`}
       />
 
       {loading ? (

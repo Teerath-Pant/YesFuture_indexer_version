@@ -40,7 +40,7 @@ export function PreviewUserMagicLevelCard({
         isUnlocked
           ? "bg-[#3865ff] text-white shadow-lg shadow-blue-600/20"
           : isDamage
-          ? "bg-rose-400 text-white shadow-lg shadow-blue-600/20"
+          ? "bg-[#1b1d22] text-white shadow-lg shadow-blue-600/20"
           : "bg-[#1f2127] text-gray-400 border border-white/5"
       }`}
     >
@@ -84,14 +84,6 @@ export function PreviewUserMagicLevelCard({
         </div>
       </div>
 
-      {/* Locked overlay icon */}
-      {!isUnlocked && (
-        <div className="pointer-events-none absolute bottom-2 right-2 opacity-10">
-          <svg className="h-16 w-16 fill-current text-white" viewBox="0 0 24 24">
-            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-          </svg>
-        </div>
-      )}
     </div>
   );
 }

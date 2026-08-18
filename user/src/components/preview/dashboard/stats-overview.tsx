@@ -5,7 +5,7 @@ import {
   fetchDashboardStats,
   fetchDashboardToday,
   fetchIncomeToday,
-  fetchUserTotalInvestment,
+  fetchUserTotalInvested,
   fetchLevelPackageAndIdWithMax,
   fetchMatrixPackageAndIdWithMax,
   fetchSponsorPackageAndIdWithMax,
@@ -98,10 +98,12 @@ export function PreviewUserStatsOverview({
           setTotalProfitInDay(Number(incomeToday.todayTotalIncome));
         }
 
-        // Ratio card: profit % vs total investment (same repurpose as the
-        // live dashboard's stats-overview.tsx — investment is fixed at
-        // registration, no "today" version of it exists).
-        const investment = await PreviewModeApiCall(userId, fetchUserTotalInvestment);
+        // Ratio card: profit % vs total invested. DB-sourced sum of every
+        // package purchase (see the live dashboard's stats-overview.tsx /
+        // the backend route) — NOT the on-chain userTotalInvestment, which
+        // is frozen at registration's package-1 price and never updated by
+        // later upgrades (was producing 260%+ ratios).
+        const investment = await PreviewModeApiCall(userId, fetchUserTotalInvested);
         if (isMounted) {
           const investmentValue = Number(investment) || 0;
           const todayProfitValue = incomeToday ? Number(incomeToday.todayTotalIncome) : 0;

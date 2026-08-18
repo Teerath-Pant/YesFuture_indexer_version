@@ -1,4 +1,4 @@
-import { Users, RefreshCw } from "lucide-react";
+import { Users, RefreshCw, Wallet } from "lucide-react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { normalizeTree } from "@/lib/utils";
 
@@ -12,10 +12,19 @@ export interface LevelDataXGold {
   tree: SlotType[][]; // Row 0: 2, Row 1: 4, Row 2: 8, Row 3: 16
   partnersCount?: number;
   recycleCount?: number;
+  revenue?: number;
   isDamage?: boolean;
 }
 
-function slotColor(slot: SlotType, isUnlocked: boolean): string {
+function slotColor(slot: SlotType, isUnlocked: boolean, isDamage: boolean): string {
+  // Locked but damaged (downline activity exists) — filled slots show red,
+  // matching the card's red border. Direct/spillover distinction only
+  // matters once the package itself is unlocked.
+  if (!isUnlocked && isDamage) {
+    if (slot === "empty") return "bg-white/15 ring-1 ring-white/10";
+    return "bg-rose-500 shadow-sm shadow-rose-500/50";
+  }
+
   if (!isUnlocked) return "bg-white/10 border border-white/10";
 
   switch (slot) {
@@ -29,7 +38,6 @@ function slotColor(slot: SlotType, isUnlocked: boolean): string {
       return "bg-cyan-300 shadow-sm";
     case "empty":
     default:
-      // Empty circles visual feedback improve karne ke liye opacity + subtle ring
       return "bg-white/15 ring-1 ring-white/10";
   }
 }
@@ -41,6 +49,7 @@ export function PreviewUserMatrixLevelCardXGold({
   tree,
   partnersCount,
   recycleCount,
+  revenue,
   isDamage,
 }: LevelDataXGold) {
   const navigate = useNavigate();
@@ -53,22 +62,6 @@ export function PreviewUserMatrixLevelCardXGold({
     { size: "w-3 h-3" }, // row 4 — 16 circles, sabse chhote
   ];
 
-  console.log(
-    level,
-    "level",
-    isUnlocked,
-    "isUnlocked",
-    tree,
-    "tree",
-    normalizedTree,
-    "normalizedTree",
-    partnersCount,
-    "partnersCount",
-    recycleCount,
-    "recycleCount",
-    isDamage,
-    "isDamage",
-  );
   return (
     <div
       onClick={() => {
@@ -83,21 +76,13 @@ export function PreviewUserMatrixLevelCardXGold({
         isUnlocked
           ? "bg-[#3865ff] text-white shadow-lg shadow-blue-500/20 cursor-pointer hover:bg-[#325ce6]"
           : isDamage
-            ? "bg-rose-400 text-white border border-white/5"
+            ? "bg-[#1b1d22] text-white border-2 border-rose-500/60 shadow-lg shadow-rose-500/20"
             : "bg-[#1b1d22] text-gray-400 border border-white/5"
       }`}
     >
       {/* Header: Level + Price */}
       <div className="flex items-center justify-between text-xs font-bold">
-        <span
-          className={
-            isUnlocked
-              ? "text-blue-100"
-              : isDamage
-                ? "text-white"
-                : "text-gray-400"
-          }
-        >
+        <span className={isUnlocked ? "text-blue-100" : (isDamage ? "text-rose-400 font-bold" : "text-gray-400")}>
           Pkg {level}
         </span>
         <div className="flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-full">
@@ -115,7 +100,7 @@ export function PreviewUserMatrixLevelCardXGold({
       </div>
 
       {/* Tree Visualization */}
-      {isUnlocked ? (
+      {isUnlocked || isDamage || (partnersCount ?? 0) > 0 ? (
         <>
           <div className="my-3 flex flex-col items-center justify-center gap-2 z-10 w-full">
             {normalizedTree.map((row, rowIdx) => {
@@ -133,6 +118,7 @@ export function PreviewUserMatrixLevelCardXGold({
                       className={`rounded-full border transition-all duration-200 ${config.size} ${slotColor(
                         slot,
                         isUnlocked,
+                        !!isDamage,
                       )}`}
                     />
                   ))}
@@ -141,14 +127,20 @@ export function PreviewUserMatrixLevelCardXGold({
             })}
           </div>
           {/* Bottom Footer Stats */}
-          <div className="flex items-center gap-4 text-xs font-semibold text-blue-100/90 z-10 pt-1">
+          <div className={`flex items-center gap-4 text-xs font-semibold z-10 pt-1 ${isUnlocked ? "text-blue-100/90" : "text-rose-400"}`}>
             <div className="flex items-center gap-1.5">
               <Users className="h-4 w-4 opacity-80" />
               <span>{partnersCount ?? 0}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <RefreshCw className="h-4 w-4 opacity-80" />
-              <span>{recycleCount ?? 0}</span>
+              {/* recycleCount counts placements (1 = no recycle yet) — cycles
+                  are displayed 0-indexed project-wide. */}
+              <span>{Math.max((recycleCount ?? 0) - 1, 0)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Wallet className="h-4 w-4 opacity-80" />
+              <span>{(revenue ?? 0).toLocaleString()} USDT</span>
             </div>
           </div>
         </>

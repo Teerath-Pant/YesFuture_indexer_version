@@ -126,7 +126,7 @@ export function RecentActivety() {
     let active = true;
     setIsLoading(true);
 
-    fetchGlobalIncomeActivity(50)
+    fetchGlobalIncomeActivity(25)
       .then((items) => {
         if (active) {
           const listToUse = items || [];
