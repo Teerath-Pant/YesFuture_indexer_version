@@ -59,17 +59,22 @@ const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
         setMaxActivePkg(Math.max(activeMax, 1));
 
         // 2. Fetch specific matrix metrics + income for each package tier up to maxActivePkg
+        // (parallel, not one-at-a-time — each of these fans out to 3-4 backend
+        // calls, so awaiting sequentially in a loop was a 9x waterfall)
+        const unlockedMax = Math.max(activeMax, 1);
+        const detailsResults = await Promise.all(
+          Array.from({ length: 9 }, (_, idx) => idx + 1).map((i) =>
+            i <= unlockedMax
+              ? fetchPackageMatrixDetails(activeWalletAddress, i)
+              : Promise.resolve({ partnersCount: 0, level5Count: 0, recycleCount: 0, revenue: 0 }),
+          ),
+        );
         const metricsMap: Record<number, any> = {};
         let allTimeRevenue = 0;
-        for (let i = 1; i <= 9; i++) {
-          if (i <= Math.max(activeMax, 1)) {
-            const details = await fetchPackageMatrixDetails(activeWalletAddress, i);
-            metricsMap[i] = details;
-            allTimeRevenue += details.revenue ?? 0;
-          } else {
-            metricsMap[i] = { partnersCount: 0, level5Count: 0, recycleCount: 0, revenue: 0 };
-          }
-        }
+        detailsResults.forEach((details, idx) => {
+          metricsMap[idx + 1] = details;
+          allTimeRevenue += details.revenue ?? 0;
+        });
         setPackageMetrics(metricsMap);
         setTotalRevenue(allTimeRevenue);
 
