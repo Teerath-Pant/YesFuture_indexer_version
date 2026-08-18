@@ -34,8 +34,8 @@ export default function SponsorLevelSummaryCard({
     <div className="bg-linear-to-br from-[#406AFF] to-[#385fe9] rounded-2xl p-2 sm:p-6 shadow-lg shadow-indigo-500/20">
       {/* Top row */}
       <div className="flex items-center justify-between mb-8">
-        <span className="text-indigo-100/70 text-2xl font-semibold">Cycle {cycleNum ?? level}</span>
-        <span className="text-white text-lg font-bold">ID {id}</span>
+        <span className="text-indigo-100/70 text-md sm:text-2xl font-semibold">Cycle {cycleNum ?? level}</span>
+        <span className="text-white text-sm sm:text-lg font-bold">ID {id}</span>
         <span className="flex items-center gap-1.5 text-white font-semibold">
           <span className="w-5 h-5 rounded-full bg-yellow-400 flex items-center justify-center text-[10px]">
             $

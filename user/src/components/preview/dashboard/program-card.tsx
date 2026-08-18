@@ -1,5 +1,4 @@
 import type { ProgramTypes } from "@/constants/programs";
-import { formatLabel } from "@/lib/utils";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type {CSSProperties} from "react";
 

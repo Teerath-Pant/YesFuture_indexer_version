@@ -49,8 +49,8 @@ function normalizeTree(tree: TreeNode[][]): TreeNode[][] {
 }
 
 const ROW_SIZE = [
-  "h-13 w-13 sm:h-16 sm:w-16 text-sm font-semibold",
-  "h-11 w-11 sm:h-13 sm:w-13 text-xs font-semibold",
+  "h-15 w-15 sm:h-16 sm:w-16 text-sm font-semibold",
+  "h-14 w-14 sm:h-15 sm:w-15 text-xs font-semibold",
   "h-6 w-6 sm:h-10 sm:w-10 text-[10px] font-medium",
   "sm:h-4 sm:w-4 h-3 w-3",
   "sm:h-2.5 sm:w-2.5 h-1.5 w-1.5",

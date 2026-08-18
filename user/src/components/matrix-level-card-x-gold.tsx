@@ -173,7 +173,6 @@
 //   );
 // }
 
-
 import { Users, RefreshCw, Wallet } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 import { normalizeTree } from "@/lib/utils";
@@ -211,7 +210,11 @@ export interface LevelDataXGold {
 //   }
 // }
 
-function slotColor(slot: SlotType, isUnlocked: boolean, isDamage: boolean): string {
+function slotColor(
+  slot: SlotType,
+  isUnlocked: boolean,
+  isDamage: boolean,
+): string {
   // Locked but damaged (downline activity exists) — filled slots show red,
   // matching the card's red border. Direct/spillover distinction only
   // matters once the package itself is unlocked.
@@ -274,7 +277,15 @@ export function MatrixLevelCardXGold({
     >
       {/* Header: Level + Price */}
       <div className="flex items-center justify-between text-xs font-bold">
-        <span className={isUnlocked ? "text-blue-100" : (isDamage ? "text-rose-400 font-bold" : "text-gray-400")}>
+        <span
+          className={
+            isUnlocked
+              ? "text-blue-100"
+              : isDamage
+                ? "text-rose-400 font-bold"
+                : "text-gray-400"
+          }
+        >
           Pkg {level}
         </span>
         <div className="flex items-center gap-1.5 bg-black/20 px-2 py-0.5 rounded-full">
@@ -309,7 +320,8 @@ export function MatrixLevelCardXGold({
                       key={slotIdx}
                       className={`rounded-full border transition-all duration-200 ${config.size} ${slotColor(
                         slot,
-                        isUnlocked , !!isDamage,
+                        isUnlocked,
+                        !!isDamage,
                       )}`}
                     />
                   ))}
@@ -318,7 +330,9 @@ export function MatrixLevelCardXGold({
             })}
           </div>
           {/* Bottom Footer Stats */}
-          <div className={`flex items-center gap-4 text-xs font-semibold z-10 pt-1 ${isUnlocked ? "text-blue-100/90" : "text-rose-400"}`}>
+          <div
+            className={`flex items-center gap-4 text-xs font-semibold z-10 pt-1 ${isUnlocked ? "text-blue-100/90" : "text-rose-400"}`}
+          >
             <div className="flex items-center gap-1.5">
               <Users className="h-4 w-4 opacity-80" />
               <span>{partnersCount ?? 0}</span>
