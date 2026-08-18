@@ -1840,7 +1840,14 @@ export interface LevelIncomeRow {
   date: string;
 }
 
-export type MatrixSlotType = "direct" | "empty";
+// export type MatrixSlotType = "direct" | "empty";
+
+type MatrixSlotType =
+  | "direct"
+  | "spilloverAbove"
+  | "spilloverBelow"
+  | "gift"
+  | "empty";
 
 export interface MagicGoldMatrixStructure {
   root: string;
@@ -3794,20 +3801,62 @@ export async function fetchPackageMatrixDetails(
 // of 9 x 4 — the browser caps concurrent requests per origin (~6), so firing
 // 36+ in parallel from the frontend still queued in batches. Server does the
 // fan-out against its own DB pool instead, where it's cheap.
+// export async function fetchMagicGoldMatrixSummary(walletAddress: string) {
+//   try {
+//     const data = await apiGet<{
+//       packages: { packageId: number; partnersCount: number; cycleCount: number; nodes: (string | null)[]; revenue: string }[];
+//     }>(`/users/${walletAddress}/magic-gold-summary`);
+
+//     const toSlot = (address: string | null): MatrixSlotType => (address ? "direct" : "empty");
+//     const result: Record<number, { partnersCount: number; level5Count: number; recycleCount: number; tree: MatrixSlotType[][]; revenue: number }> = {};
+
+//     for (const pkg of data?.packages ?? []) {
+//       const visibleNodes = pkg.nodes.slice(0, 30);
+//       result[pkg.packageId] = {
+//         partnersCount: pkg.partnersCount,
+//         level5Count: visibleNodes.filter((address: string | null) => address).length,
+//         recycleCount: pkg.cycleCount,
+//         tree: [
+//           visibleNodes.slice(0, 2).map(toSlot),
+//           visibleNodes.slice(2, 6).map(toSlot),
+//           visibleNodes.slice(6, 14).map(toSlot),
+//           visibleNodes.slice(14, 30).map(toSlot),
+//         ],
+//         revenue: Number(ethers.formatUnits(pkg.revenue ?? "0", 18)),
+//       };
+//     }
+//     return result;
+//   } catch (error) {
+//     console.error("Error fetching magic gold matrix summary:", error);
+//     return {} as Record<number, { partnersCount: number; level5Count: number; recycleCount: number; tree: MatrixSlotType[][]; revenue: number }>;
+//   }
+// }
+
 export async function fetchMagicGoldMatrixSummary(walletAddress: string) {
   try {
     const data = await apiGet<{
-      packages: { packageId: number; partnersCount: number; cycleCount: number; nodes: (string | null)[]; revenue: string }[];
+      packages: {
+        packageId: number;
+        partnersCount: number;
+        cycleCount: number;
+        level5Count: number;
+        nodes: ({ address: string; isDirectPlacement: boolean } | null)[];
+        revenue: string;
+      }[];
     }>(`/users/${walletAddress}/magic-gold-summary`);
 
-    const toSlot = (address: string | null): MatrixSlotType => (address ? "direct" : "empty");
+    const toSlot = (node: { address: string; isDirectPlacement: boolean } | null): MatrixSlotType => {
+      if (!node) return "empty";
+      return node.isDirectPlacement ? "direct" : "spilloverAbove";
+    };
+
     const result: Record<number, { partnersCount: number; level5Count: number; recycleCount: number; tree: MatrixSlotType[][]; revenue: number }> = {};
 
     for (const pkg of data?.packages ?? []) {
       const visibleNodes = pkg.nodes.slice(0, 30);
       result[pkg.packageId] = {
         partnersCount: pkg.partnersCount,
-        level5Count: visibleNodes.filter((address: string | null) => address).length,
+        level5Count: pkg.level5Count,
         recycleCount: pkg.cycleCount,
         tree: [
           visibleNodes.slice(0, 2).map(toSlot),

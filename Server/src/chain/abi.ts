@@ -1,6 +1,7 @@
 // Minimal ABI: only the events the indexer decodes, plus the view functions /
 // public-mapping getters the API proxies live (mutable state we deliberately
 // did NOT duplicate in Postgres — see Server root notes in chat/changelog).
+
 export const CONTRACT_ABI = [
   {
     "type": "constructor",
