@@ -115,8 +115,16 @@ const SponserMagic = ({ program }: pageProps) => {
     for (let i = 1; i <= 9; i++) {
       const isUnlocked = isRootUser || i <= currentPkg;
       const price = packagePrices[i - 1] || 0;
-      const partnersCount = levelReferrers[i]?.size || 0;
       const cyclesCount = recycleCounts[i] || 0;
+      // Total visible referrals ever, minus the 4 each completed recycle
+      // already used up — every full cycle contributes exactly 4 referrals
+      // to our data (positions 1-4; the 5th always routes to the upline,
+      // invisible to this sponsor), so what's left over is the current,
+      // still-open cycle's count. Same "current cycle" semantic as the
+      // per-level detail page — a tile showing 4/5 right after a recycle
+      // was actually displaying the just-closed cycle, not the new one.
+      const totalVisible = levelReferrers[i]?.size || 0;
+      const partnersCount = Math.max(totalVisible - 4 * cyclesCount, 0);
 
       // Generate 5 slots based on partners count for package level i
       const slots = generateSlots(partnersCount);
