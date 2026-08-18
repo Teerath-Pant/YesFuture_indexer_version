@@ -144,7 +144,9 @@ export default function MatrixTreeCardXGold({
           <div className="flex flex-col gap-1">
             <span className="text-indigo-100/70 text-sm">Cycles</span>
             <span className="flex items-center gap-1.5 text-white text-sm font-medium">
-              <RefreshCw size={14} /> {cyclesCount}
+              {/* cyclesCount counts placements (1 = no recycle yet) — cycles are
+                  displayed 0-indexed project-wide, so show completed recycles. */}
+              <RefreshCw size={14} /> {Math.max(cyclesCount - 1, 0)}
             </span>
           </div>
         </div>

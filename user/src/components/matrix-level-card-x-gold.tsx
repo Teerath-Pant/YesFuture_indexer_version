@@ -275,7 +275,9 @@ export function MatrixLevelCardXGold({
             </div>
             <div className="flex items-center gap-1.5">
               <RefreshCw className="h-4 w-4 opacity-80" />
-              <span>{recycleCount ?? 0}</span>
+              {/* recycleCount counts placements (1 = no recycle yet) — cycles
+                  are displayed 0-indexed project-wide. */}
+              <span>{Math.max((recycleCount ?? 0) - 1, 0)}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Wallet className="h-4 w-4 opacity-80" />

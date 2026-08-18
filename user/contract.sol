@@ -567,25 +567,34 @@ contract meta16 is ReentrancyGuard {
                 
                 emit DirectIncome(directSponsor, buyer, packageId, count, sponsorNet);
             } else {
-                sponsorHoldByPkg[packageId][directSponsor] += sponsorNet;
-                usdt.safeTransfer(adminWallet, adminCut);
-                emit SponsorIncomeHeld(directSponsor, packageId, sponsorNet, count);
+                // Hold the full gross share, not the 90% net — the 90/10 split
+                // is for money actually paid out, not money in escrow. Holding
+                // net left auto-upgrade permanently unreachable: two held counts
+                // at 90% (0.3006x price) never covers the next tier's cost
+                // (0.334x price, since prices double every tier), so the admin
+                // cut was silently eating the exact margin the upgrade needed.
+                // Same "hold gross, split only on payout" pattern the Matrix
+                // track already uses (matrixHoldByPkg, _handleLevel5Share).
+                // Admin still gets paid — via the leftover sweep below once the
+                // hold is consumed — just not upfront.
+                sponsorHoldByPkg[packageId][directSponsor] += sponsorShare;
+                emit SponsorIncomeHeld(directSponsor, packageId, sponsorShare, count);
             }
         }
         else if (count == 4) {
             if (upgraded) {
                 usdt.safeTransfer(directSponsor, sponsorNet);
                 usdt.safeTransfer(adminWallet, adminCut);
-                
+
                 // ========== TRACK DIRECT INCOME ==========
                 userTotalDirectIncome[directSponsor] += sponsorNet;
                 // ========================================
-                
+
                 emit DirectIncome(directSponsor, buyer, packageId, count, sponsorNet);
             } else {
-                sponsorHoldByPkg[packageId][directSponsor] += sponsorNet;
-                usdt.safeTransfer(adminWallet, adminCut);
-                emit SponsorIncomeHeld(directSponsor, packageId, sponsorNet, count);
+                // See count==3 branch above — hold gross, not net.
+                sponsorHoldByPkg[packageId][directSponsor] += sponsorShare;
+                emit SponsorIncomeHeld(directSponsor, packageId, sponsorShare, count);
                 _trySponsorAutoUpgrade(packageId, directSponsor);
             }
         }
