@@ -274,9 +274,9 @@
 import { MatrixGridXGold } from "@/components/matrix-grid-x-gold";
 import { type LevelDataXGold } from "@/components/matrix-level-card-x-gold";
 import { ProgramPageHeader } from "@/components/programe-page-header";
-import DataTable, { type Column } from "../data-table";
-import WalletCell from "../wallet-cell";
-import { RefreshCw, User } from "lucide-react";
+// import DataTable, { type Column } from "../data-table";
+// import WalletCell from "../wallet-cell";
+import { RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   magicGoldMatrixPackages,
@@ -311,23 +311,11 @@ interface TransactionRow {
 const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
   const { address } = useWallet();
   const activeWalletAddress = walletAddress || address;
-  const [_page, setPage] = useState(1);
+  // const [_page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [userNumericId, setUserNumericId] = useState("0");
   const [maxActivePkg, setMaxActivePkg] = useState(1);
-  const [purchaseHistory, setPurchaseHistory] = useState<TransactionRow[]>([]);
-  // const [packageMetrics, setPackageMetrics] = useState
-  //   <Record
-  //     number,
-  //     {
-  //       partnersCount: number;
-  //       level5Count: number;
-  //       recycleCount: number;
-  //       tree?: LevelDataXGold["tree"];
-  //       revenue?: number;
-  //     }
-  //   >
-  // >({});
+  const [_purchaseHistory, setPurchaseHistory] = useState<TransactionRow[]>([]);
   const [packageMetrics, setPackageMetrics] = useState<
   Record<
     number,
@@ -353,23 +341,12 @@ const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
 
       try {
         setLoading(true);
-
-        // 1. Get user numeric ID & max active package directly from contract mapping
         const { numericId, stringId } =
           await fetchPackageAndId(activeWalletAddress);
         setUserNumericId(stringId);
 
         const activeMax = await fetchMaxActivePackage(activeWalletAddress);
-        // Ensure at least package 1 is active if they are registered
         setMaxActivePkg(Math.max(activeMax, 1));
-
-        // 2. Fetch specific matrix metrics + income for each package tier
-        // — one batched backend call for all 9 tiers instead of 9 x 4 requests
-        // (that many concurrent fetches still queued behind the browser's
-        // ~6-per-origin connection cap even when fired via Promise.all).
-        // NOTE: metricsMap holds data for ALL 9 packages, including locked
-        // ones — locked-package data is what powers the isDamage (red card)
-        // detection below. Only totalRevenue is capped to unlocked packages.
         const unlockedMax = Math.max(activeMax, 1);
         const summary = await fetchMagicGoldMatrixSummary(activeWalletAddress);
         const metricsMap: Record<number, any> = {};
@@ -389,10 +366,6 @@ const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
         }
         setPackageMetrics(metricsMap);
         setTotalRevenue(allTimeRevenue);
-
-        // 3. Fetch History Logs. fetchPurchaseHistory returns every track (LEVEL/
-        // SPONSOR/MATRIX) — this page is Matrix-only, and the table shows the
-        // current (highest unlocked) package's purchase, not every package mixed.
         const historyData = await fetchPurchaseHistory(activeWalletAddress);
         const currentPkg = Math.max(activeMax, 1);
         const formattedHistory: TransactionRow[] = historyData
@@ -433,9 +406,6 @@ const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
       tree: [],
     };
 
-    // A locked package's card turns red when the downline has already
-    // generated activity on it (placement, level-5 fill, or income) even
-    // though the logged-in user hasn't purchased/unlocked it themselves.
     const hasDownlinePurchasedUpper =
       !isUnlocked &&
       ((metrics.partnersCount ?? 0) > 0 ||
@@ -454,46 +424,46 @@ const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
     } as LevelDataXGold;
   });
 
-  const getRowIcon = (row: TransactionRow) => (
-    <>
-      {row.type === "recycle" ? (
-        <RefreshCw size={16} className="text-green-500" />
-      ) : (
-        <User size={16} className="text-gray-300" />
-      )}
-    </>
-  );
+  // const getRowIcon = (row: TransactionRow) => (
+  //   <>
+  //     {row.type === "recycle" ? (
+  //       <RefreshCw size={16} className="text-green-500" />
+  //     ) : (
+  //       <User size={16} className="text-gray-300" />
+  //     )}
+  //   </>
+  // );
 
-  const columns: Column<TransactionRow>[] = [
-    { key: "date", label: "Date" },
-    {
-      key: "refId",
-      label: "ID",
-      render: (r) => (
-        <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
-          ID {r.refId}
-        </span>
-      ),
-    },
-    { key: "level", label: "Package Level" },
-    {
-      key: "wallet",
-      label: "Wallet",
-      render: (r) => (
-        <WalletCell
-          address={r.fullWallet ?? r.wallet}
-          displayAddress={r.wallet}
-          explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? r.wallet}`}
-        />
-      ),
-    },
-    {
-      key: "amount",
-      label: "USDT",
-      align: "right",
-      render: (r) => <span className="text-white">{r.amount}</span>,
-    },
-  ];
+  // const columns: Column<TransactionRow>[] = [
+  //   { key: "date", label: "Date" },
+  //   {
+  //     key: "refId",
+  //     label: "ID",
+  //     render: (r) => (
+  //       <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
+  //         ID {r.refId}
+  //       </span>
+  //     ),
+  //   },
+  //   { key: "level", label: "Package Level" },
+  //   {
+  //     key: "wallet",
+  //     label: "Wallet",
+  //     render: (r) => (
+  //       <WalletCell
+  //         address={r.fullWallet ?? r.wallet}
+  //         displayAddress={r.wallet}
+  //         explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? r.wallet}`}
+  //       />
+  //     ),
+  //   },
+  //   {
+  //     key: "amount",
+  //     label: "USDT",
+  //     align: "right",
+  //     render: (r) => <span className="text-white">{r.amount}</span>,
+  //   },
+  // ];
 
   return (
     <div className="w-full text-white">
