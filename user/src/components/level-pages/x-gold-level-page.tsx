@@ -2,7 +2,7 @@ import { RefreshCw, User, Gift } from "lucide-react";
 import DataTable, { type Column } from "../data-table";
 import WalletCell from "../wallet-cell";
 import LevelPageLayout from "../level-page-layout";
-import { useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import MatrixTreeCardXGold, { type TreeNode } from "../matrix-tree-card-x-gold";
 import {
