@@ -157,6 +157,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
     manualUpgrades, matrixAutoUpgrades, sponsorAutoUpgrades,
     matrixPlacements, level5Reentries, sponsorReentries,
     matrixIncomeHelds, sponsorIncomeHelds,
+    incomeCappeds, sponsorIncomeRedirecteds, levelIncomeRedirecteds,
   ] = await Promise.all([
     contract.queryFilter(contract.filters.UserRegistered(), fromBlock, toBlock),
     contract.queryFilter(contract.filters.MatrixIncome(), fromBlock, toBlock),
@@ -170,6 +171,9 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
     contract.queryFilter(contract.filters.SponsorReEntry(), fromBlock, toBlock),
     contract.queryFilter(contract.filters.MatrixIncomeHeld(), fromBlock, toBlock),
     contract.queryFilter(contract.filters.SponsorIncomeHeld(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.IncomeCapped(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.SponsorIncomeRedirected(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.LevelIncomeRedirected(), fromBlock, toBlock),
   ]);
 
   const blockNumbers = new Set<number>();
@@ -178,6 +182,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
     ...manualUpgrades, ...matrixAutoUpgrades, ...sponsorAutoUpgrades,
     ...matrixPlacements, ...level5Reentries, ...sponsorReentries,
     ...matrixIncomeHelds, ...sponsorIncomeHelds,
+    ...incomeCappeds, ...sponsorIncomeRedirecteds, ...levelIncomeRedirecteds,
   ]) blockNumbers.add(log.blockNumber);
   await Promise.all([...blockNumbers].map((bn) => timestampOf(bn)));
 
@@ -357,6 +362,9 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
       ...sponsorReentries.map((l) => lc((l as any).args.sponsor)),
       ...matrixIncomeHelds.map((l) => lc((l as any).args.user)),
       ...sponsorIncomeHelds.map((l) => lc((l as any).args.sponsor)),
+      ...incomeCappeds.map((l) => lc((l as any).args.user)),
+      ...sponsorIncomeRedirecteds.map((l) => lc((l as any).args.wouldBeReceiver)),
+      ...levelIncomeRedirecteds.map((l) => lc((l as any).args.wouldBeReceiver)),
     ];
     const sponsorMap = await resolveSponsors(tx, walletsNeedingSponsor);
     // registrations' own sponsor is already known from the event itself
@@ -450,6 +458,33 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
         type: "SPONSOR_INCOME_HELD", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
         packageId: Number((log as any).args.packageId), amount: ((log as any).args.amount as bigint).toString(),
         cycle: (log as any).args.count as bigint,
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+
+    for (const log of incomeCappeds) {
+      const wallet = lc((log as any).args.user);
+      txRows.push({
+        type: "INCOME_CAPPED", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
+        amount: ((log as any).args.redirectedToAdmin as bigint).toString(),
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    for (const log of sponsorIncomeRedirecteds) {
+      const wallet = lc((log as any).args.wouldBeReceiver);
+      txRows.push({
+        type: "SPONSOR_INCOME_REDIRECTED", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
+        counterpartyAddress: lc((log as any).args.from), packageId: Number((log as any).args.packageId),
+        track: "SPONSOR", amount: ((log as any).args.amount as bigint).toString(),
+        blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
+      });
+    }
+    for (const log of levelIncomeRedirecteds) {
+      const wallet = lc((log as any).args.wouldBeReceiver);
+      txRows.push({
+        type: "LEVEL_INCOME_REDIRECTED", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
+        counterpartyAddress: lc((log as any).args.from), packageId: Number((log as any).args.packageId),
+        level: Number((log as any).args.level), track: "LEVEL", amount: ((log as any).args.amount as bigint).toString(),
         blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
       });
     }
