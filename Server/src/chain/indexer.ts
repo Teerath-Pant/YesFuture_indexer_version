@@ -208,6 +208,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
         await Promise.all(matrixIncomes.map(async (log) => ({
           receiver: lc((log as any).args.receiver),
           fromAddress: lc((log as any).args.from),
+          packageId: Number((log as any).args.packageId),
           level: Number((log as any).args.level),
           amount: ((log as any).args.amount as bigint).toString(),
           blockNumber: BigInt(log.blockNumber),
@@ -381,7 +382,8 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
       const wallet = lc((log as any).args.receiver);
       txRows.push({
         type: "MATRIX_INCOME", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
-        counterpartyAddress: lc((log as any).args.from), level: Number((log as any).args.level),
+        counterpartyAddress: lc((log as any).args.from), packageId: Number((log as any).args.packageId),
+        level: Number((log as any).args.level),
         amount: ((log as any).args.amount as bigint).toString(),
         blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
       });
