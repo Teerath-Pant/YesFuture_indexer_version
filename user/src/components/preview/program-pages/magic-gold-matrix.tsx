@@ -159,8 +159,8 @@ useEffect(() => {
       key: "refId",
       label: "ID",
       render: (r) => (
-        <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
-          ID {r.refId}
+        <span className="text-blue-400 font-medium px-2 py-1 rounded-full">
+          {r.refId}
         </span>
       ),
     },
@@ -180,7 +180,7 @@ useEffect(() => {
       key: "amount",
       label: "USDT",
       align: "right",
-      render: (r) => <span className="text-white">{r.amount}</span>,
+      render: (r) => <span className="text-green-400 font-semibold">{r.amount}</span>,
     },
   ];
 

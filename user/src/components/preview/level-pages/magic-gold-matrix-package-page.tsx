@@ -389,8 +389,8 @@ export const PreviewMagicGoldMatrixLevelPackagePage = ({
       key: "refId",
       label: "ID",
       render: (r) => (
-        <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
-          ID {r.refId}
+        <span className="text-blue-400 font-medium px-2 py-1 rounded-full">
+          {r.refId}
         </span>
       ),
     },
@@ -412,7 +412,7 @@ export const PreviewMagicGoldMatrixLevelPackagePage = ({
       align: "right",
       render: (r) => (
         <span
-          className={r.type === "release" ? "text-violet-400" : "text-white"}
+          className={r.type === "release" ? "text-green-500 font-semibold" : "text-green-500 font-semibold"}
         >
           {r.amount}
         </span>

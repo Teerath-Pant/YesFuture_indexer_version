@@ -197,7 +197,7 @@ function LeaderboardCard() {
                 <span className="text-right text-sm text-gray-300 sm:text-center">
                   {row.partners}
                 </span>
-                <span className="text-right text-sm font-semibold">
+                <span className="text-right text-sm text-green-400 font-semibold">
                   {formatAmount(row.profit)} USDT
                 </span>
               </div>

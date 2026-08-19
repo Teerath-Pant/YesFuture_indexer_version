@@ -10,6 +10,11 @@ import {
 } from "@/lib/auth-api";
 
 import {
+  RegistrationOverlay,
+  type RegistrationStep,
+} from "@/components/registration-overlay";
+
+import {
   AuthShell,
   Field,
   inputClasses,
@@ -49,7 +54,11 @@ function SignUpPage() {
   const [isCheckingWallet, setIsCheckingWallet] = useState(false);
 
   // Transaction states
-  const [txStatus, setTxStatus] = useState<"idle" | "approving" | "registering">("idle");
+  // const [txStatus, setTxStatus] = useState<"idle" | "approving" | "registering">("idle");
+  // const [registerError, setRegisterError] = useState<string | null>(null);
+
+  const [registrationStep, setRegistrationStep] =
+    useState<RegistrationStep | null>(null);
   const [registerError, setRegisterError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -118,21 +127,24 @@ function SignUpPage() {
     nameInput.trim().length > 0 &&
     !isAlreadyRegistered &&
     !isCheckingWallet &&
-    txStatus === "idle",
+    registrationStep === null,
   );
-
   const handleRegister = async () => {
     if (!canRegister || !connectedWallet) return;
 
     setRegisterError(null);
     try {
       await registerUser(sponsorIdInput, nameInput.trim(), (status) => {
-        setTxStatus(status as "approving" | "registering");
+        setRegistrationStep(status as RegistrationStep);
       });
 
-      navigate({ to: "/sign-in" });
+      setRegistrationStep("success");
+      setTimeout(() => {
+        navigate({ to: "/sign-in" });
+      }, 1400);
     } catch (error: any) {
       console.error("Registration error:", error);
+      setRegistrationStep(null);
       if (error.code === "ACTION_REJECTED") {
         setRegisterError("Transaction rejected by user in wallet.");
       } else if (error.message) {
@@ -142,16 +154,76 @@ function SignUpPage() {
           "Registration failed. Make sure you have 75 USDT and gas fees.",
         );
       }
-    } finally {
-      setTxStatus("idle");
     }
   };
+
+  // const handleRegister = async () => {
+  //   if (!canRegister || !connectedWallet) return;
+
+  //   setRegisterError(null);
+  //   try {
+  //     await registerUser(sponsorIdInput, nameInput.trim(), (status) => {
+  //       setRegistrationStep(status as RegistrationStep);
+  //     });
+
+  //     navigate({ to: "/sign-in" });
+  //   } catch (error: any) {
+  //     console.error("Registration error:", error);
+  //     if (error.code === "ACTION_REJECTED") {
+  //       setRegisterError("Transaction rejected by user in wallet.");
+  //     } else if (error.message) {
+  //       setRegisterError(error.message);
+  //     } else {
+  //       setRegisterError(
+  //         "Registration failed. Make sure you have 75 USDT and gas fees.",
+  //       );
+  //     }
+  //   } finally {
+  //     setRegistrationStep(null);
+  //   }
+  // };
+
+  // const canRegister = Boolean(
+  //   isSponsorValid &&
+  //   connectedWallet &&
+  //   nameInput.trim().length > 0 &&
+  //   !isAlreadyRegistered &&
+  //   !isCheckingWallet &&
+  //   txStatus === "idle",
+  // );
+
+  // const handleRegister = async () => {
+  //   if (!canRegister || !connectedWallet) return;
+
+  //   setRegisterError(null);
+  //   try {
+  //     await registerUser(sponsorIdInput, nameInput.trim(), (status) => {
+  //       setTxStatus(status as "approving" | "registering");
+  //     });
+
+  //     navigate({ to: "/sign-in" });
+  //   } catch (error: any) {
+  //     console.error("Registration error:", error);
+  //     if (error.code === "ACTION_REJECTED") {
+  //       setRegisterError("Transaction rejected by user in wallet.");
+  //     } else if (error.message) {
+  //       setRegisterError(error.message);
+  //     } else {
+  //       setRegisterError(
+  //         "Registration failed. Make sure you have 75 USDT and gas fees.",
+  //       );
+  //     }
+  //   } finally {
+  //     setTxStatus("idle");
+  //   }
+  // };
 
   return (
     <AuthShell
       title="Create account"
-      subtitle="Sponsor ID daal kar register karein"
+      subtitle="Enter your sponsor ID to register"
     >
+      <RegistrationOverlay step={registrationStep} />
       <Field label="SPONSOR ID *">
         <input
           value={sponsorIdInput}
@@ -254,7 +326,7 @@ function SignUpPage() {
         </p>
       )}
 
-      <button
+      {/* <button
         type="button"
         onClick={handleRegister}
         disabled={!canRegister}
@@ -272,6 +344,14 @@ function SignUpPage() {
           </>
         )}
         {txStatus === "idle" && "Register"}
+      </button> */}
+      <button
+        type="button"
+        onClick={handleRegister}
+        disabled={!canRegister}
+        className={primaryButtonClasses}
+      >
+        Register
       </button>
 
       {registerError && (
