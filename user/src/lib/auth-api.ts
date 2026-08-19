@@ -1872,9 +1872,21 @@ export type SlotType =
 type MatrixSlotType =
   "direct" | "spilloverAbove" | "spilloverBelow" | "gift" | "empty";
 
+// export interface MagicGoldMatrixStructure {
+//   root: string;
+//   nodes: string[];
+//   tree: MatrixSlotType[][];
+//   filledCount: number;
+// }
+
 export interface MagicGoldMatrixStructure {
   root: string;
   nodes: string[];
+  nodeInfos: ({
+    address: string;
+    isDirectPlacement: boolean;
+    isInDownline: boolean;
+  } | null)[];
   tree: MatrixSlotType[][];
   filledCount: number;
 }
@@ -3312,30 +3324,86 @@ export async function fetchMatrixTreeInfo(
 // /users/:address/magic-gold/:packageId/:cycleIndex, backed by matrix_placements
 // + level5_reentries. Null slots from the API are normalized to ZeroAddress so
 // callers' existing "!== ZeroAddress" empty-slot checks keep working unchanged.
+
+// export async function fetchMagicGoldMatrixStructure(
+//   walletAddress: string,
+//   packageId: number,
+//   cycleIndex = 0,
+// ): Promise<MagicGoldMatrixStructure> {
+//   try {
+//     const data = await apiGet<{ root: string; nodes: (string | null)[] }>(
+//       `/users/${walletAddress}/magic-gold/${packageId}/${cycleIndex}`,
+//     );
+//     if (!data) throw new Error("empty response");
+
+//     const root = data.root;
+//     const nodes = data.nodes.map((n) => n ?? ethers.ZeroAddress);
+//     const visibleNodes = nodes.slice(0, 30);
+//     const toSlot = (address: string): MatrixSlotType =>
+//       address && address !== ethers.ZeroAddress ? "direct" : "empty";
+
+//     const filledCount = visibleNodes.filter(
+//       (address) => address && address !== ethers.ZeroAddress,
+//     ).length;
+
+//     return {
+//       root,
+//       nodes,
+//       tree: [
+//         visibleNodes.slice(0, 2).map(toSlot),
+//         visibleNodes.slice(2, 6).map(toSlot),
+//         visibleNodes.slice(6, 14).map(toSlot),
+//         visibleNodes.slice(14, 30).map(toSlot),
+//       ],
+//       filledCount,
+//     };
+//   } catch (error) {
+//     console.error(
+//       `Error fetching magic gold matrix structure for package ${packageId}:`,
+//       error,
+//     );
+//     return { root: ethers.ZeroAddress, nodes: [], tree: [], filledCount: 0 };
+//   }
+// }
+
 export async function fetchMagicGoldMatrixStructure(
   walletAddress: string,
   packageId: number,
   cycleIndex = 0,
 ): Promise<MagicGoldMatrixStructure> {
   try {
-    const data = await apiGet<{ root: string; nodes: (string | null)[] }>(
-      `/users/${walletAddress}/magic-gold/${packageId}/${cycleIndex}`,
-    );
+    const data = await apiGet<{
+      root: string;
+      nodes: ({
+        address: string;
+        isDirectPlacement: boolean;
+        isInDownline: boolean;
+      } | null)[];
+    }>(`/users/${walletAddress}/magic-gold/${packageId}/${cycleIndex}`);
     if (!data) throw new Error("empty response");
 
     const root = data.root;
-    const nodes = data.nodes.map((n) => n ?? ethers.ZeroAddress);
-    const visibleNodes = nodes.slice(0, 30);
-    const toSlot = (address: string): MatrixSlotType =>
-      address && address !== ethers.ZeroAddress ? "direct" : "empty";
+    const nodes = data.nodes.map((n) => n?.address ?? ethers.ZeroAddress);
+    const visibleNodes = data.nodes.slice(0, 30);
 
-    const filledCount = visibleNodes.filter(
-      (address) => address && address !== ethers.ZeroAddress,
-    ).length;
+    const toSlot = (
+      node: {
+        address: string;
+        isDirectPlacement: boolean;
+        isInDownline: boolean;
+      } | null,
+    ): MatrixSlotType => {
+      if (!node) return "empty";
+      if (node.isDirectPlacement) return "direct";
+      return node.isInDownline ? "spilloverAbove" : "spilloverBelow";
+    };
+
+    const filledCount = visibleNodes.filter((n) => n !== null).length;
 
     return {
       root,
       nodes,
+      nodeInfos: data.nodes,
       tree: [
         visibleNodes.slice(0, 2).map(toSlot),
         visibleNodes.slice(2, 6).map(toSlot),
@@ -3349,7 +3417,13 @@ export async function fetchMagicGoldMatrixStructure(
       `Error fetching magic gold matrix structure for package ${packageId}:`,
       error,
     );
-    return { root: ethers.ZeroAddress, nodes: [], tree: [], filledCount: 0 };
+    return {
+      root: ethers.ZeroAddress,
+      nodes: [],
+      nodeInfos: [],
+      tree: [],
+      filledCount: 0,
+    };
   }
 }
 
@@ -3960,16 +4034,25 @@ export async function fetchMagicGoldMatrixSummary(walletAddress: string) {
         partnersCount: number;
         level5Count: number;
         cycleCount: number;
-        nodes: ({ address: string; isDirectPlacement: boolean } | null)[];
+        nodes: ({
+          address: string;
+          isDirectPlacement: boolean;
+          isInDownline: boolean;
+        } | null)[];
         revenue: string;
       }[];
     }>(`/users/${walletAddress}/magic-gold-summary`);
 
     const toSlot = (
-      node: { address: string; isDirectPlacement: boolean } | null,
+      node: {
+        address: string;
+        isDirectPlacement: boolean;
+        isInDownline: boolean;
+      } | null,
     ): MatrixSlotType => {
       if (!node) return "empty";
-      return node.isDirectPlacement ? "direct" : "spilloverAbove";
+      if (node.isDirectPlacement) return "direct";
+      return node.isInDownline ? "spilloverAbove" : "spilloverBelow";
     };
 
     const result: Record<

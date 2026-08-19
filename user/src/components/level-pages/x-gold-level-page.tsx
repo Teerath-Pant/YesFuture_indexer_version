@@ -281,7 +281,7 @@ export const XGoldLevelPage = ({
     let isCancelled = false;
 
     async function loadMatrixStructure() {
-      if ((!address) || !levelNum) {
+      if (!address || !levelNum) {
         setIsLoadingMatrix(false);
         return;
       }
@@ -302,20 +302,53 @@ export const XGoldLevelPage = ({
           fetchPackageAndId(targetAddress),
           fetchPackageMatrixDetails(targetAddress, levelNum),
           fetchMatrixPackagePrice(levelNum),
-          fetchMagicGoldMatrixStructure(targetAddress, levelNum, Math.max(cycle - 1, 0)),
+          fetchMagicGoldMatrixStructure(
+            targetAddress,
+            levelNum,
+            Math.max(cycle - 1, 0),
+          ),
         ]);
 
-        const visibleNodes = structure.nodes.slice(0, 62);
-        const idByAddress = await fetchMemberIdsForAddresses(visibleNodes);
-        const matrixIncomeRows = await fetchUserMatrixIncomeHistory(targetAddress, levelNum);
-        const toNode = (nodeAddress: string): TreeNode => {
-          if (!nodeAddress || nodeAddress === "0x0000000000000000000000000000000000000000") {
-            return { slot: "empty" };
-          }
+        // const visibleNodes = structure.nodes.slice(0, 62);
+        // const idByAddress = await fetchMemberIdsForAddresses(visibleNodes);
+
+        const visibleNodes = structure.nodeInfos.slice(0, 62);
+        const idByAddress = await fetchMemberIdsForAddresses(
+          structure.nodes.slice(0, 62),
+        );
+        const matrixIncomeRows = await fetchUserMatrixIncomeHistory(
+          targetAddress,
+          levelNum,
+        );
+        // const toNode = (nodeAddress: string): TreeNode => {
+        //   if (!nodeAddress || nodeAddress === "0x0000000000000000000000000000000000000000") {
+        //     return { slot: "empty" };
+        //   }
+
+        //   return {
+        //     slot: "direct",
+        //     id: idByAddress[nodeAddress.toLowerCase()] || undefined,
+        //   };
+        // };
+
+        const toNode = (
+          node: {
+            address: string;
+            isDirectPlacement: boolean;
+            isInDownline: boolean;
+          } | null,
+        ): TreeNode => {
+          if (!node) return { slot: "empty" };
+
+          const slot: TreeNode["slot"] = node.isDirectPlacement
+            ? "direct"
+            : node.isInDownline
+              ? "spilloverAbove"
+              : "spilloverBelow";
 
           return {
-            slot: "direct",
-            id: idByAddress[nodeAddress.toLowerCase()] || undefined,
+            slot,
+            id: idByAddress[node.address.toLowerCase()] || undefined,
           };
         };
 
@@ -404,7 +437,7 @@ export const XGoldLevelPage = ({
     },
   ];
 
-  console.log(incomeRows)
+  console.log(incomeRows);
 
   return (
     <div className="w-full text-white">

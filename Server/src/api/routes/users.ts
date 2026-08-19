@@ -24,7 +24,8 @@ function isAddress(v: string) {
 // their very first purchase (e.g. 260%+ "profit ratio").
 usersRouter.get("/:address/total-invested", async (req, res) => {
   const user = req.params.address.toLowerCase();
-  if (!isAddress(user)) return res.status(400).json({ error: "invalid address" });
+  if (!isAddress(user))
+    return res.status(400).json({ error: "invalid address" });
 
   const rows = await db.execute(sql`
     SELECT COALESCE(SUM(amount), 0) AS total
@@ -39,14 +40,20 @@ usersRouter.get("/:address/total-invested", async (req, res) => {
 // per-address live memberStringId RPC loops (e.g. resolving up to 62 matrix
 // tree node addresses one call at a time) with a single query.
 usersRouter.get("/string-ids", async (req, res) => {
-  const raw = typeof req.query.addresses === "string" ? req.query.addresses : "";
-  const addresses = raw.split(",").map((a) => a.trim().toLowerCase()).filter(isAddress);
+  const raw =
+    typeof req.query.addresses === "string" ? req.query.addresses : "";
+  const addresses = raw
+    .split(",")
+    .map((a) => a.trim().toLowerCase())
+    .filter(isAddress);
   if (!addresses.length) return res.json({});
 
-  const rows = await db.select({
-    address: schema.userRegistrations.memberAddress,
-    stringId: schema.userRegistrations.stringId,
-  }).from(schema.userRegistrations)
+  const rows = await db
+    .select({
+      address: schema.userRegistrations.memberAddress,
+      stringId: schema.userRegistrations.stringId,
+    })
+    .from(schema.userRegistrations)
     .where(inArray(schema.userRegistrations.memberAddress, addresses));
 
   res.json(Object.fromEntries(rows.map((r) => [r.address, r.stringId])));
@@ -57,19 +64,32 @@ usersRouter.get("/string-ids", async (req, res) => {
 // (user_details.userName — off-chain display name, see PUT /:address/name).
 usersRouter.get("/:address/profile", async (req, res) => {
   const user = req.params.address.toLowerCase();
-  if (!isAddress(user)) return res.status(400).json({ error: "invalid address" });
-  const [stringId, numericId, sponsorAddr, totalDirects, joinDate, isActive, detailsRows] = await Promise.all([
+  if (!isAddress(user))
+    return res.status(400).json({ error: "invalid address" });
+  const [
+    stringId,
+    numericId,
+    sponsorAddr,
+    totalDirects,
+    joinDate,
+    isActive,
+    detailsRows,
+  ] = await Promise.all([
     contract.memberStringId(user),
     contract.memberId(user),
     contract.sponsor(user),
     contract.referralCount(user),
     contract.activationDate(user),
     contract.topupFlag(user),
-    db.select({ userName: schema.userDetails.userName }).from(schema.userDetails).where(eq(schema.userDetails.userAddress, user)),
+    db
+      .select({ userName: schema.userDetails.userName })
+      .from(schema.userDetails)
+      .where(eq(schema.userDetails.userAddress, user)),
   ]);
-  const sponsorStringId = sponsorAddr && sponsorAddr !== "0x0000000000000000000000000000000000000000"
-    ? await contract.memberStringId(sponsorAddr)
-    : "";
+  const sponsorStringId =
+    sponsorAddr && sponsorAddr !== "0x0000000000000000000000000000000000000000"
+      ? await contract.memberStringId(sponsorAddr)
+      : "";
   res.json({
     stringId,
     numericId: numericId.toString(),
@@ -93,7 +113,8 @@ usersRouter.put("/:address/name", async (req, res) => {
     return res.status(400).json({ error: "INVALID_NAME_LENGTH" });
   }
 
-  const result = await db.update(schema.userDetails)
+  const result = await db
+    .update(schema.userDetails)
     .set({ userName: name })
     .where(eq(schema.userDetails.userAddress, user))
     .returning({ userName: schema.userDetails.userName });
@@ -105,15 +126,21 @@ usersRouter.put("/:address/name", async (req, res) => {
 // Live proxy — replaces deleted getUserPackages.
 usersRouter.get("/:address/packages", async (req, res) => {
   const user = req.params.address.toLowerCase();
-  const [matrixPackageId, maxMatrixPackage, sponsorPackageId, maxSponsorPackage, levelPackageId, maxLevelPackage] =
-    await Promise.all([
-      contract.matrixPackageId(user),
-      contract.maxMatrixPackage(user),
-      contract.sponsorPackageId(user),
-      contract.maxSponsorPackage(user),
-      contract.levelPackageId(user),
-      contract.maxLevelPackage(user),
-    ]);
+  const [
+    matrixPackageId,
+    maxMatrixPackage,
+    sponsorPackageId,
+    maxSponsorPackage,
+    levelPackageId,
+    maxLevelPackage,
+  ] = await Promise.all([
+    contract.matrixPackageId(user),
+    contract.maxMatrixPackage(user),
+    contract.sponsorPackageId(user),
+    contract.maxSponsorPackage(user),
+    contract.levelPackageId(user),
+    contract.maxLevelPackage(user),
+  ]);
   res.json({
     matrix: { current: matrixPackageId, max: maxMatrixPackage },
     sponsor: { current: sponsorPackageId, max: maxSponsorPackage },
@@ -125,7 +152,12 @@ usersRouter.get("/:address/packages", async (req, res) => {
 usersRouter.get("/:address/cycle-hold/:packageId", async (req, res) => {
   const user = req.params.address.toLowerCase();
   const packageId = Number(req.params.packageId);
-  const [matrixMembersFilled, matrixHoldAmount, sponsorMembersFilled, sponsorHoldAmount] = await Promise.all([
+  const [
+    matrixMembersFilled,
+    matrixHoldAmount,
+    sponsorMembersFilled,
+    sponsorHoldAmount,
+  ] = await Promise.all([
     contract.level5MemberCountByPkg(packageId, user),
     contract.matrixHoldByPkg(packageId, user),
     contract.sponsorCycleCountByPkg(packageId, user),
@@ -147,11 +179,13 @@ usersRouter.get("/:address/cycle-hold/:packageId", async (req, res) => {
 usersRouter.get("/:address/direct-partners", async (req, res) => {
   const user = req.params.address.toLowerCase();
 
-  const registrations = await db.select({
-    memberAddress: schema.userRegistrations.memberAddress,
-    stringId: schema.userRegistrations.stringId,
-    blockTimestamp: schema.userRegistrations.blockTimestamp,
-  }).from(schema.userRegistrations)
+  const registrations = await db
+    .select({
+      memberAddress: schema.userRegistrations.memberAddress,
+      stringId: schema.userRegistrations.stringId,
+      blockTimestamp: schema.userRegistrations.blockTimestamp,
+    })
+    .from(schema.userRegistrations)
     .where(eq(schema.userRegistrations.sponsorAddress, user))
     .orderBy(schema.userRegistrations.blockTimestamp);
 
@@ -160,44 +194,78 @@ usersRouter.get("/:address/direct-partners", async (req, res) => {
   const addresses = registrations.map((r) => r.memberAddress);
 
   const [incomeRows, dashboardRows, packageRows] = await Promise.all([
-    db.select({ walletAddress: schema.income.walletAddress, totalIncome: schema.income.totalIncome })
-      .from(schema.income).where(inArray(schema.income.walletAddress, addresses)),
-    db.select({ userAddress: schema.dashboard.userAddress, directPartners: schema.dashboard.directPartners })
-      .from(schema.dashboard).where(inArray(schema.dashboard.userAddress, addresses)),
-    Promise.all(addresses.map(async (addr) => ({
-      address: addr,
-      sponsorPackageId: Number(await contract.sponsorPackageId(addr)),
-      matrixPackageId: Number(await contract.matrixPackageId(addr)),
-      levelPackageId: Number(await contract.levelPackageId(addr)),
-    }))),
+    db
+      .select({
+        walletAddress: schema.income.walletAddress,
+        totalIncome: schema.income.totalIncome,
+      })
+      .from(schema.income)
+      .where(inArray(schema.income.walletAddress, addresses)),
+    db
+      .select({
+        userAddress: schema.dashboard.userAddress,
+        directPartners: schema.dashboard.directPartners,
+      })
+      .from(schema.dashboard)
+      .where(inArray(schema.dashboard.userAddress, addresses)),
+    Promise.all(
+      addresses.map(async (addr) => ({
+        address: addr,
+        sponsorPackageId: Number(await contract.sponsorPackageId(addr)),
+        matrixPackageId: Number(await contract.matrixPackageId(addr)),
+        levelPackageId: Number(await contract.levelPackageId(addr)),
+      })),
+    ),
   ]);
 
-  const incomeByAddress = new Map(incomeRows.map((r) => [r.walletAddress, r.totalIncome]));
-  const partnersByAddress = new Map(dashboardRows.map((r) => [r.userAddress, r.directPartners.toString()]));
+  const incomeByAddress = new Map(
+    incomeRows.map((r) => [r.walletAddress, r.totalIncome]),
+  );
+  const partnersByAddress = new Map(
+    dashboardRows.map((r) => [r.userAddress, r.directPartners.toString()]),
+  );
   const packagesByAddress = new Map(packageRows.map((r) => [r.address, r]));
 
-  res.json(registrations.map((r, i) => ({
-    id: i + 1,
-    date: r.blockTimestamp,
-    wallet: r.memberAddress,
-    stringId: r.stringId,
-    sponsorPackageId: packagesByAddress.get(r.memberAddress)?.sponsorPackageId ?? 0,
-    matrixPackageId: packagesByAddress.get(r.memberAddress)?.matrixPackageId ?? 0,
-    levelPackageId: packagesByAddress.get(r.memberAddress)?.levelPackageId ?? 0,
-    totalIncome: incomeByAddress.get(r.memberAddress) ?? "0",
-    directPartners: partnersByAddress.get(r.memberAddress) ?? "0",
-  })));
+  res.json(
+    registrations.map((r, i) => ({
+      id: i + 1,
+      date: r.blockTimestamp,
+      wallet: r.memberAddress,
+      stringId: r.stringId,
+      sponsorPackageId:
+        packagesByAddress.get(r.memberAddress)?.sponsorPackageId ?? 0,
+      matrixPackageId:
+        packagesByAddress.get(r.memberAddress)?.matrixPackageId ?? 0,
+      levelPackageId:
+        packagesByAddress.get(r.memberAddress)?.levelPackageId ?? 0,
+      totalIncome: incomeByAddress.get(r.memberAddress) ?? "0",
+      directPartners: partnersByAddress.get(r.memberAddress) ?? "0",
+    })),
+  );
 });
 
 // Replaces deleted getUserPackageHistory / getUserHistoryByTrack.
 usersRouter.get("/:address/history/packages", async (req, res) => {
   const user = req.params.address.toLowerCase();
-  const track = typeof req.query.track === "string" ? req.query.track.toUpperCase() : undefined;
-  const rows = await db.select().from(schema.packagePurchaseEvents).where(
-    track
-      ? and(eq(schema.packagePurchaseEvents.memberAddress, user), eq(schema.packagePurchaseEvents.track, track))
-      : eq(schema.packagePurchaseEvents.memberAddress, user)
-  ).orderBy(schema.packagePurchaseEvents.blockNumber, schema.packagePurchaseEvents.logIndex);
+  const track =
+    typeof req.query.track === "string"
+      ? req.query.track.toUpperCase()
+      : undefined;
+  const rows = await db
+    .select()
+    .from(schema.packagePurchaseEvents)
+    .where(
+      track
+        ? and(
+            eq(schema.packagePurchaseEvents.memberAddress, user),
+            eq(schema.packagePurchaseEvents.track, track),
+          )
+        : eq(schema.packagePurchaseEvents.memberAddress, user),
+    )
+    .orderBy(
+      schema.packagePurchaseEvents.blockNumber,
+      schema.packagePurchaseEvents.logIndex,
+    );
   res.json(rows);
 });
 
@@ -241,7 +309,8 @@ usersRouter.get("/:address/history/direct-income", async (req, res) => {
 // sponsor's own DirectIncome feed to begin with.
 usersRouter.get("/:address/sponsor-recycle-counts", async (req, res) => {
   const user = req.params.address.toLowerCase();
-  if (!isAddress(user)) return res.status(400).json({ error: "invalid address" });
+  if (!isAddress(user))
+    return res.status(400).json({ error: "invalid address" });
 
   const rows = await db.execute(sql`
     SELECT package_id, count(*)::int AS count
@@ -264,7 +333,8 @@ usersRouter.get("/:address/sponsor-recycle-counts", async (req, res) => {
 // showing only 2 dots here too.
 usersRouter.get("/:address/sponsor-held-summary", async (req, res) => {
   const user = req.params.address.toLowerCase();
-  if (!isAddress(user)) return res.status(400).json({ error: "invalid address" });
+  if (!isAddress(user))
+    return res.status(400).json({ error: "invalid address" });
 
   const rows = await db.execute(sql`
     SELECT held.package_id, ur.string_id AS from_string_id
@@ -295,11 +365,13 @@ usersRouter.get("/:address/sponsor-held-summary", async (req, res) => {
 // buyer the same way matrix-income-total does — join on tx_hash against the
 // PACKAGE_PURCHASE(SPONSOR) row from the SAME transaction (every purchase
 // that can trigger a hold, registration included, always emits one).
-usersRouter.get("/:address/history/sponsor-held/:packageId", async (req, res) => {
-  const user = req.params.address.toLowerCase();
-  const packageId = Number(req.params.packageId);
+usersRouter.get(
+  "/:address/history/sponsor-held/:packageId",
+  async (req, res) => {
+    const user = req.params.address.toLowerCase();
+    const packageId = Number(req.params.packageId);
 
-  const rows = await db.execute(sql`
+    const rows = await db.execute(sql`
     SELECT held.id, held.wallet_address AS receiver, buyer.wallet_address AS from_address,
            held.package_id, held.cycle, held.amount, held.block_timestamp,
            ur.string_id AS from_string_id
@@ -314,8 +386,9 @@ usersRouter.get("/:address/history/sponsor-held/:packageId", async (req, res) =>
     ORDER BY held.block_number, held.log_index
   `);
 
-  res.json(rows);
-});
+    res.json(rows);
+  },
+);
 
 // Replaces deleted getUserMatrixIncomeHistory.
 // usersRouter.get("/:address/history/matrix-income", async (req, res) => {
@@ -349,19 +422,35 @@ usersRouter.get("/:address/history/matrix-income", async (req, res) => {
   res.json(rows);
 });
 
-
 // Replaces deleted getMatrixTreeInfo — parent/children rebuilt from MatrixPlaced events.
 usersRouter.get("/:address/matrix-tree/:packageId", async (req, res) => {
   const user = req.params.address.toLowerCase();
   const packageId = Number(req.params.packageId);
 
   const [parentRow, children] = await Promise.all([
-    db.select({ parentAddress: schema.matrixPlacements.parentAddress }).from(schema.matrixPlacements)
-      .where(and(eq(schema.matrixPlacements.childAddress, user), eq(schema.matrixPlacements.packageId, packageId)))
+    db
+      .select({ parentAddress: schema.matrixPlacements.parentAddress })
+      .from(schema.matrixPlacements)
+      .where(
+        and(
+          eq(schema.matrixPlacements.childAddress, user),
+          eq(schema.matrixPlacements.packageId, packageId),
+        ),
+      )
       .limit(1),
-    db.select({ childAddress: schema.matrixPlacements.childAddress }).from(schema.matrixPlacements)
-      .where(and(eq(schema.matrixPlacements.parentAddress, user), eq(schema.matrixPlacements.packageId, packageId)))
-      .orderBy(schema.matrixPlacements.blockNumber, schema.matrixPlacements.logIndex),
+    db
+      .select({ childAddress: schema.matrixPlacements.childAddress })
+      .from(schema.matrixPlacements)
+      .where(
+        and(
+          eq(schema.matrixPlacements.parentAddress, user),
+          eq(schema.matrixPlacements.packageId, packageId),
+        ),
+      )
+      .orderBy(
+        schema.matrixPlacements.blockNumber,
+        schema.matrixPlacements.logIndex,
+      ),
   ]);
 
   res.json({
@@ -374,11 +463,13 @@ usersRouter.get("/:address/matrix-tree/:packageId", async (req, res) => {
 // every payout it emits happens inside the same transaction as the purchase
 // that triggered it — so joining on tx_hash + buyer address recovers the
 // packageId exactly (not a guess: one purchase tx = one buyer = one package).
-usersRouter.get("/:address/matrix-income-total/:packageId", async (req, res) => {
-  const user = req.params.address.toLowerCase();
-  const packageId = Number(req.params.packageId);
+usersRouter.get(
+  "/:address/matrix-income-total/:packageId",
+  async (req, res) => {
+    const user = req.params.address.toLowerCase();
+    const packageId = Number(req.params.packageId);
 
-  const rows = await db.execute(sql`
+    const rows = await db.execute(sql`
     SELECT COALESCE(SUM(mi.amount), 0) AS total
     FROM matrix_income_events mi
     JOIN package_purchase_events pp
@@ -388,8 +479,9 @@ usersRouter.get("/:address/matrix-income-total/:packageId", async (req, res) => 
     WHERE mi.receiver = ${user} AND pp.package_id = ${packageId}
   `);
 
-  res.json({ total: (rows[0] as any)?.total ?? "0" });
-});
+    res.json({ total: (rows[0] as any)?.total ?? "0" });
+  },
+);
 
 // Same tx_hash-join trick as matrix-income-total: LevelIncome carries no
 // packageId either (its "level" field is sponsor-chain depth, not package
@@ -418,73 +510,202 @@ usersRouter.get("/:address/level-income-total/:packageId", async (req, res) => {
 usersRouter.get("/:address/magic-gold/:packageId/cycles", async (req, res) => {
   const user = req.params.address.toLowerCase();
   const packageId = Number(req.params.packageId);
-  const reentries = await db.select({ phantomNode: schema.level5Reentries.phantomNode })
+  const reentries = await db
+    .select({ phantomNode: schema.level5Reentries.phantomNode })
     .from(schema.level5Reentries)
-    .where(and(eq(schema.level5Reentries.userAddress, user), eq(schema.level5Reentries.packageId, packageId)))
+    .where(
+      and(
+        eq(schema.level5Reentries.userAddress, user),
+        eq(schema.level5Reentries.packageId, packageId),
+      ),
+    )
     .orderBy(schema.level5Reentries.cycleNumber);
-  res.json({ count: 1 + reentries.length, roots: [user, ...reentries.map((r) => r.phantomNode)] });
+  res.json({
+    count: 1 + reentries.length,
+    roots: [user, ...reentries.map((r) => r.phantomNode)],
+  });
 });
 
-usersRouter.get("/:address/magic-gold/:packageId/:cycleIndex", async (req, res) => {
-  const user = req.params.address.toLowerCase();
-  const packageId = Number(req.params.packageId);
-  const cycleIndex = Number(req.params.cycleIndex);
+// usersRouter.get(
+//   "/:address/magic-gold/:packageId/:cycleIndex",
+//   async (req, res) => {
+//     const user = req.params.address.toLowerCase();
+//     const packageId = Number(req.params.packageId);
+//     const cycleIndex = Number(req.params.cycleIndex);
 
-  let root: string;
-  if (cycleIndex === 0) {
-    root = user;
-  } else {
-    const reentries = await db.select({ phantomNode: schema.level5Reentries.phantomNode })
-      .from(schema.level5Reentries)
-      .where(and(eq(schema.level5Reentries.userAddress, user), eq(schema.level5Reentries.packageId, packageId)))
-      .orderBy(schema.level5Reentries.cycleNumber);
-    if (cycleIndex - 1 >= reentries.length) return res.status(400).json({ error: "BAD_CYCLE_INDEX" });
-    root = reentries[cycleIndex - 1].phantomNode;
-  }
+//     let root: string;
+//     if (cycleIndex === 0) {
+//       root = user;
+//     } else {
+//       const reentries = await db
+//         .select({ phantomNode: schema.level5Reentries.phantomNode })
+//         .from(schema.level5Reentries)
+//         .where(
+//           and(
+//             eq(schema.level5Reentries.userAddress, user),
+//             eq(schema.level5Reentries.packageId, packageId),
+//           ),
+//         )
+//         .orderBy(schema.level5Reentries.cycleNumber);
+//       if (cycleIndex - 1 >= reentries.length)
+//         return res.status(400).json({ error: "BAD_CYCLE_INDEX" });
+//       root = reentries[cycleIndex - 1].phantomNode;
+//     }
 
-  // 5-level, 2-children-per-node tree = 62 nodes total. Walk level by level.
-  const nodes: (string | null)[] = new Array(62).fill(null);
-  const levelStart = [0, 0, 2, 6, 14, 30];
-  let currentLevelParents = [root];
+//     // 5-level, 2-children-per-node tree = 62 nodes total. Walk level by level.
+//     const nodes: (string | null)[] = new Array(62).fill(null);
+//     const levelStart = [0, 0, 2, 6, 14, 30];
+//     let currentLevelParents = [root];
 
-  for (let lvl = 1; lvl <= 5; lvl++) {
-    const start = levelStart[lvl];
-    const rows = currentLevelParents.length
-      ? await db.select({
-          parentAddress: schema.matrixPlacements.parentAddress,
-          childAddress: schema.matrixPlacements.childAddress,
-        }).from(schema.matrixPlacements)
-        .where(and(
-          eq(schema.matrixPlacements.packageId, packageId),
-          inArray(schema.matrixPlacements.parentAddress, currentLevelParents)
-        ))
-        .orderBy(schema.matrixPlacements.blockNumber, schema.matrixPlacements.logIndex)
-      : [];
+//     for (let lvl = 1; lvl <= 5; lvl++) {
+//       const start = levelStart[lvl];
+//       const rows = currentLevelParents.length
+//         ? await db
+//             .select({
+//               parentAddress: schema.matrixPlacements.parentAddress,
+//               childAddress: schema.matrixPlacements.childAddress,
+//             })
+//             .from(schema.matrixPlacements)
+//             .where(
+//               and(
+//                 eq(schema.matrixPlacements.packageId, packageId),
+//                 inArray(
+//                   schema.matrixPlacements.parentAddress,
+//                   currentLevelParents,
+//                 ),
+//               ),
+//             )
+//             .orderBy(
+//               schema.matrixPlacements.blockNumber,
+//               schema.matrixPlacements.logIndex,
+//             )
+//         : [];
 
-    const childrenByParent = new Map<string, string[]>();
-    for (const row of rows) {
-      const list = childrenByParent.get(row.parentAddress) ?? [];
-      if (list.length < 2) list.push(row.childAddress);
-      childrenByParent.set(row.parentAddress, list);
+//       const childrenByParent = new Map<string, string[]>();
+//       for (const row of rows) {
+//         const list = childrenByParent.get(row.parentAddress) ?? [];
+//         if (list.length < 2) list.push(row.childAddress);
+//         childrenByParent.set(row.parentAddress, list);
+//       }
+
+//       const nextLevelParents: string[] = [];
+//       currentLevelParents.forEach((parent, p) => {
+//         const kids = childrenByParent.get(parent) ?? [];
+//         kids.forEach((child, c) => {
+//           nodes[start + p * 2 + c] = child;
+//           nextLevelParents.push(child);
+//         });
+//       });
+//       currentLevelParents = nextLevelParents.length
+//         ? nextLevelParents
+//         : new Array(Math.pow(2, lvl)).fill("");
+//     }
+
+//     res.json({ root, nodes });
+//   },
+// );
+
+
+usersRouter.get(
+  "/:address/magic-gold/:packageId/:cycleIndex",
+  async (req, res) => {
+    const user = req.params.address.toLowerCase();
+    const packageId = Number(req.params.packageId);
+    const cycleIndex = Number(req.params.cycleIndex);
+
+    let root: string;
+    if (cycleIndex === 0) {
+      root = user;
+    } else {
+      const reentries = await db
+        .select({ phantomNode: schema.level5Reentries.phantomNode })
+        .from(schema.level5Reentries)
+        .where(
+          and(
+            eq(schema.level5Reentries.userAddress, user),
+            eq(schema.level5Reentries.packageId, packageId),
+          ),
+        )
+        .orderBy(schema.level5Reentries.cycleNumber);
+      if (cycleIndex - 1 >= reentries.length)
+        return res.status(400).json({ error: "BAD_CYCLE_INDEX" });
+      root = reentries[cycleIndex - 1].phantomNode;
     }
 
-    const nextLevelParents: string[] = [];
-    currentLevelParents.forEach((parent, p) => {
-      const kids = childrenByParent.get(parent) ?? [];
-      kids.forEach((child, c) => {
-        nodes[start + p * 2 + c] = child;
-        nextLevelParents.push(child); // push, not indexed assign — a partly-filled
-        // level (some parents with 1 child, some with 2) left gaps via
-        // nextLevelParents[p*2+c], producing a sparse array; inArray() over a
-        // sparse array desyncs drizzle's placeholder count from its params
-        // and Postgres throws "syntax error at or near ','" on the next query.
-      });
-    });
-    currentLevelParents = nextLevelParents.length ? nextLevelParents : new Array(Math.pow(2, lvl)).fill("");
-  }
+    // 5-level, 2-children-per-node tree = 62 nodes total. Walk level by level.
+    type MatrixNodeInfo = { address: string; isDirectPlacement: boolean; isInDownline: boolean } | null;
+    const nodes: MatrixNodeInfo[] = new Array(62).fill(null);
+    const levelStart = [0, 0, 2, 6, 14, 30];
+    let currentLevelParents = [root];
 
-  res.json({ root, nodes });
-});
+    // Track filled slots during the walk so we can batch the downline check
+    // afterward instead of querying per node.
+    const filledSlots: { index: number; address: string; sponsorAddress: string; parentAddress: string }[] = [];
+
+    for (let lvl = 1; lvl <= 5; lvl++) {
+      const start = levelStart[lvl];
+      const rows = currentLevelParents.length
+        ? await db
+            .select({
+              parentAddress: schema.matrixPlacements.parentAddress,
+              childAddress: schema.matrixPlacements.childAddress,
+              sponsorAddress: schema.matrixPlacements.sponsorAddress,
+            })
+            .from(schema.matrixPlacements)
+            .where(
+              and(
+                eq(schema.matrixPlacements.packageId, packageId),
+                inArray(
+                  schema.matrixPlacements.parentAddress,
+                  currentLevelParents,
+                ),
+              ),
+            )
+            .orderBy(
+              schema.matrixPlacements.blockNumber,
+              schema.matrixPlacements.logIndex,
+            )
+        : [];
+
+      const childrenByParent = new Map<string, typeof rows>();
+      for (const row of rows) {
+        const list = childrenByParent.get(row.parentAddress) ?? [];
+        if (list.length < 2) list.push(row);
+        childrenByParent.set(row.parentAddress, list);
+      }
+
+      const nextLevelParents: string[] = [];
+      currentLevelParents.forEach((parent, p) => {
+        const kids = childrenByParent.get(parent) ?? [];
+        kids.forEach((row, c) => {
+          const index = start + p * 2 + c;
+          filledSlots.push({
+            index,
+            address: row.childAddress,
+            sponsorAddress: row.sponsorAddress,
+            parentAddress: row.parentAddress,
+          });
+          nextLevelParents.push(row.childAddress);
+        });
+      });
+      currentLevelParents = nextLevelParents.length
+        ? nextLevelParents
+        : new Array(Math.pow(2, lvl)).fill("");
+    }
+
+    const downlineSet = await getDownlineMembership(user, filledSlots.map((s) => s.address));
+
+    for (const slot of filledSlots) {
+      nodes[slot.index] = {
+        address: slot.address,
+        isDirectPlacement: slot.sponsorAddress.toLowerCase() === slot.parentAddress.toLowerCase(),
+        isInDownline: downlineSet.has(slot.address),
+      };
+    }
+
+    res.json({ root, nodes });
+  },
+);
 
 // Same per-package computation as matrix-tree + magic-gold/cycles +
 // magic-gold/:cycleIndex + matrix-income-total above, factored out so the
@@ -559,17 +780,75 @@ usersRouter.get("/:address/magic-gold/:packageId/:cycleIndex", async (req, res) 
 //   };
 // }
 
-type MatrixNode = { address: string; isDirectPlacement: boolean } | null;
+type MatrixNode = {
+  address: string;
+  isDirectPlacement: boolean;
+  isInDownline: boolean;
+} | null;
+
+// Given a root user and a batch of candidate addresses, returns the subset
+// that are within the root's referral downline — walking each candidate's
+// sponsor chain, if it ever reaches the root as a sponsor, they're "in
+// downline". Used to tell "spillover from your own team" (yellow) apart
+// from "spillover from outside/upline" (orange).
+async function getDownlineMembership(
+  rootUser: string,
+  addresses: string[],
+): Promise<Set<string>> {
+  const candidates = Array.from(new Set(addresses.filter(Boolean)));
+  if (candidates.length === 0) return new Set();
+
+  // Build an explicit ARRAY[...] literal instead of binding a JS array as a
+  // single parameter — drizzle's sql tag doesn't reliably serialize JS
+  // arrays into Postgres array params (fails/mis-serializes for small
+  // arrays, e.g. length 1), causing "malformed array literal" errors.
+  const candidatesArray = sql.join(
+    candidates.map((c) => sql`${c}`),
+    sql`, `,
+  );
+
+  const rows = await db.execute(sql`
+    WITH RECURSIVE ancestry AS (
+      SELECT member_address AS origin, sponsor_address, 1 AS depth
+      FROM user_registrations
+      WHERE member_address = ANY(ARRAY[${candidatesArray}]::text[])
+      UNION ALL
+      SELECT a.origin, ur.sponsor_address, a.depth + 1
+      FROM user_registrations ur
+      JOIN ancestry a ON ur.member_address = a.sponsor_address
+      WHERE a.depth < 50 AND a.sponsor_address != ${rootUser}
+    )
+    SELECT DISTINCT origin
+    FROM ancestry
+    WHERE sponsor_address = ${rootUser}
+  `);
+
+  return new Set(rows.map((r: any) => r.origin as string));
+}
 
 async function computePackageMatrixSummary(user: string, packageId: number) {
-  const [partnersCountRow, reentries, incomeRows, level5CountRaw] = await Promise.all([
-    db.select({ count: sql<number>`count(*)::int` }).from(schema.matrixPlacements)
-      .where(and(eq(schema.matrixPlacements.parentAddress, user), eq(schema.matrixPlacements.packageId, packageId))),
-    db.select({ phantomNode: schema.level5Reentries.phantomNode })
-      .from(schema.level5Reentries)
-      .where(and(eq(schema.level5Reentries.userAddress, user), eq(schema.level5Reentries.packageId, packageId)))
-      .orderBy(schema.level5Reentries.cycleNumber),
-    db.execute(sql`
+  const [partnersCountRow, reentries, incomeRows, level5CountRaw] =
+    await Promise.all([
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(schema.matrixPlacements)
+        .where(
+          and(
+            eq(schema.matrixPlacements.parentAddress, user),
+            eq(schema.matrixPlacements.packageId, packageId),
+          ),
+        ),
+      db
+        .select({ phantomNode: schema.level5Reentries.phantomNode })
+        .from(schema.level5Reentries)
+        .where(
+          and(
+            eq(schema.level5Reentries.userAddress, user),
+            eq(schema.level5Reentries.packageId, packageId),
+          ),
+        )
+        .orderBy(schema.level5Reentries.cycleNumber),
+      db.execute(sql`
       SELECT COALESCE(SUM(mi.amount), 0) AS total
       FROM matrix_income_events mi
       JOIN package_purchase_events pp
@@ -578,8 +857,8 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
         AND pp.member_address = mi.from_address
       WHERE mi.receiver = ${user} AND pp.package_id = ${packageId}
     `),
-    contract.level5MemberCountByPkg(packageId, user).catch(() => 0n),
-  ]);
+      contract.level5MemberCountByPkg(packageId, user).catch(() => 0n),
+    ]);
 
   const roots = [user, ...reentries.map((r) => r.phantomNode)];
   const latestRoot = roots[roots.length - 1];
@@ -588,19 +867,38 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
   const levelStart = [0, 0, 2, 6, 14, 30];
   let currentLevelParents = [latestRoot];
 
+  // Track filled slots during the walk so we can batch the downline check
+  // afterward instead of querying per node.
+  const filledSlots: {
+    index: number;
+    address: string;
+    sponsorAddress: string;
+    parentAddress: string;
+  }[] = [];
+
   for (let lvl = 1; lvl <= 5; lvl++) {
     const start = levelStart[lvl];
     const rows = currentLevelParents.length
-      ? await db.select({
-          parentAddress: schema.matrixPlacements.parentAddress,
-          childAddress: schema.matrixPlacements.childAddress,
-          sponsorAddress: schema.matrixPlacements.sponsorAddress,
-        }).from(schema.matrixPlacements)
-        .where(and(
-          eq(schema.matrixPlacements.packageId, packageId),
-          inArray(schema.matrixPlacements.parentAddress, currentLevelParents)
-        ))
-        .orderBy(schema.matrixPlacements.blockNumber, schema.matrixPlacements.logIndex)
+      ? await db
+          .select({
+            parentAddress: schema.matrixPlacements.parentAddress,
+            childAddress: schema.matrixPlacements.childAddress,
+            sponsorAddress: schema.matrixPlacements.sponsorAddress,
+          })
+          .from(schema.matrixPlacements)
+          .where(
+            and(
+              eq(schema.matrixPlacements.packageId, packageId),
+              inArray(
+                schema.matrixPlacements.parentAddress,
+                currentLevelParents,
+              ),
+            ),
+          )
+          .orderBy(
+            schema.matrixPlacements.blockNumber,
+            schema.matrixPlacements.logIndex,
+          )
       : [];
 
     const childrenByParent = new Map<string, typeof rows>();
@@ -614,19 +912,41 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
     currentLevelParents.forEach((parent, p) => {
       const kids = childrenByParent.get(parent) ?? [];
       kids.forEach((row, c) => {
-        nodes[start + p * 2 + c] = {
+        const index = start + p * 2 + c;
+        filledSlots.push({
+          index,
           address: row.childAddress,
-          isDirectPlacement: row.sponsorAddress === row.parentAddress,
-        };
+          sponsorAddress: row.sponsorAddress,
+          parentAddress: row.parentAddress,
+        });
         nextLevelParents.push(row.childAddress); // see comment in the matrix-tree/:cycleIndex route above
       });
     });
-    currentLevelParents = nextLevelParents.length ? nextLevelParents : new Array(Math.pow(2, lvl)).fill("");
+    currentLevelParents = nextLevelParents.length
+      ? nextLevelParents
+      : new Array(Math.pow(2, lvl)).fill("");
   }
+
+  const downlineSet = await getDownlineMembership(
+    user,
+    filledSlots.map((s) => s.address),
+  );
+
+  for (const slot of filledSlots) {
+    nodes[slot.index] = {
+      address: slot.address,
+      isDirectPlacement: slot.sponsorAddress === slot.parentAddress,
+      isInDownline: downlineSet.has(slot.address),
+    };
+  }
+
+  const visibleFilledCount = nodes
+    .slice(0, 30)
+    .filter((n) => n !== null).length;
 
   return {
     packageId,
-    partnersCount: partnersCountRow[0]?.count ?? 0,
+    partnersCount: visibleFilledCount || (partnersCountRow[0]?.count ?? 0),
     level5Count: Number(level5CountRaw),
     cycleCount: roots.length,
     nodes,
@@ -634,18 +954,132 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
   };
 }
 
+// type MatrixNode = { address: string; isDirectPlacement: boolean } | null;
 
+// async function computePackageMatrixSummary(user: string, packageId: number) {
+//   const [partnersCountRow, reentries, incomeRows, level5CountRaw] =
+//     await Promise.all([
+//       db
+//         .select({ count: sql<number>`count(*)::int` })
+//         .from(schema.matrixPlacements)
+//         .where(
+//           and(
+//             eq(schema.matrixPlacements.parentAddress, user),
+//             eq(schema.matrixPlacements.packageId, packageId),
+//           ),
+//         ),
+//       db
+//         .select({ phantomNode: schema.level5Reentries.phantomNode })
+//         .from(schema.level5Reentries)
+//         .where(
+//           and(
+//             eq(schema.level5Reentries.userAddress, user),
+//             eq(schema.level5Reentries.packageId, packageId),
+//           ),
+//         )
+//         .orderBy(schema.level5Reentries.cycleNumber),
+//       db.execute(sql`
+//       SELECT COALESCE(SUM(mi.amount), 0) AS total
+//       FROM matrix_income_events mi
+//       JOIN package_purchase_events pp
+//         ON pp.tx_hash = mi.tx_hash
+//         AND pp.track = 'MATRIX'
+//         AND pp.member_address = mi.from_address
+//       WHERE mi.receiver = ${user} AND pp.package_id = ${packageId}
+//     `),
+//       contract.level5MemberCountByPkg(packageId, user).catch(() => 0n),
+//     ]);
 
+//   const roots = [user, ...reentries.map((r) => r.phantomNode)];
+//   const latestRoot = roots[roots.length - 1];
+
+//   const nodes: MatrixNode[] = new Array(62).fill(null);
+//   const levelStart = [0, 0, 2, 6, 14, 30];
+//   let currentLevelParents = [latestRoot];
+
+//   for (let lvl = 1; lvl <= 5; lvl++) {
+//     const start = levelStart[lvl];
+//     const rows = currentLevelParents.length
+//       ? await db
+//           .select({
+//             parentAddress: schema.matrixPlacements.parentAddress,
+//             childAddress: schema.matrixPlacements.childAddress,
+//             sponsorAddress: schema.matrixPlacements.sponsorAddress,
+//           })
+//           .from(schema.matrixPlacements)
+//           .where(
+//             and(
+//               eq(schema.matrixPlacements.packageId, packageId),
+//               inArray(
+//                 schema.matrixPlacements.parentAddress,
+//                 currentLevelParents,
+//               ),
+//             ),
+//           )
+//           .orderBy(
+//             schema.matrixPlacements.blockNumber,
+//             schema.matrixPlacements.logIndex,
+//           )
+//       : [];
+
+//     const childrenByParent = new Map<string, typeof rows>();
+//     for (const row of rows) {
+//       const list = childrenByParent.get(row.parentAddress) ?? [];
+//       if (list.length < 2) list.push(row);
+//       childrenByParent.set(row.parentAddress, list);
+//     }
+
+//     const nextLevelParents: string[] = [];
+//     currentLevelParents.forEach((parent, p) => {
+//       const kids = childrenByParent.get(parent) ?? [];
+//       kids.forEach((row, c) => {
+//         nodes[start + p * 2 + c] = {
+//           address: row.childAddress,
+//           isDirectPlacement: row.sponsorAddress === row.parentAddress,
+//         };
+//         nextLevelParents.push(row.childAddress); // see comment in the matrix-tree/:cycleIndex route above
+//       });
+//     });
+//     currentLevelParents = nextLevelParents.length
+//       ? nextLevelParents
+//       : new Array(Math.pow(2, lvl)).fill("");
+//   }
+
+//   const visibleFilledCount = nodes
+//     .slice(0, 30)
+//     .filter((n) => n !== null).length;
+
+//   return {
+//     packageId,
+//     partnersCount: visibleFilledCount || (partnersCountRow[0]?.count ?? 0),
+//     level5Count: Number(level5CountRaw),
+//     cycleCount: roots.length,
+//     nodes,
+//     revenue: String((incomeRows[0] as any)?.total ?? "0"),
+//   };
+
+//   // return {
+//   //   packageId,
+//   //   partnersCount: partnersCountRow[0]?.count ?? 0,
+//   //   level5Count: Number(level5CountRaw),
+//   //   cycleCount: roots.length,
+//   //   nodes,
+//   //   revenue: String((incomeRows[0] as any)?.total ?? "0"),
+//   // };
+// }
 
 // Batches all 9 package tiers' matrix-tree/cycles/income into one request —
 // see comment on computePackageMatrixSummary. Frontend still filters to
 // packageId <= maxActivePkg (that boundary is a live contract read, not DB).
 usersRouter.get("/:address/magic-gold-summary", async (req, res) => {
   const user = req.params.address.toLowerCase();
-  if (!isAddress(user)) return res.status(400).json({ error: "invalid address" });
+  if (!isAddress(user))
+    return res.status(400).json({ error: "invalid address" });
 
   const packages = await Promise.all(
-    Array.from({ length: 9 }, (_, i) => i + 1).map((packageId) => computePackageMatrixSummary(user, packageId)),
+    Array.from({ length: 9 }, (_, i) => i + 1).map((packageId) =>
+      computePackageMatrixSummary(user, packageId),
+    ),
   );
 
   res.json({ packages });
