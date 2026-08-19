@@ -23,6 +23,11 @@ export const matrixIncomeEvents = pgTable("matrix_income_events", {
   id: serial("id").primaryKey(),
   receiver: text("receiver").notNull(),
   fromAddress: text("from_address").notNull(),
+  // Nullable: only present on events from the redeployed contract (MatrixIncome
+  // extended to carry packageId natively, mirroring DirectIncome). Rows indexed
+  // from the pre-redeploy contract have no packageId here — routes fall back to
+  // the tx_hash join against package_purchase_events for those.
+  packageId: smallint("package_id"),
   level: smallint("level").notNull(),
   amount: numeric("amount", { precision: 78, scale: 0 }).notNull(),
   blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
@@ -163,7 +168,8 @@ export const income = pgTable("income", {
 // still back their own dedicated pages; this is the "everything, one place" view.
 // `type` values: REGISTRATION, PACKAGE_PURCHASE, MATRIX_INCOME, DIRECT_INCOME,
 // LEVEL_INCOME, MATRIX_INCOME_HELD, SPONSOR_INCOME_HELD, MATRIX_PLACEMENT,
-// LEVEL5_REENTRY, SPONSOR_REENTRY. Not every type fills every nullable column —
+// LEVEL5_REENTRY, SPONSOR_REENTRY, INCOME_CAPPED, SPONSOR_INCOME_REDIRECTED,
+// LEVEL_INCOME_REDIRECTED. Not every type fills every nullable column —
 // e.g. only PACKAGE_PURCHASE sets track+source, only income types set level/cycle.
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),

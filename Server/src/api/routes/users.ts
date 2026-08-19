@@ -461,7 +461,7 @@ usersRouter.get("/:address/history/matrix-income", async (req, res) => {
   const rows = await db.execute(sql`
     SELECT e.id, e.receiver, e.from_address, e.level, e.amount, e.block_timestamp,
            ur.string_id AS from_string_id,
-           pp.package_id AS package_id
+           COALESCE(e.package_id, pp.package_id) AS package_id
     FROM matrix_income_events e
     LEFT JOIN user_registrations ur ON ur.member_address = e.from_address
     LEFT JOIN package_purchase_events pp
@@ -524,11 +524,11 @@ usersRouter.get(
     const rows = await db.execute(sql`
     SELECT COALESCE(SUM(mi.amount), 0) AS total
     FROM matrix_income_events mi
-    JOIN package_purchase_events pp
+    LEFT JOIN package_purchase_events pp
       ON pp.tx_hash = mi.tx_hash
       AND pp.track = 'MATRIX'
       AND pp.member_address = mi.from_address
-    WHERE mi.receiver = ${user} AND pp.package_id = ${packageId}
+    WHERE mi.receiver = ${user} AND COALESCE(mi.package_id, pp.package_id) = ${packageId}
   `);
 
     res.json({ total: (rows[0] as any)?.total ?? "0" });
@@ -878,6 +878,50 @@ async function getDownlineMembership(
   return new Set(rows.map((r: any) => r.origin as string));
 }
 
+// Counts filled slots across a cycle root's full 5-level tree (62 slots,
+// levels 1-5) by walking matrix_placements same as computePackageMatrixSummary's
+// visualization walk below, but without building node/downline data — only
+// used to total up earlier (already-completed) cycles for partnersCount.
+async function countFilledSlotsForRoot(
+  root: string,
+  packageId: number,
+): Promise<number> {
+  let currentLevelParents = [root];
+  let total = 0;
+
+  for (let lvl = 1; lvl <= 5 && currentLevelParents.length; lvl++) {
+    const rows = await db
+      .select({
+        parentAddress: schema.matrixPlacements.parentAddress,
+        childAddress: schema.matrixPlacements.childAddress,
+      })
+      .from(schema.matrixPlacements)
+      .where(
+        and(
+          eq(schema.matrixPlacements.packageId, packageId),
+          inArray(schema.matrixPlacements.parentAddress, currentLevelParents),
+        ),
+      );
+
+    const childrenByParent = new Map<string, string[]>();
+    for (const row of rows) {
+      const list = childrenByParent.get(row.parentAddress) ?? [];
+      if (list.length < 2) list.push(row.childAddress);
+      childrenByParent.set(row.parentAddress, list);
+    }
+
+    const nextLevelParents: string[] = [];
+    for (const parent of currentLevelParents) {
+      const kids = childrenByParent.get(parent) ?? [];
+      total += kids.length;
+      nextLevelParents.push(...kids);
+    }
+    currentLevelParents = nextLevelParents;
+  }
+
+  return total;
+}
+
 async function computePackageMatrixSummary(user: string, packageId: number) {
   const [partnersCountRow, reentries, incomeRows, level5CountRaw] =
     await Promise.all([
@@ -903,11 +947,11 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
       db.execute(sql`
       SELECT COALESCE(SUM(mi.amount), 0) AS total
       FROM matrix_income_events mi
-      JOIN package_purchase_events pp
+      LEFT JOIN package_purchase_events pp
         ON pp.tx_hash = mi.tx_hash
         AND pp.track = 'MATRIX'
         AND pp.member_address = mi.from_address
-      WHERE mi.receiver = ${user} AND pp.package_id = ${packageId}
+      WHERE mi.receiver = ${user} AND COALESCE(mi.package_id, pp.package_id) = ${packageId}
     `),
       contract.level5MemberCountByPkg(packageId, user).catch(() => 0n),
     ]);
@@ -992,13 +1036,20 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
     };
   }
 
-  const visibleFilledCount = nodes
-    .slice(0, 30)
-    .filter((n) => n !== null).length;
+  // partnersCount is the team across every cycle joined in this package, not
+  // just the current one — sum this (latest) cycle's full tree, level 5
+  // included (filledSlots already walks all 5 levels), plus every earlier
+  // completed cycle's tree.
+  const earlierRoots = roots.slice(0, -1);
+  const earlierCycleCounts = await Promise.all(
+    earlierRoots.map((root) => countFilledSlotsForRoot(root, packageId)),
+  );
+  const totalPartnersCount =
+    filledSlots.length + earlierCycleCounts.reduce((a, b) => a + b, 0);
 
   return {
     packageId,
-    partnersCount: visibleFilledCount || (partnersCountRow[0]?.count ?? 0),
+    partnersCount: totalPartnersCount || (partnersCountRow[0]?.count ?? 0),
     level5Count: Number(level5CountRaw),
     cycleCount: roots.length,
     nodes,

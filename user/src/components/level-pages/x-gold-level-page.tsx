@@ -354,7 +354,11 @@ export const XGoldLevelPage = ({
 
         if (isCancelled) return;
 
-        const filledCount = structure.filledCount || metrics.partnersCount || 0;
+        // structure.filledCount is the exact count for the selected cycle —
+        // metrics.partnersCount is a different number (sum across ALL cycles),
+        // so it can't be used as a fallback: a genuinely-empty selected cycle
+        // (filledCount 0) would wrongly display the all-cycles total.
+        const filledCount = structure.filledCount ?? 0;
         setOwnerId(profile.stringId || "...");
         setUplineId(profile.uplineId ?? "...");
         // setUplineId(

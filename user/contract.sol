@@ -37,7 +37,7 @@ contract ReentrancyGuard {
     }
 }
 
-contract meta16 is ReentrancyGuard {
+contract meta20 is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 public usdt;
@@ -170,7 +170,7 @@ contract meta16 is ReentrancyGuard {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event UserRegistered(address indexed user, address indexed _sponsor, uint256 numericId, string stringId);
     
-    event MatrixIncome(address indexed receiver, address indexed from, uint8 level, uint256 amount);
+    event MatrixIncome(address indexed receiver, address indexed from, uint8 packageId, uint8 level, uint256 amount);
     event DirectIncome(address indexed receiver, address indexed from, uint8 packageId, uint256 cycle, uint256 amount);
     event LevelIncome(address indexed receiver, address indexed from, uint8 level, uint256 amount);
     
@@ -188,6 +188,13 @@ contract meta16 is ReentrancyGuard {
     // FIX: new events for stuck-hold refunds on manual/self upgrade
     event SponsorHoldRefunded(address indexed user, uint8 packageId, uint256 amount);
     event MatrixHoldRefunded(address indexed user, uint8 packageId, uint256 amount);
+
+    // FIX: new events for ineligible-tier redirects (sponsor/level tracks)
+    event SponsorIncomeRedirected(address indexed wouldBeReceiver, address indexed from, uint8 packageId, uint256 amount);
+    event LevelIncomeRedirected(address indexed wouldBeReceiver, address indexed from, uint8 level, uint8 packageId, uint256 amount);
+
+    // FIX: 2x earnings cap event — fires whenever a payout is capped/redirected
+    event IncomeCapped(address indexed user, uint256 requestedAmount, uint256 paidAmount, uint256 redirectedToAdmin);
 
     // ---------------------------------------------------------------
     // CONSTRUCTOR
@@ -247,6 +254,64 @@ contract meta16 is ReentrancyGuard {
     }
 
     // ---------------------------------------------------------------
+    // FIX: EARNINGS CAP (2x total invested, combined across all 3 tracks)
+    // ---------------------------------------------------------------
+    // Cap recomputes live off userTotalInvestment, which now also grows on
+    // manual purchases (all 3 tracks) and auto-upgrades (matrix + sponsor),
+    // not just at registration. Cap check happens ONLY at actual USDT payout
+    // points (safeTransfer to a user) — held/escrowed funds do not count as
+    // "earned" until released. Cycle counters, auto-upgrade eligibility, and
+    // phantom re-entry are never blocked by this — only the cash amount.
+    function getTotalEarned(address user) public view returns (uint256) {
+        return userTotalMatrixIncome[user] + userTotalDirectIncome[user] + userTotalLevelProfit[user];
+    }
+
+    function getEarningsCap(address user) public view returns (uint256) {
+        return userTotalInvestment[user] * 2;
+    }
+
+    // Splits a desired payout into (payable, excess-to-admin) based on
+    // remaining headroom under the user's 2x cap. Does NOT transfer or
+    // update tracking mappings itself — caller does that with the returned
+    // split so each track's own income mapping stays accurate.
+    function _splitByCap(address user, uint256 desiredAmount) internal view returns (uint256 payableAmount, uint256 excessAmount) {
+        uint256 cap = getEarningsCap(user);
+        uint256 earned = getTotalEarned(user);
+        if (earned >= cap) {
+            return (0, desiredAmount);
+        }
+        uint256 headroom = cap - earned;
+        if (desiredAmount <= headroom) {
+            return (desiredAmount, 0);
+        }
+        return (headroom, desiredAmount - headroom);
+    }
+
+    // Applies the cap to a payout: transfers payable portion to user,
+    // excess to admin, emits IncomeCapped if anything was redirected.
+    // Returns the payable amount so caller can add it to the correct
+    // per-track income mapping (userTotalMatrixIncome / DirectIncome / LevelProfit).
+    // FIX: adminWallet is exempt from the cap entirely — admin never has a
+    // userTotalInvestment, so cap math would treat it as permanently over
+    // cap (2x of 0 = 0) and misfire redirect events. Admin always gets paid
+    // in full when it's the target (e.g. eligible-upline fallback).
+    function _payCapped(address user, uint256 desiredAmount) internal returns (uint256 paid) {
+        if (user == adminWallet) {
+            if (desiredAmount > 0) usdt.safeTransfer(adminWallet, desiredAmount);
+            return desiredAmount;
+        }
+        (uint256 payableAmount, uint256 excessAmount) = _splitByCap(user, desiredAmount);
+        if (payableAmount > 0) {
+            usdt.safeTransfer(user, payableAmount);
+        }
+        if (excessAmount > 0) {
+            usdt.safeTransfer(adminWallet, excessAmount);
+            emit IncomeCapped(user, desiredAmount, payableAmount, excessAmount);
+        }
+        return payableAmount;
+    }
+
+    // ---------------------------------------------------------------
     // REGISTRATION (Auto-buys Package 1 for all 3 tracks)
     // ---------------------------------------------------------------
     function registerMember(string calldata sponsorStringId, string calldata name) external nonReentrant {
@@ -294,7 +359,7 @@ contract meta16 is ReentrancyGuard {
 
         _placeInPackageTreeIfNeeded(msg.sender, 1);
         _releaseMatrixIncome(msg.sender, 1);
-        _releaseLevelIncome(msg.sender, fullPrice);
+        _releaseLevelIncome(msg.sender, 1, fullPrice);
         _releaseDirectIncome(msg.sender, 1, fullPrice);
     }
 
@@ -321,13 +386,17 @@ contract meta16 is ReentrancyGuard {
             uint256 held = matrixHoldByPkg[oldPkg][msg.sender];
             if (held > 0) {
                 matrixHoldByPkg[oldPkg][msg.sender] = 0;
-                usdt.safeTransfer(msg.sender, held);
-                emit MatrixHoldRefunded(msg.sender, oldPkg, held);
+                uint256 paidHeld = _payCapped(msg.sender, held);
+                userTotalMatrixIncome[msg.sender] += paidHeld;
+                emit MatrixHoldRefunded(msg.sender, oldPkg, paidHeld);
             }
         }
 
         uint256 price = getMatrixPrice(packageId);
         usdt.safeTransferFrom(msg.sender, address(this), price);
+
+        // FIX: track investment for earnings-cap purposes
+        userTotalInvestment[msg.sender] += price;
 
         matrixPackageId[msg.sender] = packageId;
         if (packageId > maxMatrixPackage[msg.sender]) maxMatrixPackage[msg.sender] = packageId;
@@ -346,13 +415,17 @@ contract meta16 is ReentrancyGuard {
             uint256 held = sponsorHoldByPkg[oldPkg][msg.sender];
             if (held > 0) {
                 sponsorHoldByPkg[oldPkg][msg.sender] = 0;
-                usdt.safeTransfer(msg.sender, held);
-                emit SponsorHoldRefunded(msg.sender, oldPkg, held);
+                uint256 paidHeld = _payCapped(msg.sender, held);
+                userTotalDirectIncome[msg.sender] += paidHeld;
+                emit SponsorHoldRefunded(msg.sender, oldPkg, paidHeld);
             }
         }
 
         uint256 price = getSponsorPrice(packageId);
         usdt.safeTransferFrom(msg.sender, address(this), price);
+
+        // FIX: track investment for earnings-cap purposes
+        userTotalInvestment[msg.sender] += price;
         
         sponsorPackageId[msg.sender] = packageId;
         if (packageId > maxSponsorPackage[msg.sender]) maxSponsorPackage[msg.sender] = packageId;
@@ -366,11 +439,14 @@ contract meta16 is ReentrancyGuard {
         require(levelPackageId[msg.sender] == packageId - 1, "MUST_BUY_SEQUENTIAL");
         uint256 price = getLevelPrice(packageId);
         usdt.safeTransferFrom(msg.sender, address(this), price);
+
+        // FIX: track investment for earnings-cap purposes
+        userTotalInvestment[msg.sender] += price;
         
         levelPackageId[msg.sender] = packageId;
         if (packageId > maxLevelPackage[msg.sender]) maxLevelPackage[msg.sender] = packageId;
 
-        _releaseLevelIncome(msg.sender, packages[packageId].price);
+        _releaseLevelIncome(msg.sender, packageId, packages[packageId].price);
         emit ManualUpgrade(msg.sender, packageId, "LEVEL");
     }
 
@@ -407,6 +483,7 @@ contract meta16 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // 1. MATRIX INCOME (32-Member Cycle)
+    // Tier gate: maxMatrixPackage[parent] >= packageId (unchanged, was already correct)
     // ---------------------------------------------------------------
     function _releaseMatrixIncome(address buyer, uint8 packageId) internal {
         uint256 matrixPoolAmount = getMatrixPrice(packageId); 
@@ -438,9 +515,9 @@ contract meta16 is ReentrancyGuard {
                 address payoutWallet = realOwnerByPkg[packageId][currentParent] != address(0)
                     ? realOwnerByPkg[packageId][currentParent]
                     : currentParent;
-                usdt.safeTransfer(payoutWallet, share);
-                userTotalMatrixIncome[payoutWallet] += share;
-                emit MatrixIncome(payoutWallet, buyer, level, share);
+                uint256 paidShare = _payCapped(payoutWallet, share);
+                userTotalMatrixIncome[payoutWallet] += paidShare;
+                emit MatrixIncome(payoutWallet, buyer, packageId, level, paidShare);
             }
 
             currentParent = matrixParentByPkg[packageId][currentParent];
@@ -474,9 +551,9 @@ contract meta16 is ReentrancyGuard {
             matrixHoldByPkg[packageId][userA] += share;
             emit MatrixIncomeHeld(userA, packageId, share, count);
         } else {
-            usdt.safeTransfer(userA, share);
-            userTotalMatrixIncome[userA] += share;
-            emit MatrixIncome(userA, buyer, 5, share);
+            uint256 paidShare = _payCapped(userA, share);
+            userTotalMatrixIncome[userA] += paidShare;
+            emit MatrixIncome(userA, buyer, packageId, 5, paidShare);
         }
 
         if (count == 28 && !upgraded) {
@@ -501,6 +578,9 @@ contract meta16 is ReentrancyGuard {
 
             if (leftover > 0) usdt.safeTransfer(adminWallet, leftover); 
 
+            // FIX: auto-upgrade counts as investment for earnings-cap purposes
+            userTotalInvestment[userA] += requiredHeld;
+
             matrixPackageId[userA] = nextPackageId;
             if (nextPackageId > maxMatrixPackage[userA]) maxMatrixPackage[userA] = nextPackageId;
 
@@ -509,6 +589,11 @@ contract meta16 is ReentrancyGuard {
         }
     }
 
+    // FIX: recycle cost now routed to nearest eligible matrix upline
+    // (maxMatrixPackage >= packageId), mirroring sponsor track's count-5
+    // pattern, instead of unconditionally to admin. Phantom is anchored
+    // under that same eligible upline. Falls back to admin if no eligible
+    // upline exists in the chain.
     function _level5ReEntry(uint8 packageId, address userA) internal {
         level5MemberCountByPkg[packageId][userA] = 0;
         recycleCount[userA]++;
@@ -521,14 +606,17 @@ contract meta16 is ReentrancyGuard {
         topupFlag[phantomNode] = true;
         maxMatrixPackage[phantomNode] = maxMatrixPackage[userA] >= packageId ? maxMatrixPackage[userA] : packageId;
 
+        address eligibleUpline = _findEligibleMatrixUpline(userA, packageId);
+
         uint256 reEntryCost = getMatrixPrice(packageId);
         if (matrixHoldByPkg[packageId][userA] >= reEntryCost) {
             matrixHoldByPkg[packageId][userA] -= reEntryCost;
-            usdt.safeTransfer(adminWallet, reEntryCost); 
+            uint256 paidCost = _payCapped(eligibleUpline, reEntryCost);
+            userTotalMatrixIncome[eligibleUpline] += paidCost;
+            emit MatrixIncome(eligibleUpline, userA, packageId, 5, paidCost);
         }
 
-        address anchor = sponsor[userA] != address(0) ? sponsor[userA] : adminWallet;
-        _placeInMatrixForPackage(packageId, phantomNode, anchor);
+        _placeInMatrixForPackage(packageId, phantomNode, eligibleUpline);
 
         cycleRootByPkg[packageId][userA].push(phantomNode);
 
@@ -537,6 +625,11 @@ contract meta16 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // 2. SPONSOR INCOME (5-Member Cycle) — 90/10 SPLIT APPLIED HERE
+    // FIX: added tier gate — sponsor must have maxSponsorPackage >= packageId
+    // to receive ANY payout on this buy. If not qualified, whole gross
+    // share (not just net) redirects to admin, cycle count is NOT
+    // incremented (sponsor didn't "use" a cycle slot they can't earn on),
+    // and no hold/auto-upgrade logic runs for this purchase.
     // ---------------------------------------------------------------
     function _splitSponsorShare(uint256 grossShare) internal pure returns (uint256 sponsorNet, uint256 adminCut) {
         sponsorNet = grossShare * 900000 / PERCENT_DENOMINATOR; // 90%
@@ -552,6 +645,14 @@ contract meta16 is ReentrancyGuard {
             return;
         }
 
+        // FIX: tier gate — sponsor must hold >= packageId on sponsor track
+        bool sponsorQualifies = topupFlag[directSponsor] && maxSponsorPackage[directSponsor] >= packageId;
+        if (!sponsorQualifies) {
+            usdt.safeTransfer(adminWallet, sponsorShare);
+            emit SponsorIncomeRedirected(directSponsor, buyer, packageId, sponsorShare);
+            return;
+        }
+
         sponsorCycleCountByPkg[packageId][directSponsor]++;
         uint256 count = sponsorCycleCountByPkg[packageId][directSponsor];
         
@@ -560,17 +661,17 @@ contract meta16 is ReentrancyGuard {
         (uint256 sponsorNet, uint256 adminCut) = _splitSponsorShare(sponsorShare);
 
         if (count == 1 || count == 2) {
-            usdt.safeTransfer(directSponsor, sponsorNet);
             usdt.safeTransfer(adminWallet, adminCut);
-            userTotalDirectIncome[directSponsor] += sponsorNet;
-            emit DirectIncome(directSponsor, buyer, packageId, count, sponsorNet);
+            uint256 paidNet = _payCapped(directSponsor, sponsorNet);
+            userTotalDirectIncome[directSponsor] += paidNet;
+            emit DirectIncome(directSponsor, buyer, packageId, count, paidNet);
         }
         else if (count == 3) {
             if (upgraded) {
-                usdt.safeTransfer(directSponsor, sponsorNet);
                 usdt.safeTransfer(adminWallet, adminCut);
-                userTotalDirectIncome[directSponsor] += sponsorNet;
-                emit DirectIncome(directSponsor, buyer, packageId, count, sponsorNet);
+                uint256 paidNet = _payCapped(directSponsor, sponsorNet);
+                userTotalDirectIncome[directSponsor] += paidNet;
+                emit DirectIncome(directSponsor, buyer, packageId, count, paidNet);
             } else {
                 sponsorHoldByPkg[packageId][directSponsor] += sponsorShare;
                 emit SponsorIncomeHeld(directSponsor, packageId, sponsorShare, count);
@@ -578,10 +679,10 @@ contract meta16 is ReentrancyGuard {
         }
         else if (count == 4) {
             if (upgraded) {
-                usdt.safeTransfer(directSponsor, sponsorNet);
                 usdt.safeTransfer(adminWallet, adminCut);
-                userTotalDirectIncome[directSponsor] += sponsorNet;
-                emit DirectIncome(directSponsor, buyer, packageId, count, sponsorNet);
+                uint256 paidNet = _payCapped(directSponsor, sponsorNet);
+                userTotalDirectIncome[directSponsor] += paidNet;
+                emit DirectIncome(directSponsor, buyer, packageId, count, paidNet);
             } else {
                 sponsorHoldByPkg[packageId][directSponsor] += sponsorShare;
                 emit SponsorIncomeHeld(directSponsor, packageId, sponsorShare, count);
@@ -589,14 +690,17 @@ contract meta16 is ReentrancyGuard {
             }
         }
         else if (count == 5) {
-            address sponsorOfSponsor = sponsor[directSponsor];
-            if (sponsorOfSponsor == address(0)) {
-                sponsorOfSponsor = adminWallet;
-            }
-            usdt.safeTransfer(sponsorOfSponsor, sponsorNet);
+            // FIX: walk up sponsor chain to find first eligible upline
+            // (maxSponsorPackage >= packageId), instead of unconditionally
+            // paying sponsor[directSponsor]. Falls back to admin if chain
+            // runs out. Same eligible upline is used as the anchor for
+            // directSponsor's recycle phantom placement.
+            address eligibleUpline = _findEligibleSponsorUpline(directSponsor, packageId);
+
             usdt.safeTransfer(adminWallet, adminCut);
-            userTotalDirectIncome[sponsorOfSponsor] += sponsorNet;
-            emit DirectIncome(sponsorOfSponsor, buyer, packageId, count, sponsorNet);
+            uint256 paidNet = _payCapped(eligibleUpline, sponsorNet);
+            userTotalDirectIncome[eligibleUpline] += paidNet;
+            emit DirectIncome(eligibleUpline, buyer, packageId, count, paidNet);
 
             sponsorCycleCountByPkg[packageId][directSponsor] = 0;
             recycleCount[directSponsor]++;
@@ -610,11 +714,41 @@ contract meta16 is ReentrancyGuard {
             topupFlag[phantom] = true;
             maxSponsorPackage[phantom] = maxSponsorPackage[directSponsor];
             
-            address treeAnchor = sponsor[directSponsor] != address(0) ? sponsor[directSponsor] : adminWallet;
-            _placeInMatrixForPackage(packageId, phantom, treeAnchor);
+            // FIX: phantom placed under the same eligible upline that
+            // received the count-5 payout, not blindly sponsor[directSponsor]
+            _placeInMatrixForPackage(packageId, phantom, eligibleUpline);
             
             emit SponsorReEntry(directSponsor, packageId);
         }
+    }
+
+    // FIX: chain-walk helper — finds nearest upline (starting from
+    // sponsor[startFrom]) holding maxSponsorPackage >= packageId.
+    // Falls back to adminWallet if chain is exhausted. Admin always
+    // qualifies implicitly (root has MAX_PACKAGE set in constructor).
+    function _findEligibleSponsorUpline(address startFrom, uint8 packageId) internal view returns (address) {
+        address current = sponsor[startFrom];
+        while (current != address(0)) {
+            if (topupFlag[current] && maxSponsorPackage[current] >= packageId) {
+                return current;
+            }
+            current = sponsor[current];
+        }
+        return adminWallet;
+    }
+
+    // FIX: matrix-track equivalent — finds nearest upline holding
+    // maxMatrixPackage >= packageId, for matrix-recycle (32-cycle) payout
+    // and phantom placement anchor. Falls back to adminWallet.
+    function _findEligibleMatrixUpline(address startFrom, uint8 packageId) internal view returns (address) {
+        address current = sponsor[startFrom];
+        while (current != address(0)) {
+            if (topupFlag[current] && maxMatrixPackage[current] >= packageId) {
+                return current;
+            }
+            current = sponsor[current];
+        }
+        return adminWallet;
     }
 
     function _trySponsorAutoUpgrade(uint8 packageId, address userA) internal {
@@ -630,6 +764,9 @@ contract meta16 is ReentrancyGuard {
 
             if (leftover > 0) usdt.safeTransfer(adminWallet, leftover); 
 
+            // FIX: auto-upgrade counts as investment for earnings-cap purposes
+            userTotalInvestment[userA] += requiredHeld;
+
             sponsorPackageId[userA] = nextPackageId;
             if (nextPackageId > maxSponsorPackage[userA]) maxSponsorPackage[userA] = nextPackageId;
 
@@ -639,8 +776,11 @@ contract meta16 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // 3. LEVEL INCOME (10 Levels)
+    // FIX: now takes packageId param. Gate changed from hardcoded
+    // maxLevelPackage[parent] >= 1 to maxLevelPackage[parent] >= packageId,
+    // matching the matrix track's tier-gate pattern.
     // ---------------------------------------------------------------
-    function _releaseLevelIncome(address buyer, uint256 fullAmount) internal {
+    function _releaseLevelIncome(address buyer, uint8 packageId, uint256 fullAmount) internal {
         address parent = sponsor[buyer];
         uint8  level  = 1;
         uint256 adminLeftover;
@@ -657,16 +797,21 @@ contract meta16 is ReentrancyGuard {
             }
 
             bool hasEnoughDirects = (referralCount[parent] >= level) || (parent == adminWallet);
+            // FIX: >= packageId instead of hardcoded >= 1
+            bool hasTier = (parent == adminWallet) || (maxLevelPackage[parent] >= packageId);
 
-            if (topupFlag[parent] && maxLevelPackage[parent] >= 1 && hasEnoughDirects) { 
-                userTotalLevelProfit[parent]   += share;
-                userLevelIncome[parent][level] += share;
-                totalLevelIncomeByLevel[level] += share;
-                usdt.safeTransfer(parent, share);
+            if (topupFlag[parent] && hasTier && hasEnoughDirects) { 
+                uint256 paidShare = _payCapped(parent, share);
+                userTotalLevelProfit[parent]   += paidShare;
+                userLevelIncome[parent][level] += paidShare;
+                totalLevelIncomeByLevel[level] += paidShare;
 
-                emit LevelIncome(parent, buyer, level, share);
+                emit LevelIncome(parent, buyer, level, paidShare);
             } else {
                 adminLeftover += share;
+                if (topupFlag[parent] && !hasTier) {
+                    emit LevelIncomeRedirected(parent, buyer, level, packageId, share);
+                }
             }
 
             parent = sponsor[parent];
