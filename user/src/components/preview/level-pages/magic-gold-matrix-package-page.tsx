@@ -308,7 +308,7 @@ export const PreviewMagicGoldMatrixLevelPackagePage = ({
 
         // const visibleNodes = structure?.nodes.slice(0, 62);
         const visibleNodes = structure?.nodes.slice(0, 62) ?? [];
-        const idByAddress = await fetchMemberIdsForAddresses(visibleNodes);
+        const idByAddress = await fetchMemberIdsForAddresses(visibleNodes, levelNum);
         const matrixIncomeRows = await PreviewModeApiCall(
           previewId,
           fetchUserMatrixIncomeHistory,

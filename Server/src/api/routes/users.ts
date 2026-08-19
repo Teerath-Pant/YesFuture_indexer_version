@@ -39,6 +39,20 @@ usersRouter.get("/:address/total-invested", async (req, res) => {
 // Batch address->stringId lookup, DB-only (user_registrations). Replaces
 // per-address live memberStringId RPC loops (e.g. resolving up to 62 matrix
 // tree node addresses one call at a time) with a single query.
+//
+// Matrix tree slots aren't always a real registered address — both
+// Level5ReEntry (_level5ReEntry) AND a sponsor cycle completing (count==5 in
+// _releaseDirectIncome) place a synthetic "phantom" address into
+// matrix_placements, which never has its own user_registrations row. Left
+// unresolved, those slots rendered as a blank, unclickable circle even
+// though the slot is real (a filled position from that user's own recycle).
+// contract.sol tracks exactly this via the public realOwnerByPkg mapping —
+// deliberately, so off-chain consumers can resolve a phantom back to its
+// real owner. Level5ReEntry phantoms resolve for free from the indexed
+// level5_reentries table; SponsorReEntry's phantom address isn't in any
+// event (only realOwnerByPkg contract state knows it), so that one needs an
+// optional ?packageId= to fall back to a live read — bounded to just the
+// handful of addresses still unresolved after the DB checks, not every node.
 usersRouter.get("/string-ids", async (req, res) => {
   const raw =
     typeof req.query.addresses === "string" ? req.query.addresses : "";
@@ -56,7 +70,45 @@ usersRouter.get("/string-ids", async (req, res) => {
     .from(schema.userRegistrations)
     .where(inArray(schema.userRegistrations.memberAddress, addresses));
 
-  res.json(Object.fromEntries(rows.map((r) => [r.address, r.stringId])));
+  const result: Record<string, string> = Object.fromEntries(rows.map((r) => [r.address, r.stringId]));
+
+  let unresolved = addresses.filter((a) => !(a in result));
+  if (unresolved.length) {
+    const phantomRows = await db.select({
+      phantomNode: schema.level5Reentries.phantomNode,
+      stringId: schema.userRegistrations.stringId,
+    }).from(schema.level5Reentries)
+      .innerJoin(schema.userRegistrations, eq(schema.userRegistrations.memberAddress, schema.level5Reentries.userAddress))
+      .where(inArray(schema.level5Reentries.phantomNode, unresolved));
+    for (const r of phantomRows) result[r.phantomNode] = r.stringId;
+    unresolved = unresolved.filter((a) => !(a in result));
+  }
+
+  const packageId = Number(req.query.packageId);
+  if (unresolved.length && Number.isInteger(packageId) && packageId > 0) {
+    const owners = await Promise.all(
+      unresolved.map((a) => contract.realOwnerByPkg(packageId, a).catch(() => null)),
+    );
+    const ownerAddrs = [...new Set(
+      owners.filter((o): o is string => !!o && o !== "0x0000000000000000000000000000000000000000")
+        .map((o) => o.toLowerCase()),
+    )];
+    if (ownerAddrs.length) {
+      const ownerRows = await db.select({
+        address: schema.userRegistrations.memberAddress,
+        stringId: schema.userRegistrations.stringId,
+      }).from(schema.userRegistrations)
+        .where(inArray(schema.userRegistrations.memberAddress, ownerAddrs));
+      const stringIdByOwner = new Map(ownerRows.map((r) => [r.address, r.stringId]));
+      unresolved.forEach((addr, i) => {
+        const owner = owners[i];
+        const stringId = owner ? stringIdByOwner.get(owner.toLowerCase()) : undefined;
+        if (stringId) result[addr] = stringId;
+      });
+    }
+  }
+
+  res.json(result);
 });
 
 // Live proxy — replaces deleted getUserProfile. sponsorStringId is one more
