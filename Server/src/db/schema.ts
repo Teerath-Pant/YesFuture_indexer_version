@@ -23,6 +23,11 @@ export const matrixIncomeEvents = pgTable("matrix_income_events", {
   id: serial("id").primaryKey(),
   receiver: text("receiver").notNull(),
   fromAddress: text("from_address").notNull(),
+  // Nullable: only present on events from the redeployed contract (MatrixIncome
+  // extended to carry packageId natively, mirroring DirectIncome). Rows indexed
+  // from the pre-redeploy contract have no packageId here — routes fall back to
+  // the tx_hash join against package_purchase_events for those.
+  packageId: smallint("package_id"),
   level: smallint("level").notNull(),
   amount: numeric("amount", { precision: 78, scale: 0 }).notNull(),
   blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),

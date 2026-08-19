@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x4744a8b0e0b5a475116f89b00c306a726ea6bc55";
 // const CONTRACT_ADDRESS = "0x299724c47e64812a4139034e673f79d9534375fe";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
-const CONTRACT_ADDRESS = "0x62a5ca5034a1d3a0e53347303b0d5bca466ae05f";
+const CONTRACT_ADDRESS = "0x6ffb121f3bdc64d6ab452c574531a6f7864f6013";
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
 
@@ -291,6 +291,12 @@ const CORE_ABI = [
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       },
       {
         "name": "level",
@@ -3467,7 +3473,7 @@ export async function fetchMagicGoldMatrixStructure(
       return node.isInDownline ? "spilloverAbove" : "spilloverBelow";
     };
 
-    const filledCount = visibleNodes.filter((n) => n !== null).length;
+    const filledCount = data.nodes.filter((n) => n !== null).length;
 
     return {
       root,
@@ -3632,10 +3638,9 @@ interface MatrixIncomeApiRow {
  * Replaces the dead getUserMatrixIncomeHistory-based version (that mapping no
  * longer exists on the trimmed contract). GET /users/:address/history/matrix-income
  * is the event-sourced replacement, from_string_id resolved server-side.
- * Same pre-existing limitation as before: the underlying MatrixIncome event
- * never carried a packageId, so this can't actually filter by package —
- * `packageId` is applied cosmetically to the `level` field, matching the
- * original function's behavior exactly (it had the same limitation).
+ * package_id now comes from the contract's MatrixIncome event directly
+ * (redeployed to carry it, mirroring DirectIncome) with a tx_hash-join
+ * fallback for rows indexed before the redeploy.
  */
 // export async function fetchUserMatrixIncomeHistory(
 //   walletAddress: string,
@@ -4750,8 +4755,9 @@ interface MatrixIncomeApiRow extends TransactionApiRow {
 // Sourced from the unified transactions table
 // (GET /transactions/:address?type=MATRIX_INCOME), same endpoint
 // fetchLevelIncomeHistory/fetchSponsorIncomeHistory use for their tracks.
-// packageId stays undefined — same pre-existing limitation noted on
-// fetchUserMatrixIncomeHistory: MatrixIncome never carried a packageId.
+// packageId now comes through for real — the contract's MatrixIncome event
+// was extended to carry it natively (mirrors DirectIncome). Rows indexed from
+// the pre-redeploy contract still come back with package_id null.
 export async function fetchMatrixIncomeByAddress(
   userAddress: string,
   maxItems?: number,
@@ -4769,7 +4775,7 @@ export async function fetchMatrixIncomeByAddress(
       fromId: r.counterparty_string_id ?? "ID ...",
       fromAddress: r.counterparty_address ?? "",
       level: r.level ?? undefined,
-      packageId: undefined,
+      packageId: r.package_id ?? undefined,
       amount: `${amountValue.toLocaleString()} USDT`,
       rawDate: dateSeconds,
       time: formatDate(dateSeconds),

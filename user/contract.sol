@@ -37,7 +37,7 @@ contract ReentrancyGuard {
     }
 }
 
-contract meta16 is ReentrancyGuard {
+contract meta20 is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 public usdt;
@@ -170,7 +170,7 @@ contract meta16 is ReentrancyGuard {
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event UserRegistered(address indexed user, address indexed _sponsor, uint256 numericId, string stringId);
     
-    event MatrixIncome(address indexed receiver, address indexed from, uint8 level, uint256 amount);
+    event MatrixIncome(address indexed receiver, address indexed from, uint8 packageId, uint8 level, uint256 amount);
     event DirectIncome(address indexed receiver, address indexed from, uint8 packageId, uint256 cycle, uint256 amount);
     event LevelIncome(address indexed receiver, address indexed from, uint8 level, uint256 amount);
     
@@ -291,7 +291,15 @@ contract meta16 is ReentrancyGuard {
     // excess to admin, emits IncomeCapped if anything was redirected.
     // Returns the payable amount so caller can add it to the correct
     // per-track income mapping (userTotalMatrixIncome / DirectIncome / LevelProfit).
+    // FIX: adminWallet is exempt from the cap entirely — admin never has a
+    // userTotalInvestment, so cap math would treat it as permanently over
+    // cap (2x of 0 = 0) and misfire redirect events. Admin always gets paid
+    // in full when it's the target (e.g. eligible-upline fallback).
     function _payCapped(address user, uint256 desiredAmount) internal returns (uint256 paid) {
+        if (user == adminWallet) {
+            if (desiredAmount > 0) usdt.safeTransfer(adminWallet, desiredAmount);
+            return desiredAmount;
+        }
         (uint256 payableAmount, uint256 excessAmount) = _splitByCap(user, desiredAmount);
         if (payableAmount > 0) {
             usdt.safeTransfer(user, payableAmount);
@@ -509,7 +517,7 @@ contract meta16 is ReentrancyGuard {
                     : currentParent;
                 uint256 paidShare = _payCapped(payoutWallet, share);
                 userTotalMatrixIncome[payoutWallet] += paidShare;
-                emit MatrixIncome(payoutWallet, buyer, level, paidShare);
+                emit MatrixIncome(payoutWallet, buyer, packageId, level, paidShare);
             }
 
             currentParent = matrixParentByPkg[packageId][currentParent];
@@ -545,7 +553,7 @@ contract meta16 is ReentrancyGuard {
         } else {
             uint256 paidShare = _payCapped(userA, share);
             userTotalMatrixIncome[userA] += paidShare;
-            emit MatrixIncome(userA, buyer, 5, paidShare);
+            emit MatrixIncome(userA, buyer, packageId, 5, paidShare);
         }
 
         if (count == 28 && !upgraded) {
@@ -568,7 +576,10 @@ contract meta16 is ReentrancyGuard {
             uint256 leftover = matrixHoldByPkg[packageId][userA] - requiredHeld;
             matrixHoldByPkg[packageId][userA] = 0; 
 
-            if (leftover > 0) usdt.safeTransfer(adminWallet, leftover);
+            if (leftover > 0) usdt.safeTransfer(adminWallet, leftover); 
+
+            // FIX: auto-upgrade counts as investment for earnings-cap purposes
+            userTotalInvestment[userA] += requiredHeld;
 
             matrixPackageId[userA] = nextPackageId;
             if (nextPackageId > maxMatrixPackage[userA]) maxMatrixPackage[userA] = nextPackageId;
@@ -602,7 +613,7 @@ contract meta16 is ReentrancyGuard {
             matrixHoldByPkg[packageId][userA] -= reEntryCost;
             uint256 paidCost = _payCapped(eligibleUpline, reEntryCost);
             userTotalMatrixIncome[eligibleUpline] += paidCost;
-            emit MatrixIncome(eligibleUpline, userA, 5, paidCost);
+            emit MatrixIncome(eligibleUpline, userA, packageId, 5, paidCost);
         }
 
         _placeInMatrixForPackage(packageId, phantomNode, eligibleUpline);
@@ -751,7 +762,10 @@ contract meta16 is ReentrancyGuard {
             uint256 leftover = sponsorHoldByPkg[packageId][userA] - requiredHeld;
             sponsorHoldByPkg[packageId][userA] = 0; 
 
-            if (leftover > 0) usdt.safeTransfer(adminWallet, leftover);
+            if (leftover > 0) usdt.safeTransfer(adminWallet, leftover); 
+
+            // FIX: auto-upgrade counts as investment for earnings-cap purposes
+            userTotalInvestment[userA] += requiredHeld;
 
             sponsorPackageId[userA] = nextPackageId;
             if (nextPackageId > maxSponsorPackage[userA]) maxSponsorPackage[userA] = nextPackageId;
