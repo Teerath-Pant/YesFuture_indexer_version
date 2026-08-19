@@ -287,6 +287,7 @@ import {
   fetchPurchaseHistory,
   fetchMagicGoldMatrixSummary,
   fetchMaxActivePackage,
+  fetchMaxActiveMatrixPackage,
 } from "@/lib/auth-api";
 import { useWallet } from "@/lib/use-wallet";
 
@@ -345,7 +346,8 @@ const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
           await fetchPackageAndId(activeWalletAddress);
         setUserNumericId(stringId);
 
-        const activeMax = await fetchMaxActivePackage(activeWalletAddress);
+        const activeMax = await fetchMaxActiveMatrixPackage(activeWalletAddress);
+        // const activeMax = await fetchMaxActivePackage(activeWalletAddress);
         setMaxActivePkg(Math.max(activeMax, 1));
         const unlockedMax = Math.max(activeMax, 1);
         const summary = await fetchMagicGoldMatrixSummary(activeWalletAddress);

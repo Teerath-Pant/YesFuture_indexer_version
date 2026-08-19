@@ -52,7 +52,7 @@ const PreviewSponsorMagicPackagePage = ({
           fetchSponsorLevelDetail,
           levelNum,
         );
-
+        console.log(res)
         if (isMounted && res) {
           setDetail(res);
           const total = Math.max(1, res.cyclesCount || 0);
@@ -127,8 +127,8 @@ const PreviewSponsorMagicPackagePage = ({
       key: "refId",
       label: "ID",
       render: (r) => (
-        <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs font-mono">
-          ID {r.refId}
+        <span className="text-blue-400 bg-indigo-500/15 px-2 py-1 rounded-full font-medium font-mono">
+          {r.refId}
         </span>
       ),
     },
@@ -156,7 +156,7 @@ const PreviewSponsorMagicPackagePage = ({
           className={
             r.type === "recycle"
               ? "text-green-400 font-semibold"
-              : "text-white font-medium"
+              : "text-green-400 font-semibold"
           }
         >
           {r.amount}

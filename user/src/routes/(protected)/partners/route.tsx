@@ -58,8 +58,8 @@ function PartnerPage() {
       fetchPackageAndId(connectedWallet),
     ])
       .then(([rows, profile]) => {
-        console.log("row",rows)
-        console.log("profile",profile)
+        // console.log("row",rows)
+        // console.log("profile",profile)
         if (!isMounted) return;
         setData(rows);
         setPageTitle("Partners");
@@ -110,8 +110,8 @@ function PartnerPage() {
       key: "refId",
       label: "ID",
       render: (r) => (
-        <span className="text-blue-500 font-medium bg-blue-500/10 px-2.5 py-1 rounded-full text-xs cursor-pointer hover:bg-blue-500/20 transition-colors">
-          ID {r.refId}
+        <span className="text-blue-500 font-medium px-2.5 py-1 rounded-full cursor-pointer hover:bg-blue-500/20 transition-colors">
+          {r.refId}
         </span>
       ),
     },
@@ -137,7 +137,7 @@ function PartnerPage() {
       key: "profitUSDT",
       label: "Profit USDT",
       align: "center",
-      render: (r) => <span className="font-bold text-white text-xs">{r.profitUSDT}</span>,
+      render: (r) => <span className="text-green-400 font-semibold">{r.profitUSDT}</span>,
     },
     {
       key: "newPartners",
@@ -200,7 +200,7 @@ function PartnerPage() {
           ]}
           onApply={() => {
             setAppliedSearch(search);
-            console.log("apply", { program, level, search });
+            // console.log("apply", { program, level, search });
           }}
           onReset={() => {
             setProgram("");

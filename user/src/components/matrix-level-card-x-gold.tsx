@@ -421,9 +421,9 @@ export function MatrixLevelCardXGold({
             <span className="text-4xl font-extrabold text-rose-500">
               {partnersCount ?? 0}
             </span>
-            <span className="text-[11px] font-semibold text-rose-400 text-center">
+            {/* <span className="text-[11px] font-semibold text-rose-400 text-center">
               Members waiting — upgrade to claim
-            </span>
+            </span> */}
           </div>
           <div className="flex items-center gap-4 text-xs font-semibold text-rose-400 z-10 pt-1">
             <div className="flex items-center gap-1.5">

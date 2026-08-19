@@ -2486,6 +2486,7 @@ interface TransactionApiRow {
   amount: string;
   block_timestamp: string;
   counterparty_string_id: string | null;
+  counterparty_address: string | null;
 }
 
 // Replaces the dead levelIncomeHistory-array-getter-based version (that
@@ -3158,6 +3159,8 @@ export async function fetchSponsorLevelDetail(
           ? fetchDirectPartners(targetAddress)
           : Promise.resolve([]),
       ]);
+
+      console.log(rows)
     if (!profile) return empty;
 
     const ownStringId = profile.stringId || "...";
@@ -3167,7 +3170,8 @@ export async function fetchSponsorLevelDetail(
       .filter((r) => (r.package_id ?? 0) === packageId)
       .map((r) => ({
         childId: r.counterparty_string_id ?? "ID ...",
-        childFullAddr: "",
+        childFullAddr: r.
+counterparty_address ?? "ADDRESS ...",
         amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
         rawAmount: parseFloat(ethers.formatUnits(r.amount, 18)),
         cycle: Number(r.cycle) || 0,
@@ -4000,6 +4004,24 @@ export async function fetchMaxActivePackage(
     return maxPkg || 1;
   } catch (error) {
     console.error("Error fetching max active package:", error);
+    return 1;
+  }
+}
+
+export async function fetchMaxActiveMatrixPackage(
+  walletAddress: string,
+): Promise<number> {
+  try {
+    const provider = new ethers.JsonRpcProvider(TAAQO_RPC_URL);
+    const contract = new ethers.Contract(CONTRACT_ADDRESS, CORE_ABI, provider);
+
+    const maxMatrix = await contract
+      .maxMatrixPackage(walletAddress)
+      .catch(() => 0);
+
+    return Number(maxMatrix || 0) || 1;
+  } catch (error) {
+    console.error("Error fetching max active matrix package:", error);
     return 1;
   }
 }

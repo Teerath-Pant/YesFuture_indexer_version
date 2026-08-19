@@ -204,7 +204,7 @@ function MatrixMagicPage() {
       key: "amount", 
       label: "Amount",
       render: (r) => (
-        <span className={r.date === "Auto-Activated" ? "text-gray-500" : "text-white"}>
+        <span className={r.date === "Auto-Activated" ? "text-green-400 font-semibold" : "text-green-400 font-semibold"}>
           {r.amount}
         </span>
       )

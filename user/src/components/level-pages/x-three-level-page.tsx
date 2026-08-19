@@ -14,6 +14,7 @@ import SponsorLevelSummaryCard, {
 } from "../sponser-level-summary-card";
 import { sponsorMagicPackages, type ProgramTypes } from "@/constants/programs";
 import { useWallet } from "@/lib/use-wallet";
+import { formattedWalletAddress } from "@/lib/helper";
 
 const SPONSOR_PACKAGE_PRICES = sponsorMagicPackages
 
@@ -52,7 +53,6 @@ export const XThreeLevelPage = ({
           targetUserOrAddress,
           levelNum,
         );
-
         if (isMounted && res) {
           setDetail(res);
           setSearchId(res.ownStringId)
@@ -129,8 +129,8 @@ export const XThreeLevelPage = ({
       key: "refId",
       label: "ID",
       render: (r) => (
-        <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs font-mono">
-          ID {r.refId}
+        <span className="text-blue-400 px-2 py-1 rounded-full font-mono font-medium">
+        {r.refId}
         </span>
       ),
     },
@@ -139,8 +139,8 @@ export const XThreeLevelPage = ({
       label: "Wallet",
       render: (r) => (
         <WalletCell
-          address={r.fullWallet || r.wallet}
-          displayAddress={r.wallet}
+          address={r.fullWallet}
+          displayAddress={formattedWalletAddress(r.fullWallet)}
           explorerUrl={
             r.fullWallet && r.fullWallet.startsWith("0x")
               ? `https://bscscan.com/address/${r.fullWallet}`
@@ -158,7 +158,7 @@ export const XThreeLevelPage = ({
           className={
             r.type === "recycle"
               ? "text-green-400 font-semibold"
-              : "text-white font-medium"
+              : "text-green-400 font-semibold"
           }
         >
           {r.amount}
