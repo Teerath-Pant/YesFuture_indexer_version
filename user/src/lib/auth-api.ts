@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x4744a8b0e0b5a475116f89b00c306a726ea6bc55";
 // const CONTRACT_ADDRESS = "0x299724c47e64812a4139034e673f79d9534375fe";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
-const CONTRACT_ADDRESS = "0xdfd3eea2207125aeb616c52ba5f578e9abb194bb";
+const CONTRACT_ADDRESS = "0x62a5ca5034a1d3a0e53347303b0d5bca466ae05f";
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
 
