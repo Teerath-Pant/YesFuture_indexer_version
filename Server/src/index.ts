@@ -12,7 +12,11 @@ process.on("unhandledRejection", (err) => {
   console.error("unhandled rejection (route probably threw):", err);
 });
 
-app.listen(port, () => console.log(`api listening on :${port}`));
+const server = app.listen(port, () => console.log(`api listening on :${port}`));
+server.on("error", (err) => {
+  console.error("listen failed:", err);
+  process.exit(1);
+});
 
 runIndexerLoop().catch((err) => {
   console.error("indexer loop crashed:", err);
