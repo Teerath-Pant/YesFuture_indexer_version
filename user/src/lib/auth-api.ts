@@ -11,7 +11,7 @@ const CONTRACT_ADDRESS = "0x6ffb121f3bdc64d6ab452c574531a6f7864f6013";
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
 
-const CORE_ABI = [
+const CORE_ABI =[
   {
     "type": "constructor",
     "inputs": [
@@ -3160,7 +3160,7 @@ export async function fetchSponsorLevelDetail(
           : Promise.resolve([]),
       ]);
 
-      console.log(rows)
+      // console.log(rows)
     if (!profile) return empty;
 
     const ownStringId = profile.stringId || "...";
@@ -3681,19 +3681,22 @@ export async function fetchUserMatrixIncomeHistory(
   const rows = await apiGet<MatrixIncomeApiRow[]>(
     `/users/${walletAddress}/history/matrix-income`,
   );
+  console.log("rows",rows)
   return (rows ?? [])
     .filter((r) => Number(r.package_id) === packageId)
     .map((r, index) => {
       const dateSeconds = Math.floor(
         new Date(r.block_timestamp).getTime() / 1000,
       );
+      
       const amountValue = Number(ethers.formatUnits(r.amount, 18));
       const refId = r.from_string_id ?? "ID ...";
       return {
         id: index + 1,
         date: formatDate(dateSeconds),
         refId,
-        level: Number(r.package_id) || packageId,
+        level: Number(r.level),
+        packageId:Number(r.package_id),
         wallet: refId,
         fullWallet: r.from_address, // ← ye fix hua
         type: "join" as const,
@@ -4787,6 +4790,7 @@ export async function fetchMatrixIncomeByAddress(
   const rows = await apiGet<MatrixIncomeApiRow[]>(
     `/transactions/${userAddress}?type=MATRIX_INCOME`,
   );
+  console.log("rows",rows)
   const items: MatrixIncomeItem[] = (rows ?? []).map((r, index) => {
     const dateSeconds = Math.floor(
       new Date(r.block_timestamp).getTime() / 1000,

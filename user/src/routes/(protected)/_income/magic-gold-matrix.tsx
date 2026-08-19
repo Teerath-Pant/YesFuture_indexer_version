@@ -18,6 +18,7 @@ interface TransactionRow {
   date: string;
   refId: string;
   level: number;
+  packageId: number;
   wallet: string;
   fullWallet?: string;
   type: "join" | "recycle";
@@ -33,12 +34,12 @@ function RouteComponent() {
   const [data, setData] = useState<TransactionRow[]>([]);
   const [search, setSearch] = useState("");
   const [level, setLevel] = useState("");
-  // const [packageValue, setPackageValue] = useState("");
+  const [packageValue, setPackageValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [_userNumericId, setUserNumericId] = useState("0");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [appliedLevel, setAppliedLevel] = useState("");
-  // const [appliedPackage, setAppliedPackage] = useState("");
+  const [appliedPackage, setAppliedPackage] = useState("");
 
   const columns: Column<TransactionRow>[] = [
     { key: "date", label: "Date" },
@@ -51,7 +52,8 @@ function RouteComponent() {
         </span>
       ),
     },
-    { key: "level", label: "Package Level" },
+    { key: "level", label: "Level" },
+    { key: "packageId", label: "Package" },
     {
       key: "wallet",
       label: "Wallet",
@@ -67,7 +69,9 @@ function RouteComponent() {
       key: "amount",
       label: "USDT",
       align: "right",
-      render: (r) => <span className="text-green-400 font-semibold">{r.amount}</span>,
+      render: (r) => (
+        <span className="text-green-400 font-semibold">{r.amount}</span>
+      ),
     },
   ];
 
@@ -83,14 +87,15 @@ function RouteComponent() {
         const { numericId } = await fetchPackageAndId(connectedWallet);
         setUserNumericId(numericId);
         const historyData = await fetchMatrixIncomeByAddress(connectedWallet);
-        // console.log("History Data:", historyData);
+        console.log("History Data:", historyData);
         if (isMounted && historyData) {
           const formattedHistory: TransactionRow[] = historyData.map(
             (item: any, idx: number) => ({
               id: idx + 1,
               date: item.time,
               refId: item.fromId,
-              level: Number(item.packageId) || 0,
+              level: Number(item.level) || 0,
+              packageId: Number(item.packageId) || 0,
               wallet: `${connectedWallet.substring(0, 6)}...${connectedWallet.substring(connectedWallet.length - 4)}`,
               fullWallet: connectedWallet,
               type: "join",
@@ -117,10 +122,9 @@ function RouteComponent() {
       result = result.filter((row) => row.level === Number(appliedLevel));
     }
 
-    // if (appliedPackage) {
-    //   result = result.filter((row) => row.package === Number(appliedPackage));
-    // }
-
+    if (appliedPackage) {
+  result = result.filter((row) => row.packageId === Number(appliedPackage));
+}
     if (appliedSearch.trim()) {
       const query = appliedSearch.trim().toLowerCase();
       result = result.filter(
@@ -135,7 +139,7 @@ function RouteComponent() {
     data,
     appliedLevel,
     appliedSearch,
-    // appliedPackage
+    appliedPackage
   ]);
 
   return (
@@ -169,17 +173,17 @@ function RouteComponent() {
                 value: String(n),
               })),
             },
-            // {
-            //   key: "package",
-            //   label: "Package",
-            //   type: "select",
-            //   value: packageValue,
-            //   onChange: setPackageValue,
-            //   options: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({
-            //     label: String(n),
-            //     value: String(n),
-            //   })),
-            // },
+            {
+              key: "package",
+              label: "Package",
+              type: "select",
+              value: packageValue,
+              onChange: setPackageValue,
+              options: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({
+                label: String(n),
+                value: String(n),
+              })),
+            },
             {
               key: "search",
               label: "Search ID",
@@ -190,14 +194,14 @@ function RouteComponent() {
             },
           ]}
           onApply={() => {
-            // setAppliedPackage(packageValue);
+            setAppliedPackage(packageValue);
             setAppliedSearch(search);
             setAppliedLevel(level);
           }}
           onReset={() => {
             setLevel("");
             setSearch("");
-            // setPackageValue("");
+            setPackageValue("");
             setAppliedSearch("");
             setAppliedLevel("");
           }}
