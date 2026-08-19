@@ -284,12 +284,6 @@ export const CONTRACT_ABI = [
         "internalType": "address"
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
-      },
-      {
         "name": "level",
         "type": "uint8",
         "indexed": false,
