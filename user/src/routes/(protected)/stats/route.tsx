@@ -75,8 +75,8 @@ function StatsPage() {
       key: "refId",
       label: "ID",
       render: (r) => (
-        <span className="text-blue-600 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
-          ID {r.refId}
+        <span className="text-blue-400 px-2 py-1 rounded-full font-medium">
+          {r.refId}
         </span>
       ),
     },
@@ -98,7 +98,7 @@ function StatsPage() {
       label: "USDT / BNB profit",
       align: "right",
       render: (r) => (
-        <span className={r.type === "recycle" ? "text-green-500" : "text-white"}>{r.profit}</span>
+        <span className={r.type === "recycle" ? "text-green-400 font-semibold" : "text-green-400 font-semibold"}>{r.profit}</span>
       ),
     },
   ];

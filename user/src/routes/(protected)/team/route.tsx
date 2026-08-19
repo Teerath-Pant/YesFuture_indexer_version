@@ -76,7 +76,7 @@ function RouteComponent() {
     init();
   }, []);
 
-  console.log("Team Data:", data);
+  // console.log("Team Data:", data);
 
 
   const filtered = data.filter((r) => {
@@ -93,8 +93,8 @@ function RouteComponent() {
       key: "refId",
       label: "ID",
       render: (r) => (
-        <span className="text-blue-500 font-medium bg-blue-500/10 px-2.5 py-1 rounded-full text-xs cursor-pointer hover:bg-blue-500/20 transition-colors">
-          ID {r.refId}
+        <span className="text-blue-500 font-medium  px-2.5 py-1 rounded-full cursor-pointer hover:bg-blue-500/20 transition-colors">
+          {r.refId}
         </span>
       ),
     },
@@ -132,7 +132,7 @@ function RouteComponent() {
       label: "Total Bussiness",
       align: "center",
       render: (r) => (
-        <span className="font-bold text-white text-xs"> ${r.totalBussiness}</span>
+        <span className="text-green-400 font-semibold"> ${r.totalBussiness}</span>
       ),
     },
   ];

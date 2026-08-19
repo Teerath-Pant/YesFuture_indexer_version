@@ -410,7 +410,7 @@ export const XGoldLevelPage = ({
       key: "refId",
       label: "ID",
       render: (r) => (
-        <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
+        <span className="text-blue-400  px-2 py-1 rounded-full font-medium">
           ID {r.refId}
         </span>
       ),
@@ -433,7 +433,7 @@ export const XGoldLevelPage = ({
       align: "right",
       render: (r) => (
         <span
-          className={r.type === "release" ? "text-violet-400" : "text-white"}
+          className={r.type === "release" ? "text-green-500 font-semibold" : "text-green-500 font-semibold"}
         >
           {r.amount}
         </span>
@@ -441,7 +441,7 @@ export const XGoldLevelPage = ({
     },
   ];
 
-  console.log(incomeRows);
+  // console.log(incomeRows);
 
   return (
     <div className="w-full text-white">

@@ -263,7 +263,7 @@ const PreviewUserSponserMagic = ({ program }: pageProps) => {
       render: (r) => (
         <span
           className={
-            r.type === "recycle" ? "text-green-500" : "text-white font-medium"
+            r.type === "recycle" ? "text-green-400 font-semibold" : "text-green-400 font-semibold"
           }
         >
           {r.amount}

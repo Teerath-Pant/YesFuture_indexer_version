@@ -46,8 +46,8 @@ function RouteComponent() {
       key: "refId",
       label: "ID From",
       render: (r) => (
-        <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
-          ID {r.refId}
+        <span className="text-blue-400 font-medium px-2 py-1 rounded-full">
+          {r.refId}
         </span>
       ),
     },
@@ -67,7 +67,7 @@ function RouteComponent() {
       key: "amount",
       label: "USDT",
       align: "right",
-      render: (r) => <span className="text-white">{r.amount}</span>,
+      render: (r) => <span className="text-green-400 font-semibold">{r.amount}</span>,
     },
   ];
 
@@ -83,7 +83,7 @@ function RouteComponent() {
         const { numericId } = await fetchPackageAndId(connectedWallet);
         setUserNumericId(numericId);
         const historyData = await fetchMatrixIncomeByAddress(connectedWallet);
-        console.log("History Data:", historyData);
+        // console.log("History Data:", historyData);
         if (isMounted && historyData) {
           const formattedHistory: TransactionRow[] = historyData.map(
             (item: any, idx: number) => ({
@@ -164,7 +164,7 @@ function RouteComponent() {
               type: "select",
               value: level,
               onChange: setLevel,
-              options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => ({
+              options: [1, 2, 3, 4, 5].map((n) => ({
                 label: String(n),
                 value: String(n),
               })),

@@ -73,7 +73,7 @@ function SponsorMagicPage() {
       }
       
       setPurchasedPackages(purchased);
-      console.log("📦 Purchased packages:", purchased);
+      // console.log("📦 Purchased packages:", purchased);
       
       let displayHistory = [...(history || [])];
       const hasPackage1 = displayHistory.some(item => item.package === "Package 1");
@@ -108,7 +108,7 @@ function SponsorMagicPage() {
         nextPkg = 1;
       }
       
-      console.log("🎯 Next package should be:", nextPkg);
+      // console.log("🎯 Next package should be:", nextPkg);
       setSelectedPackage(nextPkg);
       
     } catch (error) {
@@ -129,7 +129,7 @@ function SponsorMagicPage() {
     if (!address) return;
     
     const currentSelectedPkg = selectedPackage;
-    console.log("🛒 Purchasing package:", currentSelectedPkg);
+    // console.log("🛒 Purchasing package:", currentSelectedPkg);
     
     setIsSubmitting(true);
     setTxStatus("approving");
@@ -147,7 +147,7 @@ function SponsorMagicPage() {
       // ✅ Update purchased packages list
       setPurchasedPackages(prev => {
         const updated = [...prev, currentSelectedPkg];
-        console.log("📦 Updated purchased packages:", updated);
+        // console.log("📦 Updated purchased packages:", updated);
         return updated;
       });
       
@@ -164,7 +164,7 @@ function SponsorMagicPage() {
         nextPkg = 1;
       }
       
-      console.log("🎯 Setting next package to:", nextPkg);
+      // console.log("🎯 Setting next package to:", nextPkg);
       setSelectedPackage(nextPkg);
       
       // ✅ Add to history immediately

@@ -28,7 +28,7 @@ function RouteComponent() {
     const { id } = Route.useSearch();
     const [, setPage] = useState(1);
     const [pageTitle, setPageTitle] = useState("Sponsor Magic Income");
-    const [pageId, setPageId] = useState<string | undefined>(undefined);
+    // const [pageId, setPageId] = useState<string | undefined>(undefined);
     const [isFilterSectionShow, setIsFilterSectionShow] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [search, setSearch] = useState("");
@@ -62,7 +62,7 @@ function RouteComponent() {
             label: "Amount",
             align: "right",
             render: (r) => (
-                <span className={r.type === "recycle" ? "text-green-500" : "text-white font-medium"}>
+                <span className={r.type === "recycle" ? "text-green-400 font-semibold" : "text-green-400 font-semibold"}>
                     {r.amount}
                 </span>
             ),

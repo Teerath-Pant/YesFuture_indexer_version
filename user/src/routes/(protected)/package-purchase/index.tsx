@@ -8,6 +8,11 @@ import PackageCardSelector, {
 } from "@/components/package-card-selector";
 import PackagePurchaseForm from "@/components/package-purchase-form";
 import { Loader2, CheckCircle2, Clock } from "lucide-react";
+import {
+  PurchaseOverlay,
+  type PurchaseStep,
+  type PurchaseContext,
+} from "@/components/purchase-overlay";
 import { useWallet } from "@/lib/use-wallet";
 import {
   fetchMatrixPackageAndIdWithMax,
@@ -128,8 +133,13 @@ export default function PackagePurchasePage() {
   const [selectedPackageId, setSelectedPackageId] = useState<
     string | undefined
   >();
+  // const [isSubmitting, setIsSubmitting] = useState(false);
+  // const [txStatus, setTxStatus] = useState<string>("idle");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [txStatus, setTxStatus] = useState<string>("idle");
+  const [purchaseStep, setPurchaseStep] = useState<PurchaseStep | null>(null);
+  const [purchaseContext, setPurchaseContext] =
+    useState<PurchaseContext | null>(null);
 
   const nextPkg = currentPkg === 9 ? 1 : currentPkg + 1;
 
@@ -170,21 +180,30 @@ export default function PackagePurchasePage() {
           label: "Magic Gold Matrix",
           currentPkg: matrixData?.pkgId ?? 0,
           isPurchasedForSelected: (matrixData?.pkgId ?? 0) >= selId,
-          amount: AMOUNT_MAP.matrix.find((x) => x.id === String(ownNext(matrixData?.pkgId ?? 0)))?.amount ?? "",
+          amount:
+            AMOUNT_MAP.matrix.find(
+              (x) => x.id === String(ownNext(matrixData?.pkgId ?? 0)),
+            )?.amount ?? "",
         },
         {
           key: "level",
           label: "Magic Level",
           currentPkg: levelData?.pkgId ?? 0,
           isPurchasedForSelected: (levelData?.pkgId ?? 0) >= selId,
-          amount: AMOUNT_MAP.level.find((x) => x.id === String(ownNext(levelData?.pkgId ?? 0)))?.amount ?? "",
+          amount:
+            AMOUNT_MAP.level.find(
+              (x) => x.id === String(ownNext(levelData?.pkgId ?? 0)),
+            )?.amount ?? "",
         },
         {
           key: "sponsor",
           label: "Sponsor Magic",
           currentPkg: sponsorData?.pkgId ?? 0,
           isPurchasedForSelected: (sponsorData?.pkgId ?? 0) >= selId,
-          amount: AMOUNT_MAP.sponsor.find((x) => x.id === String(ownNext(sponsorData?.pkgId ?? 0)))?.amount ?? "",
+          amount:
+            AMOUNT_MAP.sponsor.find(
+              (x) => x.id === String(ownNext(sponsorData?.pkgId ?? 0)),
+            )?.amount ?? "",
         },
       ]);
     } catch (err) {
@@ -227,6 +246,66 @@ export default function PackagePurchasePage() {
     (p) => !p.isPurchasedForSelected,
   );
 
+  // const handlePurchaseAllPending = async () => {
+  //   if (!selectedPackage || !address) return;
+
+  //   if (pendingPrograms.length === 0) {
+  //     toast.message("All types for this package have already been purchased!");
+  //     return;
+  //   }
+
+  //   setIsSubmitting(true);
+
+  //   try {
+  //     const targetId = Number(selectedPackage.id);
+  //     for (const p of pendingPrograms) {
+  //       // A track behind the selected tier must buy every step in between —
+  //       // purchaseSponsorPackage/etc. require strictly sequential tiers
+  //       // on-chain (packageId - 1 check). Buying straight to the selected
+  //       // tier while behind reverts; catch it up one tier at a time instead.
+  //       for (let tier = p.currentPkg + 1; tier <= targetId; tier++) {
+  //         const splitPkg = AMOUNT_MAP[p.key].find((x) => x.id === String(tier));
+  //         if (!splitPkg) {
+  //           console.error(`No split price found for ${p.key}, package ${tier}`);
+  //           continue;
+  //         }
+
+  //         setTxStatus(`purchasing-${p.key}`);
+  //         await BUY_FN_MAP[p.key](
+  //           tier,
+  //           splitPkg.amount, // ✅ sahi — us program ka apna split amount
+  //           (status: string) => setTxStatus(status),
+  //         );
+  //       }
+  //     }
+
+  //     toast.success(
+  //       `Purchased: ${pendingPrograms.map((p) => p.label).join(", ")}`,
+  //     );
+
+  //     // Sab kuch re-fetch — rows automatically Pending → Purchased flip ho jayenge
+  //     await loadAllData();
+  //   } catch (error: any) {
+  //     console.error("Purchase error details:", error);
+  //     if (
+  //       error?.code === 4001 ||
+  //       error?.code === "ACTION_REJECTED" ||
+  //       error?.message?.includes("user rejected action")
+  //     ) {
+  //       toast.message("Transaction cancelled by user.");
+  //     } else {
+  //       toast.error(
+  //         "Transaction failed. Please check your balance and try again.",
+  //       );
+  //     }
+  //     // Error ke baad bhi ek reload kar do taaki state sync rahe
+  //     await loadAllData();
+  //   } finally {
+  //     setIsSubmitting(false);
+  //     setTxStatus("idle");
+  //   }
+  // };
+
   const handlePurchaseAllPending = async () => {
     if (!selectedPackage || !address) return;
 
@@ -239,26 +318,48 @@ export default function PackagePurchasePage() {
 
     try {
       const targetId = Number(selectedPackage.id);
-      for (const p of pendingPrograms) {
-        // A track behind the selected tier must buy every step in between —
-        // purchaseSponsorPackage/etc. require strictly sequential tiers
-        // on-chain (packageId - 1 check). Buying straight to the selected
-        // tier while behind reverts; catch it up one tier at a time instead.
-        for (let tier = p.currentPkg + 1; tier <= targetId; tier++) {
-          const splitPkg = AMOUNT_MAP[p.key].find((x) => x.id === String(tier));
-          if (!splitPkg) {
-            console.error(`No split price found for ${p.key}, package ${tier}`);
-            continue;
-          }
 
-          setTxStatus(`purchasing-${p.key}`);
-          await BUY_FN_MAP[p.key](
-            tier,
-            splitPkg.amount, // ✅ sahi — us program ka apna split amount
-            (status: string) => setTxStatus(status),
-          );
+      // Pre-compute the full flat list of (program, tier) steps so the
+      // overlay can show "X of Y" — the nested loop below buys them one at
+      // a time, in order, same as before.
+      type PlannedStep = {
+        program: (typeof pendingPrograms)[number];
+        tier: number;
+      };
+      const plannedSteps: PlannedStep[] = [];
+      for (const p of pendingPrograms) {
+        for (let tier = p.currentPkg + 1; tier <= targetId; tier++) {
+          if (AMOUNT_MAP[p.key].find((x) => x.id === String(tier))) {
+            plannedSteps.push({ program: p, tier });
+          }
         }
       }
+
+      let stepIndex = 0;
+      for (const { program: p, tier } of plannedSteps) {
+        stepIndex += 1;
+        const splitPkg = AMOUNT_MAP[p.key].find((x) => x.id === String(tier));
+        if (!splitPkg) {
+          console.error(`No split price found for ${p.key}, package ${tier}`);
+          continue;
+        }
+
+        setPurchaseContext({
+          programLabel: p.label,
+          tier,
+          index: stepIndex,
+          total: plannedSteps.length,
+        });
+
+        await BUY_FN_MAP[p.key](
+          tier,
+          splitPkg.amount, // ✅ sahi — us program ka apna split amount
+          (status: string) => setPurchaseStep(status as PurchaseStep),
+        );
+      }
+
+      setPurchaseStep("success");
+      await new Promise((resolve) => setTimeout(resolve, 1200));
 
       toast.success(
         `Purchased: ${pendingPrograms.map((p) => p.label).join(", ")}`,
@@ -283,7 +384,8 @@ export default function PackagePurchasePage() {
       await loadAllData();
     } finally {
       setIsSubmitting(false);
-      setTxStatus("idle");
+      setPurchaseStep(null);
+      setPurchaseContext(null);
     }
   };
 
@@ -298,7 +400,13 @@ export default function PackagePurchasePage() {
         </span>
       ),
     },
-    { key: "amount", label: "Amount" },
+    {
+      key: "amount",
+      label: "Amount",
+      render: (r) => (
+        <span className="text-green-400 font-semibold">{r.amount}</span>
+      ),
+    },
     { key: "date", label: "Date" },
   ];
 
@@ -353,12 +461,16 @@ export default function PackagePurchasePage() {
               <span className="text-white text-sm font-medium">{p.label}</span>
               {p.isPurchasedForSelected ? (
                 <span className="flex items-center gap-1.5 text-green-400 text-xs font-semibold">
-                  {p.amount && <span>$ {p.amount.replace(/USDT/i, "").trim()}</span>}
+                  {p.amount && (
+                    <span>$ {p.amount.replace(/USDT/i, "").trim()}</span>
+                  )}
                   <CheckCircle2 size={14} /> Purchased
                 </span>
               ) : (
                 <span className="flex items-center gap-1.5 text-yellow-400 text-xs font-semibold">
-                  {p.amount && <span>$ {p.amount.replace(/USDT/i, "").trim()}</span>}
+                  {p.amount && (
+                    <span>$ {p.amount.replace(/USDT/i, "").trim()}</span>
+                  )}
                   <Clock size={14} /> Pending
                 </span>
               )}
@@ -366,7 +478,7 @@ export default function PackagePurchasePage() {
           ))}
         </div>
 
-        <div className="mt-4 w-full">
+        {/* <div className="mt-4 w-full">
           <PackagePurchaseForm
             walletId={address || "Connect Wallet"}
             selectedPackage={selectedPackage}
@@ -386,6 +498,17 @@ export default function PackagePurchasePage() {
               Confirming Purchase...
             </p>
           )}
+        </div> */}
+        <div className="mt-4 w-full">
+          <PurchaseOverlay step={purchaseStep} context={purchaseContext} />
+          <PackagePurchaseForm
+            walletId={address || "Connect Wallet"}
+            selectedPackage={selectedPackage}
+            onPurchase={handlePurchaseAllPending}
+            isSubmitting={isSubmitting}
+            purchaseLabel={purchaseButtonLabel}
+            purchaseDisabled={isSubmitting || pendingPrograms.length === 0}
+          />
         </div>
       </div>
 
