@@ -3347,9 +3347,13 @@ export async function fetchMagicGoldMatrixStructure(
 }
 
 // Replaces the per-address live memberStringId RPC loop with one DB query
-// (GET /users/string-ids) — was up to 62 sequential calls per matrix tree render.
+// (GET /users/string-ids) — was up to 62 sequential calls per matrix tree
+// render. Pass packageId when resolving matrix-tree node addresses — some
+// slots are a recycle's synthetic "phantom" address (see the backend route),
+// and resolving those needs to know which package's realOwnerByPkg to check.
 export async function fetchMemberIdsForAddresses(
   addresses: string[],
+  packageId?: number,
 ): Promise<Record<string, string>> {
   const uniqueAddresses = Array.from(
     new Set(
@@ -3361,8 +3365,9 @@ export async function fetchMemberIdsForAddresses(
   if (uniqueAddresses.length === 0) return {};
 
   try {
+    const pkgParam = packageId ? `&packageId=${packageId}` : "";
     const result = await apiGet<Record<string, string>>(
-      `/users/string-ids?addresses=${uniqueAddresses.join(",")}`,
+      `/users/string-ids?addresses=${uniqueAddresses.join(",")}${pkgParam}`,
     );
     return result ?? {};
   } catch (error) {

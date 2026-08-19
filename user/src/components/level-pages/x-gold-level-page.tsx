@@ -306,7 +306,7 @@ export const XGoldLevelPage = ({
         ]);
 
         const visibleNodes = structure.nodes.slice(0, 62);
-        const idByAddress = await fetchMemberIdsForAddresses(visibleNodes);
+        const idByAddress = await fetchMemberIdsForAddresses(visibleNodes, levelNum);
         const matrixIncomeRows = await fetchUserMatrixIncomeHistory(targetAddress, levelNum);
         const toNode = (nodeAddress: string): TreeNode => {
           if (!nodeAddress || nodeAddress === "0x0000000000000000000000000000000000000000") {
