@@ -108,23 +108,29 @@ contract meta20 is ReentrancyGuard {
     mapping(uint8 => mapping(address => address))   public matrixParentByPkg;
     mapping(uint8 => mapping(address => address))   public realOwnerByPkg;
 
-    // matrixChildrenByPkg scoped by TREE OWNER as well as node.
-    // Confirmed rule: per-sponsor local tree, BFS left-right/top-down,
-    // max 2 children per node, unbounded depth. Bug was: single node
-    // playing two roles (root of own tree + filler slot in upline's
-    // tree) wrote into ONE shared array with two unaware head counters
-    // -> 3+ children. Keying by [packageId][treeOwner][node] gives each
-    // tree isolated storage, roles can't collide anymore.
-    mapping(uint8 => mapping(address => mapping(address => address[]))) public matrixChildrenByPkg;
-    
+    // Confirmed rule: placement is anchored at the buyer's nearest eligible
+    // upline (their own sponsor chain), then BFS left-right/top-down from
+    // that anchor, max 2 children per node, unbounded depth.
+    // matrixChildrenByPkg is FLAT — keyed [packageId][node] only, no
+    // per-anchor dimension. This is deliberate: matrixParentByPkg (the
+    // mapping the income walk actually reads) is already flat/global, one
+    // parent per address, so a node's capacity must ALSO be tracked
+    // globally — the earlier per-treeOwner-scoped version let the same
+    // node act as "full" in one tree's bookkeeping while independently
+    // "empty" in another's, so it accepted a 3rd/4th real child across the
+    // two namespaces even though the payout chain only ever sees ONE of
+    // them. Flat storage means every search — whether it's the node's own
+    // referral or an ancestor's overflow reaching this node — reads and
+    // writes the same counter, so the node genuinely never exceeds 2
+    // children no matter which anchor's search placed them, and an
+    // ancestor's growth visibly fills slots the node's own downline can see
+    // too (per explicit product requirement).
+    mapping(uint8 => mapping(address => address[])) public matrixChildrenByPkg;
+
     uint256 public phantomCounter;
 
     mapping(uint8 => mapping(address => uint256)) public level5MemberCountByPkg;
     mapping(uint8 => mapping(address => uint256)) public matrixHoldByPkg;
-
-    // Per-sponsor (per treeOwner) queue+head — matches confirmed rule.
-    mapping(uint8 => mapping(address => address[])) public matrixOpenQueue;
-    mapping(uint8 => mapping(address => uint256))    public matrixQueueHead;
 
     // ---------------------------------------------------------------
     // SPONSOR 5-CYCLE VARIABLES
@@ -422,30 +428,49 @@ contract meta20 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // MATRIX PLACEMENT
-    // _treeOwner = per-sponsor local tree root, confirmed rule.
-    // matrixChildrenByPkg keyed [packageId][_treeOwner][slot] — this is
-    // THE bug fix. Node acting as root of own tree AND filler slot in
-    // upline's tree now write to two separate arrays, no collision,
-    // no more 3+ children in one slot.
+    // _anchor = nearest eligible upline in the buyer's own sponsor chain
+    // (see _findEligibleMatrixUpline below). Placement BFS-searches
+    // _anchor's own subtree, left-to-right, for the first node with a free
+    // child slot — checking/writing the FLAT matrixChildrenByPkg array, so
+    // a node's capacity is the same whether this search reaches it as
+    // someone's own referral or as an ancestor's overflow.
     // ---------------------------------------------------------------
-    function _placeInMatrixForPackage(uint8 packageId, address _user, address _treeOwner) internal {
-        address[] storage queue = matrixOpenQueue[packageId][_treeOwner];
-        if (queue.length == 0) {
-            queue.push(_treeOwner);
-        }
+    // ponytail: live BFS walk per placement, bounded to
+    // MAX_MATRIX_SEARCH_NODES so gas stays capped — cheaper than
+    // maintaining a persistent per-anchor queue would need to be to stay
+    // correct once two different anchors' searches can reach the same
+    // shared node (a queue's cached "next candidate" can go stale the
+    // moment another anchor's search fills it first). Fine while trees are
+    // small/youngish; if real usage grows deep enough to make repeated
+    // level scans expensive, revisit with a self-healing persistent queue.
+    uint256 constant MAX_MATRIX_SEARCH_NODES = 512;
 
-        uint256 head = matrixQueueHead[packageId][_treeOwner];
-        address slot = queue[head];
+    function _placeInMatrixForPackage(uint8 packageId, address _user, address _anchor) internal {
+        address slot = _findOpenMatrixSlot(packageId, _anchor);
 
         matrixParentByPkg[packageId][_user] = slot;
-        matrixChildrenByPkg[packageId][_treeOwner][slot].push(_user);
-        emit MatrixPlaced(_user, slot, _treeOwner, packageId);
+        matrixChildrenByPkg[packageId][slot].push(_user);
+        emit MatrixPlaced(_user, slot, _anchor, packageId);
+    }
 
-        if (matrixChildrenByPkg[packageId][_treeOwner][slot].length >= 2) {
-            matrixQueueHead[packageId][_treeOwner] = head + 1;
+    function _findOpenMatrixSlot(uint8 packageId, address anchor) internal view returns (address) {
+        address[] memory queue = new address[](MAX_MATRIX_SEARCH_NODES);
+        queue[0] = anchor;
+        uint256 tail = 1;
+
+        for (uint256 head = 0; head < tail; head++) {
+            address node = queue[head];
+            address[] storage kids = matrixChildrenByPkg[packageId][node];
+            if (kids.length < 2) {
+                return node;
+            }
+            for (uint256 k = 0; k < kids.length; k++) {
+                require(tail < MAX_MATRIX_SEARCH_NODES, "MATRIX_SEARCH_BOUND");
+                queue[tail] = kids[k];
+                tail++;
+            }
         }
-
-        queue.push(_user);
+        revert("MATRIX_SEARCH_BOUND");
     }
 
     // FIX: anchor now walks to nearest eligible upline (maxMatrixPackage
@@ -567,9 +592,9 @@ contract meta20 is ReentrancyGuard {
         }
     }
 
-    // Phantom re-entry places back into userA's OWN tree (root=userA).
-    // FIX applied here: _placeInMatrixForPackage now called with 3rd
-    // arg userA — was missing before, wouldn't compile / wrong tree.
+    // Phantom re-entry's BFS search anchors at userA — finds the first open
+    // slot in userA's own subtree (shared/flat storage, see
+    // _placeInMatrixForPackage above).
     function _level5ReEntry(uint8 packageId, address userA) internal {
         level5MemberCountByPkg[packageId][userA] = 0;
         recycleCount[userA]++;
@@ -679,8 +704,8 @@ contract meta20 is ReentrancyGuard {
             topupFlag[phantom] = true;
             maxSponsorPackage[phantom] = maxSponsorPackage[directSponsor];
             
-            // FIX: phantom placed into directSponsor's OWN tree (3rd arg
-            // was missing before — wouldn't compile).
+            // BFS search anchors at directSponsor, same as any other
+            // placement — see _placeInMatrixForPackage above.
             _placeInMatrixForPackage(packageId, phantom, directSponsor);
             
             emit SponsorReEntry(directSponsor, packageId);
