@@ -917,6 +917,11 @@ export const CONTRACT_ABI = [
       },
       {
         "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
         "type": "address",
         "internalType": "address"
       },

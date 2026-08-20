@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x4744a8b0e0b5a475116f89b00c306a726ea6bc55";
 // const CONTRACT_ADDRESS = "0x299724c47e64812a4139034e673f79d9534375fe";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
-const CONTRACT_ADDRESS = "0xbcecc57417471107a93df4b16de01e9f8721e83a";
+const CONTRACT_ADDRESS = "0xa5b8d9e8507122eb3ab84f676e76ffd8c5318ec9";
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
 
@@ -919,6 +919,11 @@ const CORE_ABI = [
     "name": "matrixChildrenByPkg",
     "type": "function",
     "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
       {
         "name": "",
         "type": "uint8",
@@ -2436,6 +2441,10 @@ interface TransactionApiRow {
   block_timestamp: string;
   counterparty_string_id: string | null;
   counterparty_address: string | null;
+  // DIRECT_INCOME cycle=5 rows only — the sponsor whose own cycle
+  // completed (recycled), as opposed to counterparty_string_id which is
+  // whoever's registration triggered the 5th slot.
+  recycled_sponsor_string_id: string | null;
 }
 
 // Replaces the dead levelIncomeHistory-array-getter-based version (that
@@ -3120,9 +3129,13 @@ export async function fetchSponsorLevelDetail(
     const rawMatches = (rows ?? [])
       .filter((r) => (r.package_id ?? 0) === packageId)
       .map((r) => ({
-        childId: r.counterparty_string_id ?? "ID ...",
-        childFullAddr: r.
-counterparty_address ?? "ADDRESS ...",
+        // cycle 5 = a recycle: show the sponsor whose cycle completed, not
+        // whoever's registration happened to trigger it.
+        childId:
+          (Number(r.cycle) === 5 ? r.recycled_sponsor_string_id : null) ??
+          r.counterparty_string_id ??
+          "ID ...",
+        childFullAddr: r.counterparty_address ?? "ADDRESS ...",
         amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
         rawAmount: parseFloat(ethers.formatUnits(r.amount, 18)),
         cycle: Number(r.cycle) || 0,
@@ -3231,10 +3244,19 @@ counterparty_address ?? "ADDRESS ...",
       }
     }
 
+    // matches.length undercounts by 1 per completed cycle — the 5th slot
+    // is backfilled into cyclePartnerIds above (not into matches, since it
+    // has no paid/held DirectIncome row of its own). Sum cyclePartnerIds
+    // directly so the count always matches what's actually rendered.
+    const partnersCount = cyclePartnerIds.reduce(
+      (sum, batch) => sum + batch.length,
+      0,
+    );
+
     return {
       ownStringId,
       uplineStringId,
-      partnersCount: matches.length,
+      partnersCount,
       cyclesCount: cyclePartnerIds.length,
       totalRevenue,
       cyclePartnerIds,

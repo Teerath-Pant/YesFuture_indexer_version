@@ -66,10 +66,22 @@ transactionsRouter.get("/:address", async (req, res) => {
   const limit = Math.min(Number(req.query.limit) || 50, 200);
   const offset = Number(req.query.offset) || 0;
 
+  // recycled_sponsor_string_id: DIRECT_INCOME's 5th-slot payout is emitted
+  // with counterparty_address = whoever's registration triggered the 5th
+  // slot (the literal money source), not the sponsor whose own cycle
+  // completed — that's a separate SPONSOR_REENTRY row, same tx_hash, whose
+  // wallet_address IS the recycling sponsor. Joined here (scoped to
+  // cycle=5 so it can't accidentally attach to an unrelated row that
+  // happens to share a tx_hash with some other type) so callers like the
+  // Sponsor Magic cycle grid can label that slot with the recycling
+  // sponsor instead of the triggering buyer.
   const rows = await db.execute(sql`
-    SELECT t.*, ur.string_id AS counterparty_string_id
+    SELECT t.*, ur.string_id AS counterparty_string_id, ur2.string_id AS recycled_sponsor_string_id
     FROM transactions t
     LEFT JOIN user_registrations ur ON ur.member_address = t.counterparty_address
+    LEFT JOIN transactions reentry ON reentry.tx_hash = t.tx_hash
+      AND reentry.type = 'SPONSOR_REENTRY' AND t.type = 'DIRECT_INCOME' AND t.cycle = 5
+    LEFT JOIN user_registrations ur2 ON ur2.member_address = reentry.wallet_address
     WHERE t.wallet_address = ${user}
       ${type ? sql`AND t.type = ${type}` : sql``}
     ORDER BY t.block_timestamp DESC, t.log_index DESC

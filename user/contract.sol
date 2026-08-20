@@ -111,21 +111,24 @@ contract meta20 is ReentrancyGuard {
     // Confirmed rule: placement is anchored at the buyer's nearest eligible
     // upline (their own sponsor chain), then BFS left-right/top-down from
     // that anchor, max 2 children per node, unbounded depth.
-    // matrixChildrenByPkg is FLAT — keyed [packageId][node] only, no
-    // per-anchor dimension. This is deliberate: matrixParentByPkg (the
-    // mapping the income walk actually reads) is already flat/global, one
-    // parent per address, so a node's capacity must ALSO be tracked
-    // globally — the earlier per-treeOwner-scoped version let the same
-    // node act as "full" in one tree's bookkeeping while independently
-    // "empty" in another's, so it accepted a 3rd/4th real child across the
-    // two namespaces even though the payout chain only ever sees ONE of
-    // them. Flat storage means every search — whether it's the node's own
-    // referral or an ancestor's overflow reaching this node — reads and
-    // writes the same counter, so the node genuinely never exceeds 2
-    // children no matter which anchor's search placed them, and an
-    // ancestor's growth visibly fills slots the node's own downline can see
-    // too (per explicit product requirement).
-    mapping(uint8 => mapping(address => address[])) public matrixChildrenByPkg;
+    // matrixChildrenByPkg is flat per (track, packageId) — no per-anchor
+    // dimension, since matrixParentByPkg (the mapping the income walk
+    // actually reads) is already flat/global, one parent per address, so a
+    // node's capacity must ALSO be tracked globally within its own track.
+    //
+    // TRACK dimension: Magic Gold Matrix (TRACK_MATRIX) and Sponsor Magic's
+    // 5-cycle re-entry phantoms (TRACK_SPONSOR) both call
+    // _placeInMatrixForPackage, and packageId is the SAME shared tier
+    // numbering (1-9) across every track — a real address (e.g. someone's
+    // upline) is routinely both a real Matrix-tree node AND a Sponsor
+    // phantom's anchor for the identical packageId. Without a track key,
+    // matrixChildrenByPkg[packageId][thatAddress] would silently mix a
+    // Matrix-track child in with a Sponsor-track phantom child in ONE
+    // array — wrong slot count, wrong cross-linking between two otherwise
+    // unrelated trees. Keying by track keeps them fully separate.
+    uint8 constant TRACK_MATRIX = 1;
+    uint8 constant TRACK_SPONSOR = 2;
+    mapping(uint8 => mapping(uint8 => mapping(address => address[]))) public matrixChildrenByPkg;
 
     uint256 public phantomCounter;
 
@@ -445,22 +448,22 @@ contract meta20 is ReentrancyGuard {
     // level scans expensive, revisit with a self-healing persistent queue.
     uint256 constant MAX_MATRIX_SEARCH_NODES = 512;
 
-    function _placeInMatrixForPackage(uint8 packageId, address _user, address _anchor) internal {
-        address slot = _findOpenMatrixSlot(packageId, _anchor);
+    function _placeInMatrixForPackage(uint8 track, uint8 packageId, address _user, address _anchor) internal {
+        address slot = _findOpenMatrixSlot(track, packageId, _anchor);
 
         matrixParentByPkg[packageId][_user] = slot;
-        matrixChildrenByPkg[packageId][slot].push(_user);
+        matrixChildrenByPkg[track][packageId][slot].push(_user);
         emit MatrixPlaced(_user, slot, _anchor, packageId);
     }
 
-    function _findOpenMatrixSlot(uint8 packageId, address anchor) internal view returns (address) {
+    function _findOpenMatrixSlot(uint8 track, uint8 packageId, address anchor) internal view returns (address) {
         address[] memory queue = new address[](MAX_MATRIX_SEARCH_NODES);
         queue[0] = anchor;
         uint256 tail = 1;
 
         for (uint256 head = 0; head < tail; head++) {
             address node = queue[head];
-            address[] storage kids = matrixChildrenByPkg[packageId][node];
+            address[] storage kids = matrixChildrenByPkg[track][packageId][node];
             if (kids.length < 2) {
                 return node;
             }
@@ -482,7 +485,7 @@ contract meta20 is ReentrancyGuard {
     function _placeInPackageTreeIfNeeded(address user, uint8 packageId) internal {
         if (matrixParentByPkg[packageId][user] != address(0)) return;
         address anchor = _findEligibleMatrixUpline(user, packageId);
-        _placeInMatrixForPackage(packageId, user, anchor);
+        _placeInMatrixForPackage(TRACK_MATRIX, packageId, user, anchor);
         cycleRootByPkg[packageId][user].push(user);
     }
 
@@ -588,6 +591,11 @@ contract meta20 is ReentrancyGuard {
             if (nextPackageId > maxMatrixPackage[userA]) maxMatrixPackage[userA] = nextPackageId;
 
             _placeInPackageTreeIfNeeded(userA, nextPackageId);
+            // Auto-upgrade IS a purchase of nextPackageId — must release
+            // income the same as a manual purchase does (was missing
+            // entirely before: userA's own upline never got paid for this
+            // tier when userA auto-upgraded into it).
+            _releaseMatrixIncome(userA, nextPackageId);
             emit MatrixAutoUpgrade(userA, packageId, nextPackageId, requiredHeld);
         }
     }
@@ -617,7 +625,7 @@ contract meta20 is ReentrancyGuard {
             emit MatrixIncome(eligibleUpline, userA, packageId, 5, paidCost);
         }
 
-        _placeInMatrixForPackage(packageId, phantomNode, userA);
+        _placeInMatrixForPackage(TRACK_MATRIX, packageId, phantomNode, userA);
 
         cycleRootByPkg[packageId][userA].push(phantomNode);
 
@@ -704,9 +712,10 @@ contract meta20 is ReentrancyGuard {
             topupFlag[phantom] = true;
             maxSponsorPackage[phantom] = maxSponsorPackage[directSponsor];
             
-            // BFS search anchors at directSponsor, same as any other
-            // placement — see _placeInMatrixForPackage above.
-            _placeInMatrixForPackage(packageId, phantom, directSponsor);
+            // BFS search anchors at directSponsor, in the SPONSOR track's
+            // own separate slot-namespace — see _placeInMatrixForPackage
+            // above for why track separation matters here.
+            _placeInMatrixForPackage(TRACK_SPONSOR, packageId, phantom, directSponsor);
             
             emit SponsorReEntry(directSponsor, packageId);
         }
@@ -752,6 +761,12 @@ contract meta20 is ReentrancyGuard {
             sponsorPackageId[userA] = nextPackageId;
             if (nextPackageId > maxSponsorPackage[userA]) maxSponsorPackage[userA] = nextPackageId;
 
+            // Same missing-income bug as matrix auto-upgrade above: this IS
+            // a purchase of nextPackageId, needs the same _releaseDirectIncome
+            // call manual purchaseSponsorPackage makes, with the FULL package
+            // price (not requiredHeld, which is already DIRECT_INCOME_PERCENT's
+            // slice — _releaseDirectIncome re-slices internally).
+            _releaseDirectIncome(userA, nextPackageId, packages[nextPackageId].price);
             emit SponsorAutoUpgrade(userA, packageId, nextPackageId, requiredHeld);
         }
     }
