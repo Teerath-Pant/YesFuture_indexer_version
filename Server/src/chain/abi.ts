@@ -922,6 +922,11 @@ export const CONTRACT_ABI = [
       },
       {
         "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -967,6 +972,11 @@ export const CONTRACT_ABI = [
         "name": "",
         "type": "uint8",
         "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       },
       {
         "name": "",
@@ -1053,6 +1063,11 @@ export const CONTRACT_ABI = [
         "name": "",
         "type": "uint8",
         "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
@@ -1683,4 +1698,4 @@ export const CONTRACT_ABI = [
     ],
     "stateMutability": "view"
   }
-]as const;
+] as const;

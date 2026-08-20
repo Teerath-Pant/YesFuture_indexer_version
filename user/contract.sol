@@ -50,7 +50,6 @@ contract meta20 is ReentrancyGuard {
         _;
     }
 
-    // FIX: registration guard, reused across all purchase functions
     modifier onlyRegistered() {
         require(memberId[msg.sender] != 0, "NOT_REGISTERED");
         _;
@@ -91,7 +90,6 @@ contract meta20 is ReentrancyGuard {
     mapping(address => bool)    public topupFlag;
     mapping(address => uint256) public activationDate;
 
-    // INDEPENDENT PACKAGE TRACKERS
     mapping(address => uint8) public matrixPackageId;
     mapping(address => uint8) public maxMatrixPackage;
     
@@ -108,32 +106,25 @@ contract meta20 is ReentrancyGuard {
     // MATRIX VARIABLES
     // ---------------------------------------------------------------
     mapping(uint8 => mapping(address => address))   public matrixParentByPkg;
-    mapping(uint8 => mapping(address => address[])) public matrixChildrenByPkg;
     mapping(uint8 => mapping(address => address))   public realOwnerByPkg;
+
+    // matrixChildrenByPkg scoped by TREE OWNER as well as node.
+    // Confirmed rule: per-sponsor local tree, BFS left-right/top-down,
+    // max 2 children per node, unbounded depth. Bug was: single node
+    // playing two roles (root of own tree + filler slot in upline's
+    // tree) wrote into ONE shared array with two unaware head counters
+    // -> 3+ children. Keying by [packageId][treeOwner][node] gives each
+    // tree isolated storage, roles can't collide anymore.
+    mapping(uint8 => mapping(address => mapping(address => address[]))) public matrixChildrenByPkg;
     
     uint256 public phantomCounter;
 
     mapping(uint8 => mapping(address => uint256)) public level5MemberCountByPkg;
     mapping(uint8 => mapping(address => uint256)) public matrixHoldByPkg;
 
-    // ---------------------------------------------------------------
-    // MATRIX PLACEMENT QUEUE (persistent FIFO, unbounded)
-    // FIX: made GLOBAL per package (single tree rooted at adminWallet),
-    // instead of one separate queue+head per sponsor address. The old
-    // per-sponsor keying let the same node act as both "root of its own
-    // queue" and "a slot inside its upline's queue" at once — two
-    // independent head counters wrote into the same shared
-    // matrixChildrenByPkg[slot] array without knowing about each other,
-    // so a single node could end up with 3+ children instead of the
-    // max-2 rule. A single global queue per package removes the
-    // duplicate bookkeeping entirely: one FIFO, one head, one source of
-    // truth for whether a slot still has room. This also matches the
-    // intended placement rule — one shared matrix per package, filled
-    // strictly left-to-right, top-to-bottom, regardless of who directly
-    // sponsored whom.
-    // ---------------------------------------------------------------
-    mapping(uint8 => address[]) public matrixOpenQueue;
-    mapping(uint8 => uint256)    public matrixQueueHead;
+    // Per-sponsor (per treeOwner) queue+head — matches confirmed rule.
+    mapping(uint8 => mapping(address => address[])) public matrixOpenQueue;
+    mapping(uint8 => mapping(address => uint256))    public matrixQueueHead;
 
     // ---------------------------------------------------------------
     // SPONSOR 5-CYCLE VARIABLES
@@ -151,11 +142,9 @@ contract meta20 is ReentrancyGuard {
     uint256 public totalInvestment;
     mapping(address => uint256) public userTotalInvestment;
 
-    // ========== NEW TRACKING VARIABLES FOR TEAM AND PROFIT ==========
     mapping(address => uint256) public userTotalMatrixIncome;
     mapping(address => uint256) public userTotalDirectIncome;
 
-    // ========== DISPLAY NAME (single declaration) ==========
     mapping(address => string) public displayName;
     event NameUpdated(address indexed user, string newName);
 
@@ -184,7 +173,6 @@ contract meta20 is ReentrancyGuard {
     
     event MatrixIncome(address indexed receiver, address indexed from, uint8 packageId, uint8 level, uint256 amount);
     event DirectIncome(address indexed receiver, address indexed from, uint8 packageId, uint256 cycle, uint256 amount);
-    // FIX: added packageId so UI can show which package tier this level income came from
     event LevelIncome(address indexed receiver, address indexed from, uint8 packageId, uint8 level, uint256 amount);
     
     event MatrixIncomeHeld(address indexed user, uint8 indexed packageId, uint256 amount, uint256 memberCount);
@@ -198,15 +186,12 @@ contract meta20 is ReentrancyGuard {
     event Level5ReEntry(address indexed user, uint8 indexed packageId, uint256 cycleNumber, address phantomNode);
     event SponsorReEntry(address indexed sponsor, uint8 indexed packageId);
 
-    // FIX: new events for stuck-hold refunds on manual/self upgrade
     event SponsorHoldRefunded(address indexed user, uint8 packageId, uint256 amount);
     event MatrixHoldRefunded(address indexed user, uint8 packageId, uint256 amount);
 
-    // FIX: new events for ineligible-tier redirects (sponsor/level tracks)
     event SponsorIncomeRedirected(address indexed wouldBeReceiver, address indexed from, uint8 packageId, uint256 amount);
     event LevelIncomeRedirected(address indexed wouldBeReceiver, address indexed from, uint8 level, uint8 packageId, uint256 amount);
 
-    // FIX: 2x earnings cap event — fires whenever a payout is capped/redirected
     event IncomeCapped(address indexed user, uint256 requestedAmount, uint256 paidAmount, uint256 redirectedToAdmin);
 
     // ---------------------------------------------------------------
@@ -267,14 +252,8 @@ contract meta20 is ReentrancyGuard {
     }
 
     // ---------------------------------------------------------------
-    // FIX: EARNINGS CAP (2x total invested, combined across all 3 tracks)
+    // EARNINGS CAP (2x total invested, combined across all 3 tracks)
     // ---------------------------------------------------------------
-    // Cap recomputes live off userTotalInvestment, which now also grows on
-    // manual purchases (all 3 tracks) and auto-upgrades (matrix + sponsor),
-    // not just at registration. Cap check happens ONLY at actual USDT payout
-    // points (safeTransfer to a user) — held/escrowed funds do not count as
-    // "earned" until released. Cycle counters, auto-upgrade eligibility, and
-    // phantom re-entry are never blocked by this — only the cash amount.
     function getTotalEarned(address user) public view returns (uint256) {
         return userTotalMatrixIncome[user] + userTotalDirectIncome[user] + userTotalLevelProfit[user];
     }
@@ -283,10 +262,6 @@ contract meta20 is ReentrancyGuard {
         return userTotalInvestment[user] * 2;
     }
 
-    // Splits a desired payout into (payable, excess-to-admin) based on
-    // remaining headroom under the user's 2x cap. Does NOT transfer or
-    // update tracking mappings itself — caller does that with the returned
-    // split so each track's own income mapping stays accurate.
     function _splitByCap(address user, uint256 desiredAmount) internal view returns (uint256 payableAmount, uint256 excessAmount) {
         uint256 cap = getEarningsCap(user);
         uint256 earned = getTotalEarned(user);
@@ -300,14 +275,6 @@ contract meta20 is ReentrancyGuard {
         return (headroom, desiredAmount - headroom);
     }
 
-    // Applies the cap to a payout: transfers payable portion to user,
-    // excess to admin, emits IncomeCapped if anything was redirected.
-    // Returns the payable amount so caller can add it to the correct
-    // per-track income mapping (userTotalMatrixIncome / DirectIncome / LevelProfit).
-    // FIX: adminWallet is exempt from the cap entirely — admin never has a
-    // userTotalInvestment, so cap math would treat it as permanently over
-    // cap (2x of 0 = 0) and misfire redirect events. Admin always gets paid
-    // in full when it's the target (e.g. eligible-upline fallback).
     function _payCapped(address user, uint256 desiredAmount) internal returns (uint256 paid) {
         if (user == adminWallet) {
             if (desiredAmount > 0) usdt.safeTransfer(adminWallet, desiredAmount);
@@ -326,8 +293,6 @@ contract meta20 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // REGISTRATION (Auto-buys Package 1 for all 3 tracks)
-    // FIX: removed `name` param — registration no longer stores a display
-    // name. Use setDisplayName() after registering if a name is wanted.
     // ---------------------------------------------------------------
     function registerMember(string calldata sponsorStringId) external nonReentrant {
         require(memberId[msg.sender] == 0, "ALREADY_REGISTERED");
@@ -383,9 +348,7 @@ contract meta20 is ReentrancyGuard {
     }
 
     // ---------------------------------------------------------------
-    // MANUAL PURCHASES (For upgrading specific tracks)
-    // FIX: onlyRegistered guard added to all 3
-    // FIX: settle stuck hold from old tier before jumping to new tier
+    // MANUAL PURCHASES
     // ---------------------------------------------------------------
     function purchaseMatrixPackage(uint8 packageId) external onlyRegistered nonReentrant {
         require(packageId >= 1 && packageId <= MAX_PACKAGE, "INVALID_PACKAGE_ID");
@@ -405,7 +368,6 @@ contract meta20 is ReentrancyGuard {
         uint256 price = getMatrixPrice(packageId);
         usdt.safeTransferFrom(msg.sender, address(this), price);
 
-        // FIX: track investment for earnings-cap purposes
         userTotalInvestment[msg.sender] += price;
 
         matrixPackageId[msg.sender] = packageId;
@@ -434,7 +396,6 @@ contract meta20 is ReentrancyGuard {
         uint256 price = getSponsorPrice(packageId);
         usdt.safeTransferFrom(msg.sender, address(this), price);
 
-        // FIX: track investment for earnings-cap purposes
         userTotalInvestment[msg.sender] += price;
         
         sponsorPackageId[msg.sender] = packageId;
@@ -450,7 +411,6 @@ contract meta20 is ReentrancyGuard {
         uint256 price = getLevelPrice(packageId);
         usdt.safeTransferFrom(msg.sender, address(this), price);
 
-        // FIX: track investment for earnings-cap purposes
         userTotalInvestment[msg.sender] += price;
         
         levelPackageId[msg.sender] = packageId;
@@ -462,26 +422,27 @@ contract meta20 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // MATRIX PLACEMENT
-    // FIX: single global FIFO queue per packageId (rooted at adminWallet)
-    // instead of one queue+head per sponsor address. See comment on
-    // matrixOpenQueue/matrixQueueHead declaration above for why the old
-    // per-sponsor approach caused nodes to receive 3+ children.
+    // _treeOwner = per-sponsor local tree root, confirmed rule.
+    // matrixChildrenByPkg keyed [packageId][_treeOwner][slot] — this is
+    // THE bug fix. Node acting as root of own tree AND filler slot in
+    // upline's tree now write to two separate arrays, no collision,
+    // no more 3+ children in one slot.
     // ---------------------------------------------------------------
-    function _placeInMatrixForPackage(uint8 packageId, address _user) internal {
-        address[] storage queue = matrixOpenQueue[packageId];
+    function _placeInMatrixForPackage(uint8 packageId, address _user, address _treeOwner) internal {
+        address[] storage queue = matrixOpenQueue[packageId][_treeOwner];
         if (queue.length == 0) {
-            queue.push(adminWallet);
+            queue.push(_treeOwner);
         }
 
-        uint256 head = matrixQueueHead[packageId];
+        uint256 head = matrixQueueHead[packageId][_treeOwner];
         address slot = queue[head];
 
         matrixParentByPkg[packageId][_user] = slot;
-        matrixChildrenByPkg[packageId][slot].push(_user);
-        emit MatrixPlaced(_user, slot, sponsor[_user], packageId);
+        matrixChildrenByPkg[packageId][_treeOwner][slot].push(_user);
+        emit MatrixPlaced(_user, slot, _treeOwner, packageId);
 
-        if (matrixChildrenByPkg[packageId][slot].length >= 2) {
-            matrixQueueHead[packageId] = head + 1;
+        if (matrixChildrenByPkg[packageId][_treeOwner][slot].length >= 2) {
+            matrixQueueHead[packageId][_treeOwner] = head + 1;
         }
 
         queue.push(_user);
@@ -489,13 +450,13 @@ contract meta20 is ReentrancyGuard {
 
     function _placeInPackageTreeIfNeeded(address user, uint8 packageId) internal {
         if (matrixParentByPkg[packageId][user] != address(0)) return;
-        _placeInMatrixForPackage(packageId, user);
+        address anchor = sponsor[user] != address(0) ? sponsor[user] : adminWallet;
+        _placeInMatrixForPackage(packageId, user, anchor);
         cycleRootByPkg[packageId][user].push(user);
     }
 
     // ---------------------------------------------------------------
     // 1. MATRIX INCOME (32-Member Cycle)
-    // Tier gate: maxMatrixPackage[parent] >= packageId (unchanged, was already correct)
     // ---------------------------------------------------------------
     function _releaseMatrixIncome(address buyer, uint8 packageId) internal {
         uint256 matrixPoolAmount = getMatrixPrice(packageId); 
@@ -590,7 +551,6 @@ contract meta20 is ReentrancyGuard {
 
             if (leftover > 0) usdt.safeTransfer(adminWallet, leftover); 
 
-            // FIX: auto-upgrade counts as investment for earnings-cap purposes
             userTotalInvestment[userA] += requiredHeld;
 
             matrixPackageId[userA] = nextPackageId;
@@ -601,13 +561,9 @@ contract meta20 is ReentrancyGuard {
         }
     }
 
-    // FIX: recycle cost now routed to nearest eligible matrix upline
-    // (maxMatrixPackage >= packageId), mirroring sponsor track's count-5
-    // pattern, instead of unconditionally to admin. Phantom is placed
-    // into the single global matrix queue like any other node — the
-    // eligibleUpline is used only for payout routing now, not placement
-    // anchoring (placement is global, see _placeInMatrixForPackage).
-    // Falls back to admin if no eligible upline exists in the chain.
+    // Phantom re-entry places back into userA's OWN tree (root=userA).
+    // FIX applied here: _placeInMatrixForPackage now called with 3rd
+    // arg userA — was missing before, wouldn't compile / wrong tree.
     function _level5ReEntry(uint8 packageId, address userA) internal {
         level5MemberCountByPkg[packageId][userA] = 0;
         recycleCount[userA]++;
@@ -630,7 +586,7 @@ contract meta20 is ReentrancyGuard {
             emit MatrixIncome(eligibleUpline, userA, packageId, 5, paidCost);
         }
 
-        _placeInMatrixForPackage(packageId, phantomNode);
+        _placeInMatrixForPackage(packageId, phantomNode, userA);
 
         cycleRootByPkg[packageId][userA].push(phantomNode);
 
@@ -638,12 +594,7 @@ contract meta20 is ReentrancyGuard {
     }
 
     // ---------------------------------------------------------------
-    // 2. SPONSOR INCOME (5-Member Cycle) — 90/10 SPLIT APPLIED HERE
-    // FIX: added tier gate — sponsor must have maxSponsorPackage >= packageId
-    // to receive ANY payout on this buy. If not qualified, whole gross
-    // share (not just net) redirects to admin, cycle count is NOT
-    // incremented (sponsor didn't "use" a cycle slot they can't earn on),
-    // and no hold/auto-upgrade logic runs for this purchase.
+    // 2. SPONSOR INCOME (5-Member Cycle) — 90/10 SPLIT
     // ---------------------------------------------------------------
     function _splitSponsorShare(uint256 grossShare) internal pure returns (uint256 sponsorNet, uint256 adminCut) {
         sponsorNet = grossShare * 900000 / PERCENT_DENOMINATOR; // 90%
@@ -659,7 +610,6 @@ contract meta20 is ReentrancyGuard {
             return;
         }
 
-        // FIX: tier gate — sponsor must hold >= packageId on sponsor track
         bool sponsorQualifies = topupFlag[directSponsor] && maxSponsorPackage[directSponsor] >= packageId;
         if (!sponsorQualifies) {
             usdt.safeTransfer(adminWallet, sponsorShare);
@@ -704,11 +654,6 @@ contract meta20 is ReentrancyGuard {
             }
         }
         else if (count == 5) {
-            // FIX: walk up sponsor chain to find first eligible upline
-            // (maxSponsorPackage >= packageId), instead of unconditionally
-            // paying sponsor[directSponsor]. Falls back to admin if chain
-            // runs out. Same eligible upline is used as the anchor for
-            // directSponsor's recycle phantom placement.
             address eligibleUpline = _findEligibleSponsorUpline(directSponsor, packageId);
 
             usdt.safeTransfer(adminWallet, adminCut);
@@ -728,19 +673,14 @@ contract meta20 is ReentrancyGuard {
             topupFlag[phantom] = true;
             maxSponsorPackage[phantom] = maxSponsorPackage[directSponsor];
             
-            // FIX: phantom placed into the single global matrix queue,
-            // same as any other node (placement is no longer anchored
-            // per-sponsor — see _placeInMatrixForPackage).
-            _placeInMatrixForPackage(packageId, phantom);
+            // FIX: phantom placed into directSponsor's OWN tree (3rd arg
+            // was missing before — wouldn't compile).
+            _placeInMatrixForPackage(packageId, phantom, directSponsor);
             
             emit SponsorReEntry(directSponsor, packageId);
         }
     }
 
-    // FIX: chain-walk helper — finds nearest upline (starting from
-    // sponsor[startFrom]) holding maxSponsorPackage >= packageId.
-    // Falls back to adminWallet if chain is exhausted. Admin always
-    // qualifies implicitly (root has MAX_PACKAGE set in constructor).
     function _findEligibleSponsorUpline(address startFrom, uint8 packageId) internal view returns (address) {
         address current = sponsor[startFrom];
         while (current != address(0)) {
@@ -752,11 +692,6 @@ contract meta20 is ReentrancyGuard {
         return adminWallet;
     }
 
-    // FIX: matrix-track equivalent — finds nearest upline holding
-    // maxMatrixPackage >= packageId, for matrix-recycle (32-cycle) payout
-    // routing. Falls back to adminWallet. (No longer used for placement
-    // anchoring — matrix placement is global, see
-    // _placeInMatrixForPackage.)
     function _findEligibleMatrixUpline(address startFrom, uint8 packageId) internal view returns (address) {
         address current = sponsor[startFrom];
         while (current != address(0)) {
@@ -781,7 +716,6 @@ contract meta20 is ReentrancyGuard {
 
             if (leftover > 0) usdt.safeTransfer(adminWallet, leftover); 
 
-            // FIX: auto-upgrade counts as investment for earnings-cap purposes
             userTotalInvestment[userA] += requiredHeld;
 
             sponsorPackageId[userA] = nextPackageId;
@@ -793,11 +727,6 @@ contract meta20 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // 3. LEVEL INCOME (10 Levels)
-    // FIX: now takes packageId param. Gate changed from hardcoded
-    // maxLevelPackage[parent] >= 1 to maxLevelPackage[parent] >= packageId,
-    // matching the matrix track's tier-gate pattern.
-    // FIX: LevelIncome event now includes packageId (see event decl above)
-    // so the UI can show which package tier a given level payout came from.
     // ---------------------------------------------------------------
     function _releaseLevelIncome(address buyer, uint8 packageId, uint256 fullAmount) internal {
         address parent = sponsor[buyer];
@@ -816,7 +745,6 @@ contract meta20 is ReentrancyGuard {
             }
 
             bool hasEnoughDirects = (referralCount[parent] >= level) || (parent == adminWallet);
-            // FIX: >= packageId instead of hardcoded >= 1
             bool hasTier = (parent == adminWallet) || (maxLevelPackage[parent] >= packageId);
 
             if (topupFlag[parent] && hasTier && hasEnoughDirects) { 
