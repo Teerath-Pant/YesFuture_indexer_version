@@ -1,6 +1,6 @@
 // src/routes/(protected)/package-purchase/sponsor-magic.tsx
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useWallet } from "@/lib/use-wallet";
@@ -14,6 +14,11 @@ import { toast } from "sonner";
 import { RootID } from "@/constants/programs";
 
 export const Route = createFileRoute("/(protected)/package-purchase/sponsor-magic")({
+  beforeLoad:()=>{
+      throw redirect({
+        to:"/package-purchase"
+      })
+    },
   component: SponsorMagicPage,
 });
 

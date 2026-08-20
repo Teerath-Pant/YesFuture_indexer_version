@@ -1,8 +1,8 @@
 import { MatrixGridXThree } from "@/components/matrix-grid";
 import { type LevelData } from "@/components/matrix-level-card";
 import { ProgramPageHeader } from "@/components/programe-page-header";
-import DataTable, { type Column } from "../data-table";
-import { RefreshCw, User } from "lucide-react";
+// import DataTable, { type Column } from "../data-table";
+import { RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
   fetchSponsorIncomeHistory,
@@ -33,11 +33,11 @@ interface TransactionRow {
 }
 
 const SponserMagic = ({ program }: pageProps) => {
-  const [, setPage] = useState(1);
+  // const [, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [, setError] = useState<string | null>(null);
   const [userStringId, setUserStringId] = useState("Loading...");
-  const [data, setData] = useState<TransactionRow[]>([]);
+  // const [data, setData] = useState<TransactionRow[]>([]);
   const [totalIncome, setTotalIncome] = useState<string>("0");
   const [activeLevelsCount, setActiveLevelsCount] = useState(0);
   const [totalLevelsCount] = useState(9);
@@ -229,7 +229,7 @@ const SponserMagic = ({ program }: pageProps) => {
         // Transaction table shows only the current (highest unlocked)
         // package's income — the package grid above already breaks totals
         // down per level, this table shouldn't re-mix every level together.
-        setData(formattedData.filter((row) => row.level === pkgId));
+        // setData(formattedData.filter((row) => row.level === pkgId));
         setTotalIncome(total);
 
         const levels = buildLevelsData(pkgId, formattedData, isRootUser, recycleCounts, childAheadTiers, heldByPackage);
@@ -247,53 +247,53 @@ const SponserMagic = ({ program }: pageProps) => {
     loadData();
   }, []);
 
-  const getRowIcon = (row: TransactionRow) => (
-    <>
-      {row.type === "recycle" ? (
-        <RefreshCw size={16} className="text-green-500" />
-      ) : (
-        <User size={16} className="text-gray-300" />
-      )}
-      {row.type === "recycle" && row.recycleCount != null && (
-        <span className="absolute -top-1 -right-1 text-[10px] leading-none text-green-400 font-semibold">
-          {row.recycleCount}
-        </span>
-      )}
-    </>
-  );
+  // const getRowIcon = (row: TransactionRow) => (
+  //   <>
+  //     {row.type === "recycle" ? (
+  //       <RefreshCw size={16} className="text-green-500" />
+  //     ) : (
+  //       <User size={16} className="text-gray-300" />
+  //     )}
+  //     {row.type === "recycle" && row.recycleCount != null && (
+  //       <span className="absolute -top-1 -right-1 text-[10px] leading-none text-green-400 font-semibold">
+  //         {row.recycleCount}
+  //       </span>
+  //     )}
+  //   </>
+  // );
 
-  const columns: Column<TransactionRow>[] = [
-    { key: "date", label: "Date" },
-    // {
-    //   key: "refId",
-    //   label: "ID",
-    //   render: (r) => (
-    //     <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
-    //       ID {r.refId}
-    //     </span>
-    //   ),
-    // },
-    { key: "level", label: "Package" },
-    {
-      key: "wallet",
-      label: "Income From",
-      render: (r) => <span className="text-white">{r.wallet}</span>,
-    },
-    {
-      key: "amount",
-      label: "Amount",
-      align: "right",
-      render: (r) => (
-        <span
-          className={
-            r.type === "recycle" ? "text-green-400 font-semibold" : "text-green-400 font-semibold"
-          }
-        >
-          {r.amount}
-        </span>
-      ),
-    },
-  ];
+  // const columns: Column<TransactionRow>[] = [
+  //   { key: "date", label: "Date" },
+  //   // {
+  //   //   key: "refId",
+  //   //   label: "ID",
+  //   //   render: (r) => (
+  //   //     <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
+  //   //       ID {r.refId}
+  //   //     </span>
+  //   //   ),
+  //   // },
+  //   { key: "level", label: "Package" },
+  //   {
+  //     key: "wallet",
+  //     label: "Income From",
+  //     render: (r) => <span className="text-white">{r.wallet}</span>,
+  //   },
+  //   {
+  //     key: "amount",
+  //     label: "Amount",
+  //     align: "right",
+  //     render: (r) => (
+  //       <span
+  //         className={
+  //           r.type === "recycle" ? "text-green-400 font-semibold" : "text-green-400 font-semibold"
+  //         }
+  //       >
+  //         {r.amount}
+  //       </span>
+  //     ),
+  //   },
+  // ];
 
   if (loading) {
     return (
@@ -318,7 +318,7 @@ const SponserMagic = ({ program }: pageProps) => {
 
       <MatrixGridXThree levels={levelsData} />
 
-      <div className="my-8">
+      {/* <div className="my-8">
         <DataTable<TransactionRow>
           columns={columns}
           data={data}
@@ -326,7 +326,7 @@ const SponserMagic = ({ program }: pageProps) => {
           getRowKey={(row) => row.id}
           pageSize={10}
         />
-      </div>
+      </div> */}
     </div>
   );
 };

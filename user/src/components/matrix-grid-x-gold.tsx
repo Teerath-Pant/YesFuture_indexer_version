@@ -1,5 +1,5 @@
 // import React from "react";
-import { Users, RefreshCw, ArrowUp, HelpCircle } from "lucide-react";
+import { Users, RefreshCw} from "lucide-react";
 import { MatrixLevelCardXGold,type LevelDataXGold } from "@/components/matrix-level-card-x-gold";
 
 interface MatrixGridProps {
@@ -17,7 +17,7 @@ export function MatrixGridXGold({ levels }: MatrixGridProps) {
       </div>
 
       {/* Legend */}
-      <div className="mt-8 flex flex-col gap-3 pt-6 text-xs text-gray-400">
+      <div className="mt-8 flex flex-col gap-3 text-xs text-gray-400 bg-[#292929a4] p-6 rounded-2xl">
         <div className="flex flex-wrap items-center gap-6">
           <div className="flex items-center gap-2">
             <span className="h-3.5 w-3.5 rounded-full bg-white" />
@@ -25,19 +25,19 @@ export function MatrixGridXGold({ levels }: MatrixGridProps) {
           </div>
           <div className="flex items-center gap-2">
             <span className="h-3.5 w-3.5 rounded-full bg-yellow-300" />
-            <span className="font-medium text-gray-300">Spillover from above</span>
+            <span className="font-medium text-gray-300">Spillover from another parent</span>
           </div>
-          {/* <div className="flex items-center gap-2">
-            <span className="h-3.5 w-3.5 rounded-full bg-rose-400" />
-            <span className="font-medium text-gray-300">Package Damage</span>
-          </div> */}
+          <div className="flex items-center gap-2">
+            <span className="h-3.5 w-3.5 rounded-full bg-orange-400" />
+            <span className="font-medium text-gray-300">From Upline</span>
+          </div>
           <div className="flex items-center gap-2">
             <Users className="h-4 w-4 text-gray-400" />
             <span className="font-medium text-gray-300">Partners on Package</span>
           </div>
           <div className="flex items-center gap-2">
               <RefreshCw className="h-4 w-4 text-gray-400" />
-              <span className="font-medium text-gray-300">Level Cycle</span>
+              <span className="font-medium text-gray-300">Cycle</span>
             </div>
         </div>
 

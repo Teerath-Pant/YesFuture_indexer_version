@@ -42,37 +42,53 @@ function RouteComponent() {
   const [appliedPackage, setAppliedPackage] = useState("");
 
   const columns: Column<TransactionRow>[] = [
-    { key: "date", label: "Date" },
+    {
+      key: "level",
+      label: "Level",
+      render: (r) => (
+        <span className="text-purple-400 bg-purple-500/15 px-2 py-1 rounded-full text-xs font-medium">
+          Level {r.level}
+        </span>
+      ),
+    },
+    {
+      key: "packageId",
+      label: "Package",
+      render: (r) => (
+        <span className="text-yellow-400 bg-yellow-500/15 px-2 py-1 rounded-full text-xs font-medium">
+          Package {r.packageId}
+        </span>
+      ),
+    },
+    {
+      key: "amount",
+      label: "Income",
+      render: (r) => (
+        <span className="text-green-400 font-semibold">{r.amount}</span>
+      ),
+    },
+
     {
       key: "refId",
-      label: "ID From",
+      label: "Income from",
       render: (r) => (
         <span className="text-blue-400 font-medium px-2 py-1 rounded-full">
           {r.refId}
         </span>
       ),
     },
-    { key: "level", label: "Level" },
-    { key: "packageId", label: "Package" },
-    {
-      key: "wallet",
-      label: "Wallet",
-      render: (r) => (
-        <WalletCell
-          address={r.fullWallet ?? r.wallet}
-          displayAddress={r.wallet}
-          explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? r.wallet}`}
-        />
-      ),
-    },
-    {
-      key: "amount",
-      label: "USDT",
-      align: "right",
-      render: (r) => (
-        <span className="text-green-400 font-semibold">{r.amount}</span>
-      ),
-    },
+    { key: "date", label: "Date" },
+    // {
+    //   key: "wallet",
+    //   label: "Wallet",
+    //   render: (r) => (
+    //     <WalletCell
+    //       address={r.fullWallet ?? r.wallet}
+    //       displayAddress={r.fullWallet}
+    //       explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? r.wallet}`}
+    //     />
+    //   ),
+    // },
   ];
 
   useEffect(() => {
@@ -123,8 +139,8 @@ function RouteComponent() {
     }
 
     if (appliedPackage) {
-  result = result.filter((row) => row.packageId === Number(appliedPackage));
-}
+      result = result.filter((row) => row.packageId === Number(appliedPackage));
+    }
     if (appliedSearch.trim()) {
       const query = appliedSearch.trim().toLowerCase();
       result = result.filter(
@@ -135,12 +151,7 @@ function RouteComponent() {
     }
 
     return result;
-  }, [
-    data,
-    appliedLevel,
-    appliedSearch,
-    appliedPackage
-  ]);
+  }, [data, appliedLevel, appliedSearch, appliedPackage]);
 
   return (
     <PageLayout>

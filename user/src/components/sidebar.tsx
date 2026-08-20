@@ -16,6 +16,7 @@ import {
   Share2,
   Network,
   Briefcase,
+  Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -78,6 +79,7 @@ const NAV_ITEMS: NavItem[] = [
   //   ],
   // },
   { to: "/package-purchase", label: "Purchase Package", icon: Banknote },
+  { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 interface Props {

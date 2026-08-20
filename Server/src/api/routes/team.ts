@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "../../db/client.js";
 import { contract } from "../../chain/contract.js";
 
@@ -38,6 +38,7 @@ teamRouter.get("/:address/levels", async (req, res) => {
 // track, matches original semantics exactly) and totalBussiness (that
 // member's own userTotalInvestment — a fixed value set once at registration,
 // not their income) are live single-slot reads, N members × 2 calls.
+
 teamRouter.get("/:address/team", async (req, res) => {
   const address = req.params.address.toLowerCase();
   const maxLevel = Math.min(Number(req.query.maxLevel) || 10, 20);
@@ -56,6 +57,18 @@ teamRouter.get("/:address/team", async (req, res) => {
     ORDER BY depth, block_timestamp
   `);
 
+  const memberAddresses = downline.map((r: any) => r.member_address);
+
+  const incomeRows = memberAddresses.length
+    ? await db.select({
+        walletAddress: schema.income.walletAddress,
+        totalIncome: schema.income.totalIncome,
+      }).from(schema.income)
+      .where(inArray(schema.income.walletAddress, memberAddresses))
+    : [];
+
+  const incomeByAddress = new Map(incomeRows.map((r) => [r.walletAddress, r.totalIncome]));
+
   const rows = await Promise.all(downline.map(async (r: any, i: number) => {
     const [levelPackageId, investment] = await Promise.all([
       contract.levelPackageId(r.member_address),
@@ -69,11 +82,50 @@ teamRouter.get("/:address/team", async (req, res) => {
       level: r.depth,
       packageId: Number(levelPackageId),
       totalBussiness: (investment as bigint).toString(),
+      totalIncome: incomeByAddress.get(r.member_address) ?? "0",
     };
   }));
 
   res.json(rows);
 });
+
+
+// teamRouter.get("/:address/team", async (req, res) => {
+//   const address = req.params.address.toLowerCase();
+//   const maxLevel = Math.min(Number(req.query.maxLevel) || 10, 20);
+
+//   const downline = await db.execute(sql`
+//     WITH RECURSIVE tree AS (
+//       SELECT member_address, string_id, block_timestamp, 1 AS depth
+//       FROM user_registrations WHERE sponsor_address = ${address}
+//       UNION ALL
+//       SELECT ur.member_address, ur.string_id, ur.block_timestamp, t.depth + 1
+//       FROM user_registrations ur
+//       JOIN tree t ON ur.sponsor_address = t.member_address
+//       WHERE t.depth < ${maxLevel}
+//     )
+//     SELECT member_address, string_id, block_timestamp, depth FROM tree
+//     ORDER BY depth, block_timestamp
+//   `);
+
+//   const rows = await Promise.all(downline.map(async (r: any, i: number) => {
+//     const [levelPackageId, investment] = await Promise.all([
+//       contract.levelPackageId(r.member_address),
+//       contract.userTotalInvestment(r.member_address),
+//     ]);
+//     return {
+//       id: i + 1,
+//       date: r.block_timestamp,
+//       wallet: r.member_address,
+//       stringId: r.string_id,
+//       level: r.depth,
+//       packageId: Number(levelPackageId),
+//       totalBussiness: (investment as bigint).toString(),
+//     };
+//   }));
+
+//   res.json(rows);
+// });
 
 // Team members at an exact depth who PURCHASED a specific package on a given
 // track (event-sourced, historical — "purchased" not "current package level

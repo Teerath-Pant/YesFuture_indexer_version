@@ -76,7 +76,5 @@ transactionsRouter.get("/:address", async (req, res) => {
     LIMIT ${limit} OFFSET ${offset}
   `);
 
-  console.table(rows)
-
   res.json(rows);
 });

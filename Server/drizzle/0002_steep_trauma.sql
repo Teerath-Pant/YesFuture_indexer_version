@@ -1,0 +1,1 @@
+ALTER TABLE "level_income_events" ADD COLUMN "package_id" smallint;

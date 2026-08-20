@@ -76,7 +76,7 @@ export function PurchaseOverlay({ step, context }: PurchaseOverlayProps) {
             <CheckCircle2 className="h-9 w-9 text-white" strokeWidth={2.5} />
           </div>
         ) : (
-          <Loader2 className="h-16 w-16 animate-spin text-[#f59e0b]" strokeWidth={1.75} />
+          <Loader2 className="h-16 w-16 animate-spin text-[#4169FF]" strokeWidth={1.75} />
         )}
 
         {!isSuccess && context && (
@@ -100,7 +100,7 @@ export function PurchaseOverlay({ step, context }: PurchaseOverlayProps) {
           <>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-800">
               <div
-                className="h-full rounded-full bg-linear-to-r from-[#f59e0b] to-[#fbbf24] transition-all duration-500 ease-out"
+                className="h-full rounded-full bg-linear-to-r from-[#4169FF] to-[#4e74ff] transition-all duration-500 ease-out"
                 style={{ width: `${current!.percent}%` }}
               />
             </div>
