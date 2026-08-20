@@ -448,9 +448,15 @@ contract meta20 is ReentrancyGuard {
         queue.push(_user);
     }
 
+    // FIX: anchor now walks to nearest eligible upline (maxMatrixPackage
+    // >= packageId), not just raw direct sponsor. Old code anchored to
+    // sponsor[user] unconditionally — broke when direct sponsor hadn't
+    // bought this package tier yet (e.g. child buys pkg3 before parent
+    // does), placing child under an ineligible sponsor's tree instead of
+    // walking up to the next qualified upline (admin as ultimate fallback).
     function _placeInPackageTreeIfNeeded(address user, uint8 packageId) internal {
         if (matrixParentByPkg[packageId][user] != address(0)) return;
-        address anchor = sponsor[user] != address(0) ? sponsor[user] : adminWallet;
+        address anchor = _findEligibleMatrixUpline(user, packageId);
         _placeInMatrixForPackage(packageId, user, anchor);
         cycleRootByPkg[packageId][user].push(user);
     }
