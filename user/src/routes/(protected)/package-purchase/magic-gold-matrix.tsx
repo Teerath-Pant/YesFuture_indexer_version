@@ -1,6 +1,6 @@
 // src/routes/(protected)/package-purchase/magic-gold-matrix.tsx
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import PageHeader from "@/components/page-header";
 import DataTable, { type Column } from "@/components/data-table";
@@ -23,6 +23,11 @@ import {
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/(protected)/package-purchase/magic-gold-matrix")({
+  beforeLoad:()=>{
+    throw redirect({
+      to:"/package-purchase"
+    })
+  },
   component: MatrixMagicPage,
 });
 

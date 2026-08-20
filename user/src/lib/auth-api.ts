@@ -1941,6 +1941,7 @@ export interface PurchasedPackageRow {
 
 export interface LevelIncomeRow {
   level: number;
+  package_id:number | null;
   childId: string;
   amount: string;
   date: string;
@@ -2506,6 +2507,7 @@ export async function fetchLevelIncomeHistory(
   const rows = await apiGet<TransactionApiRow[]>(
     `/transactions/${walletAddress}?type=LEVEL_INCOME`,
   );
+  // console.log(rows)
   return (rows ?? [])
     .map((r) => {
       const dateSeconds = Math.floor(
@@ -2513,6 +2515,7 @@ export async function fetchLevelIncomeHistory(
       );
       return {
         level: r.level ?? 0,
+        package_id:r.package_id,
         childId: r.counterparty_string_id ?? "ID ...",
         amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
         date: formatDate(dateSeconds),
@@ -5114,6 +5117,7 @@ export interface TeamLevelRow {
   level: number;
   packageId: number;
   totalBussiness: number;
+  totalIncome?:number;
 }
 
 interface TeamApiRow {
@@ -5124,6 +5128,8 @@ interface TeamApiRow {
   level: number;
   packageId: number;
   totalBussiness: string;
+  totalIncome: string;
+  
 }
 
 // Replaces the dead directReferrals-array-getter-based BFS (that mapping no
@@ -5147,6 +5153,7 @@ export async function fetchTeamAllLevels(
       level: r.level,
       packageId: r.packageId,
       totalBussiness: Number(ethers.formatUnits(r.totalBussiness, 18)),
+      totalIncome: Number(ethers.formatUnits(r.totalIncome, 18)),
     };
   });
 }

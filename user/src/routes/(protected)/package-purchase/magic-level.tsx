@@ -1,6 +1,6 @@
 // src/routes/(protected)/package-purchase/magic-level.tsx
 
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { useWallet } from "@/lib/use-wallet";
@@ -17,6 +17,11 @@ import { toast } from "sonner";
 
 // Define the route
 export const Route = createFileRoute("/(protected)/package-purchase/magic-level")({
+  beforeLoad:()=>{
+      throw redirect({
+        to:"/package-purchase"
+      })
+    },
   component: MagicLevelPage,
 });
 

@@ -3,18 +3,12 @@ import { Copy, HelpCircle, Pencil, Check, X } from "lucide-react";
 import { toast } from "sonner";
 import { useWallet } from "@/lib/use-wallet";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  fetchDashboardData,
-  updateUserName,
-} from "@/lib/auth-api";
+import { fetchDashboardData } from "@/lib/auth-api";
 
 export function UserProfileHeader() {
   const navigate = useNavigate();
   const { address: connectedWallet, isConnecting } = useWallet();
   const [userName, setUserName] = useState<string>("");
-  const [isEditingName, setIsEditingName] = useState<boolean>(false);
-  const [nameDraft, setNameDraft] = useState<string>("");
-  const [isSavingName, setIsSavingName] = useState<boolean>(false);
 
   // State for real data
   const [stringId, setStringId] = useState<string>("...");
@@ -68,35 +62,6 @@ export function UserProfileHeader() {
     navigator.clipboard.writeText(text);
     toast.success(`${label} copied!`);
   };
-
-  const startEditingName = () => {
-    setNameDraft(userName);
-    setIsEditingName(true);
-  };
-
-  const cancelEditingName = () => {
-    setIsEditingName(false);
-    setNameDraft("");
-  };
-
-  const saveName = async () => {
-    const trimmed = nameDraft.trim();
-    if (!connectedWallet || trimmed.length < 1 || trimmed.length > 32) {
-      toast.error("Name must be 1-32 characters");
-      return;
-    }
-    setIsSavingName(true);
-    const saved = await updateUserName(connectedWallet, trimmed);
-    setIsSavingName(false);
-    if (saved !== null) {
-      setUserName(saved);
-      setIsEditingName(false);
-      toast.success("Name updated!");
-    } else {
-      toast.error("Failed to update name");
-    }
-  };
-
   if (!connectedWallet) return null;
 
   // Format wallet address
@@ -142,7 +107,11 @@ export function UserProfileHeader() {
               </div>
             </div>
 
-            {isEditingName ? (
+            <div className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 items-center rounded-full border border-purple-500/40 bg-[#121624] px-3 py-0.5 text-sm sm:text-md font-medium text-purple-300 shadow-lg text-nowrap max-w-35 sm:max-w-50 overflow-hidden">
+              <span>{userName || "No name set"}</span>
+            </div>
+
+            {/* {isEditingName ? (
               <div className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1 rounded-full border border-purple-500/40 bg-[#121624] px-2 py-0.5 text-xs shadow-lg text-nowrap">
                 <input
                   autoFocus
@@ -172,7 +141,7 @@ export function UserProfileHeader() {
                 <span>{userName || "Set name"}</span>
                 <Pencil className="h-2.5 w-2.5" />
               </button>
-            )}
+            )} */}
           </div>
 
           {/* User Info Details */}

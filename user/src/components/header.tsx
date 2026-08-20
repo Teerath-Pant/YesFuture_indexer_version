@@ -14,6 +14,7 @@ import {
   Gem,
   GitBranch,
   Briefcase,
+  Settings,
 } from "lucide-react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -85,6 +86,7 @@ const NAV_ITEMS: NavItem[] = [
   //   ],
   // },
   { to: "/package-purchase", label: "Purchase Package", icon: Banknote },
+  { to: "/settings", label: "Settings", icon: Settings },
 ];
 
 export const Header = () => {

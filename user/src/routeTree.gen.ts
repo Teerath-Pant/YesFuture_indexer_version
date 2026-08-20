@@ -20,6 +20,7 @@ import { Route as protectedLeaderboardRouteRouteImport } from './routes/(protect
 import { Route as protectedLinksRouteRouteImport } from './routes/(protected)/links/route'
 import { Route as protectedPackagePurchaseRouteRouteImport } from './routes/(protected)/package-purchase/route'
 import { Route as protectedPartnersRouteRouteImport } from './routes/(protected)/partners/route'
+import { Route as protectedSettingsRouteRouteImport } from './routes/(protected)/settings/route'
 import { Route as protectedSocialRouteRouteImport } from './routes/(protected)/social/route'
 import { Route as protectedStatsRouteRouteImport } from './routes/(protected)/stats/route'
 import { Route as protectedTeamRouteRouteImport } from './routes/(protected)/team/route'
@@ -101,6 +102,11 @@ const protectedPackagePurchaseRouteRoute =
 const protectedPartnersRouteRoute = protectedPartnersRouteRouteImport.update({
   id: '/partners',
   path: '/partners',
+  getParentRoute: () => protectedRouteRoute,
+} as any)
+const protectedSettingsRouteRoute = protectedSettingsRouteRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => protectedRouteRoute,
 } as any)
 const protectedSocialRouteRoute = protectedSocialRouteRouteImport.update({
@@ -262,6 +268,7 @@ export interface FileRoutesByFullPath {
   '/links': typeof protectedLinksRouteRoute
   '/package-purchase': typeof protectedPackagePurchaseRouteRouteWithChildren
   '/partners': typeof protectedPartnersRouteRoute
+  '/settings': typeof protectedSettingsRouteRoute
   '/social': typeof protectedSocialRouteRoute
   '/stats': typeof protectedStatsRouteRoute
   '/team': typeof protectedTeamRouteRoute
@@ -298,6 +305,7 @@ export interface FileRoutesByTo {
   '/leaderboard': typeof protectedLeaderboardRouteRoute
   '/links': typeof protectedLinksRouteRoute
   '/partners': typeof protectedPartnersRouteRoute
+  '/settings': typeof protectedSettingsRouteRoute
   '/social': typeof protectedSocialRouteRoute
   '/stats': typeof protectedStatsRouteRoute
   '/team': typeof protectedTeamRouteRoute
@@ -336,6 +344,7 @@ export interface FileRoutesById {
   '/(protected)/links': typeof protectedLinksRouteRoute
   '/(protected)/package-purchase': typeof protectedPackagePurchaseRouteRouteWithChildren
   '/(protected)/partners': typeof protectedPartnersRouteRoute
+  '/(protected)/settings': typeof protectedSettingsRouteRoute
   '/(protected)/social': typeof protectedSocialRouteRoute
   '/(protected)/stats': typeof protectedStatsRouteRoute
   '/(protected)/team': typeof protectedTeamRouteRoute
@@ -376,6 +385,7 @@ export interface FileRouteTypes {
     | '/links'
     | '/package-purchase'
     | '/partners'
+    | '/settings'
     | '/social'
     | '/stats'
     | '/team'
@@ -412,6 +422,7 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/links'
     | '/partners'
+    | '/settings'
     | '/social'
     | '/stats'
     | '/team'
@@ -449,6 +460,7 @@ export interface FileRouteTypes {
     | '/(protected)/links'
     | '/(protected)/package-purchase'
     | '/(protected)/partners'
+    | '/(protected)/settings'
     | '/(protected)/social'
     | '/(protected)/stats'
     | '/(protected)/team'
@@ -564,6 +576,13 @@ declare module '@tanstack/react-router' {
       path: '/partners'
       fullPath: '/partners'
       preLoaderRoute: typeof protectedPartnersRouteRouteImport
+      parentRoute: typeof protectedRouteRoute
+    }
+    '/(protected)/settings': {
+      id: '/(protected)/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof protectedSettingsRouteRouteImport
       parentRoute: typeof protectedRouteRoute
     }
     '/(protected)/social': {
@@ -836,6 +855,7 @@ interface protectedRouteRouteChildren {
   protectedLinksRouteRoute: typeof protectedLinksRouteRoute
   protectedPackagePurchaseRouteRoute: typeof protectedPackagePurchaseRouteRouteWithChildren
   protectedPartnersRouteRoute: typeof protectedPartnersRouteRoute
+  protectedSettingsRouteRoute: typeof protectedSettingsRouteRoute
   protectedSocialRouteRoute: typeof protectedSocialRouteRoute
   protectedStatsRouteRoute: typeof protectedStatsRouteRoute
   protectedTeamRouteRoute: typeof protectedTeamRouteRoute
@@ -851,6 +871,7 @@ const protectedRouteRouteChildren: protectedRouteRouteChildren = {
   protectedPackagePurchaseRouteRoute:
     protectedPackagePurchaseRouteRouteWithChildren,
   protectedPartnersRouteRoute: protectedPartnersRouteRoute,
+  protectedSettingsRouteRoute: protectedSettingsRouteRoute,
   protectedSocialRouteRoute: protectedSocialRouteRoute,
   protectedStatsRouteRoute: protectedStatsRouteRoute,
   protectedTeamRouteRoute: protectedTeamRouteRoute,

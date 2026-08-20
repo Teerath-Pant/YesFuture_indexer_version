@@ -7,10 +7,7 @@ import PageHeader from "@/components/page-header";
 import FilterSection from "@/components/filter-section";
 import DataTable, { type Column } from "@/components/data-table";
 import PageLayout from "@/layouts/page-layout";
-import {
-  fetchLevelIncomeHistory,
-  fetchPackageAndId,
-} from "@/lib/auth-api";
+import { fetchLevelIncomeHistory, fetchPackageAndId } from "@/lib/auth-api";
 import { ethers } from "ethers";
 
 export const Route = createFileRoute("/(protected)/_income/magic-level")({
@@ -20,6 +17,7 @@ export const Route = createFileRoute("/(protected)/_income/magic-level")({
 interface MagicLevelIncomeRow {
   id: number;
   level: number;
+  package_id: number | null;
   income: string;
   incomeFrom: string;
   time: string;
@@ -27,6 +25,7 @@ interface MagicLevelIncomeRow {
 
 function MagicLevelIncomePage() {
   const [level, setLevel] = useState("");
+  const [packageId, setPackageId] = useState("");
   const [isFilterSectionShow, setIsFilterSectionShow] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -39,22 +38,22 @@ function MagicLevelIncomePage() {
       try {
         setLoading(true);
         setError(null);
-        
+
         if (!window.ethereum) {
           setError("Please install MetaMask");
           setLoading(false);
           return;
         }
-        
+
         const provider = new ethers.BrowserProvider(window.ethereum);
         const accounts = await provider.listAccounts();
-        
+
         if (accounts.length === 0) {
           setError("Please connect your wallet");
           setLoading(false);
           return;
         }
-        
+
         const walletAddress = accounts[0].address;
         // console.log("🔑 Wallet Address:", walletAddress);
 
@@ -72,16 +71,18 @@ function MagicLevelIncomePage() {
         const history = await fetchLevelIncomeHistory(walletAddress);
 
         // 3. Format the data for the table
-        const formattedData: MagicLevelIncomeRow[] = history.map((item, index) => ({
-          id: index + 1,
-          level: item.level,
-          income: item.amount,
-          incomeFrom: item.childId,
-          time: item.date || "Pending"
-        }));
+        const formattedData: MagicLevelIncomeRow[] = history.map(
+          (item, index) => ({
+            id: index + 1,
+            level: item.level,
+            package_id: item.package_id ?? 0,
+            income: item.amount,
+            incomeFrom: item.childId,
+            time: item.date || "Pending",
+          }),
+        );
 
         setData(formattedData);
-
       } catch (err) {
         console.error("❌ Failed to load level income data:", err);
         setError("Failed to load income data. Please try again.");
@@ -96,8 +97,13 @@ function MagicLevelIncomePage() {
   // Filter logic
   const filteredData = data.filter((row) => {
     const matchesLevel = level ? row.level === Number(level) : true;
-    const matchesSearch = search ? row.incomeFrom.toLowerCase().includes(search.toLowerCase()) : true;
-    return matchesLevel && matchesSearch;
+    const matchesPackages = packageId
+      ? row.package_id === Number(packageId)
+      : true;
+    const matchesSearch = search
+      ? row.incomeFrom.toLowerCase().includes(search.toLowerCase())
+      : true;
+    return matchesLevel && matchesSearch && matchesPackages;
   });
 
   const columns: Column<MagicLevelIncomeRow>[] = [
@@ -105,27 +111,45 @@ function MagicLevelIncomePage() {
       key: "level",
       label: "Level",
       render: (r) => (
-        <span className="text-blue-600 bg-indigo-500/15 px-2 py-1 rounded-full text-xs font-medium">
+        <span className="text-purple-400 bg-purple-500/15 px-2 py-1 rounded-full text-xs font-medium">
           Level {r.level}
+        </span>
+      ),
+    },
+    {
+      key: "package_id",
+      label: "Package",
+      render: (r) => (
+        <span className="text-yellow-400 bg-yellow-500/15 px-2 py-1 rounded-full text-xs font-medium">
+          Package {r.package_id}
         </span>
       ),
     },
     {
       key: "income",
       label: "Income",
-      render: (r) => <span className="text-green-500 font-semibold">{r.income}</span>,
+      render: (r) => (
+        <span className="text-green-500 font-semibold">{r.income}</span>
+      ),
     },
-    { 
-      key: "incomeFrom", 
+    {
+      key: "incomeFrom",
       label: "Income from",
-      render: (r) => <span className="text-blue-400 font-medium">{r.incomeFrom}</span>
+      render: (r) => (
+        <span className="text-blue-400 font-medium">{r.incomeFrom}</span>
+      ),
     },
-    { 
-      key: "time", 
+    {
+      key: "time",
       label: "Time",
       render: (r) => {
         // Check if time is valid
-        if (r.time && r.time !== "Pending" && r.time !== "undefined" && r.time !== "") {
+        if (
+          r.time &&
+          r.time !== "Pending" &&
+          r.time !== "undefined" &&
+          r.time !== ""
+        ) {
           return <span className="text-gray-300">{r.time}</span>;
         }
         return (
@@ -134,7 +158,7 @@ function MagicLevelIncomePage() {
             Pending
           </span>
         );
-      }
+      },
     },
   ];
 
@@ -179,6 +203,17 @@ function MagicLevelIncomePage() {
               })),
             },
             {
+              key: "package_id",
+              label: "Package",
+              type: "select",
+              value: packageId,
+              onChange: setPackageId,
+              options: Array.from({ length: 9 }, (_, i) => i + 1).map((n) => ({
+                label: String(n),
+                value: String(n),
+              })),
+            },
+            {
               key: "search",
               label: "Search ID",
               type: "text",
@@ -190,6 +225,7 @@ function MagicLevelIncomePage() {
           onApply={() => setIsFilterSectionShow(false)}
           onReset={() => {
             setLevel("");
+            setPackageId("");
             setSearch("");
           }}
         />
@@ -198,23 +234,24 @@ function MagicLevelIncomePage() {
       {/* Loading State */}
       {loading ? (
         <div className="flex justify-center items-center py-20 text-indigo-400">
-          <RefreshCw className="animate-spin mr-2" /> Loading Level Income history...
+          <RefreshCw className="animate-spin mr-2" /> Loading Level Income
+          history...
         </div>
-      // ) : data.length === 0 ? (
-      //   // Empty State
-      //   <div className="bg-[#1a1a2e] rounded-xl border border-gray-700 p-12 text-center">
-      //     <div className="text-6xl mb-4">💰</div>
-      //     <h3 className="text-white text-xl font-semibold mb-2">No Level Income Yet</h3>
-      //     <p className="text-gray-400 max-w-md mx-auto">
-      //       When your referrals purchase packages, you'll earn level income here.
-      //     </p>
-      //     <div className="mt-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 max-w-md mx-auto">
-      //       <p className="text-yellow-500 text-sm">
-      //         💡 Tip: Refer members and help them purchase packages to earn level income!
-      //       </p>
-      //     </div>
-      //   </div>
       ) : (
+        // ) : data.length === 0 ? (
+        //   // Empty State
+        //   <div className="bg-[#1a1a2e] rounded-xl border border-gray-700 p-12 text-center">
+        //     <div className="text-6xl mb-4">💰</div>
+        //     <h3 className="text-white text-xl font-semibold mb-2">No Level Income Yet</h3>
+        //     <p className="text-gray-400 max-w-md mx-auto">
+        //       When your referrals purchase packages, you'll earn level income here.
+        //     </p>
+        //     <div className="mt-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 max-w-md mx-auto">
+        //       <p className="text-yellow-500 text-sm">
+        //         💡 Tip: Refer members and help them purchase packages to earn level income!
+        //       </p>
+        //     </div>
+        //   </div>
         // Data Table
         <>
           <div className="text-gray-400 text-sm mb-4">

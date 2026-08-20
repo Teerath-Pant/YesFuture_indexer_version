@@ -96,6 +96,15 @@ function PartnerPage() {
   const columns: Column<PartnerRow>[] = [
     { key: "date", label: "Date" },
     {
+      key: "refId",
+      label: "ID",
+      render: (r) => (
+        <span className="text-blue-500 font-medium py-1 rounded-full cursor-pointer hover:bg-blue-500/20 transition-colors">
+          {r.refId}
+        </span>
+      ),
+    },
+    {
       key: "wallet",
       label: "Address",
       render: (r) => (
@@ -106,15 +115,7 @@ function PartnerPage() {
         />
       ),
     },
-    {
-      key: "refId",
-      label: "ID",
-      render: (r) => (
-        <span className="text-blue-500 font-medium px-2.5 py-1 rounded-full cursor-pointer hover:bg-blue-500/20 transition-colors">
-          {r.refId}
-        </span>
-      ),
-    },
+    
     {
       key: "sponserMagic",
       label: "Sponser Magic",
@@ -135,7 +136,7 @@ function PartnerPage() {
     },
     {
       key: "profitUSDT",
-      label: "Profit USDT",
+      label: "Income",
       align: "center",
       render: (r) => <span className="text-green-400 font-semibold">{r.profitUSDT}</span>,
     },
