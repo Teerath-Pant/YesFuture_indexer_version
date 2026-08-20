@@ -24,17 +24,12 @@ export const Route = createFileRoute("/preview")({
         replace: true,
       });
     }
-
-    // await new Promise((resolve) => setTimeout(resolve, 5000));
-
-    // Hook ki jagah plain function use karo — beforeLoad component nahi hai
     if (!isWalletAvailable()) {
       throw redirect({
         to: "/sign-in",
         replace: true,
       });
     }
-
     const accounts = await getConnectedAccounts();
     const myWalletAddress = accounts[0] ?? null;
 
@@ -56,7 +51,6 @@ export const Route = createFileRoute("/preview")({
         throw redirect({ to: "/dashboard", replace: true });
       }
 
-      // beforeLoad ko yahi rok do taaki current invalid route render na ho
       throw redirect({ to: location.pathname, search: location.search });
     }
 
@@ -65,10 +59,8 @@ export const Route = createFileRoute("/preview")({
       search: search as Record<string, unknown>,
     };
   },
-  // Yeh dikhega jab tak beforeLoad complete nahi ho jata
   pendingComponent: PreviewLoading,
-  // Optional but recommended: turant flash na ho, thoda delay ke baad hi loading dikhe
-  pendingMs: 300, // itni der tak wait karo pehle loading dikhane se
+  pendingMs: 300,
   pendingMinMs: 500,
   component: RouteComponent,
 });
@@ -78,7 +70,6 @@ function PreviewLoading() {
     <div className="flex h-screen bg-white/10 w-full items-center justify-center">
       <div className="flex flex-col items-center gap-3 relative">
         <div className="h-48 w-48 animate-spin rounded-full border-4  border-amber-300 border-t-transparent" />
-        {/* <p className="text-sm text-muted-foreground">Verifying access...</p> */}
         <img
           src="/logo.png"
           alt="logo"

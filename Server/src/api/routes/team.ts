@@ -179,20 +179,67 @@ teamRouter.get("/:address/level-purchasers/:depth/:packageId", async (req, res) 
 // Same check, one query: walk target's sponsor chain via user_registrations
 // and see if :address ever appears in it — that's exactly "is :address an
 // ancestor of :target", i.e. "is target in :address's downline".
+// teamRouter.get("/:address/is-ancestor-of/:targetAddress", async (req, res) => {
+//   const address = req.params.address.toLowerCase();
+//   const targetAddress = req.params.targetAddress.toLowerCase();
+
+//   const rows = await db.execute(sql`
+//     WITH RECURSIVE chain AS (
+//       SELECT member_address, sponsor_address FROM user_registrations WHERE member_address = ${targetAddress}
+//       UNION ALL
+//       SELECT ur.member_address, ur.sponsor_address
+//       FROM user_registrations ur
+//       JOIN chain c ON ur.member_address = c.sponsor_address
+//     )
+//     SELECT EXISTS (SELECT 1 FROM chain WHERE sponsor_address = ${address}) AS is_ancestor
+//   `);
+
+//   res.json({ isAncestor: Boolean((rows[0] as any)?.is_ancestor) });
+// });
+
+
+
+// "My team" for preview purposes = anyone I'm an ancestor of via EITHER path:
+// the sponsor tree (who referred whom) OR the matrix tree (spillover
+// placement, per-package, which can differ from sponsor entirely — an
+// upline can drop one of THEIR sponsor-line members into MY matrix subtree
+// via spillover; that member's sponsor_address chain never reaches me, but
+// they're still genuinely under me in the matrix, so preview should allow it).
 teamRouter.get("/:address/is-ancestor-of/:targetAddress", async (req, res) => {
   const address = req.params.address.toLowerCase();
   const targetAddress = req.params.targetAddress.toLowerCase();
 
   const rows = await db.execute(sql`
-    WITH RECURSIVE chain AS (
-      SELECT member_address, sponsor_address FROM user_registrations WHERE member_address = ${targetAddress}
+    WITH RECURSIVE sponsor_chain AS (
+      SELECT member_address, sponsor_address, 1 AS depth
+      FROM user_registrations
+      WHERE member_address = ${targetAddress}
       UNION ALL
-      SELECT ur.member_address, ur.sponsor_address
+      SELECT ur.member_address, ur.sponsor_address, sc.depth + 1
       FROM user_registrations ur
-      JOIN chain c ON ur.member_address = c.sponsor_address
+      JOIN sponsor_chain sc ON ur.member_address = sc.sponsor_address
+      WHERE sc.depth < 50
+    ),
+    matrix_chain AS (
+      SELECT child_address, parent_address, package_id, 1 AS depth
+      FROM matrix_placements
+      WHERE child_address = ${targetAddress}
+      UNION ALL
+      SELECT mp.child_address, mp.parent_address, mp.package_id, mc.depth + 1
+      FROM matrix_placements mp
+      JOIN matrix_chain mc
+        ON mp.child_address = mc.parent_address
+        AND mp.package_id = mc.package_id
+      WHERE mc.depth < 50
     )
-    SELECT EXISTS (SELECT 1 FROM chain WHERE sponsor_address = ${address}) AS is_ancestor
+    SELECT
+      EXISTS (SELECT 1 FROM sponsor_chain WHERE sponsor_address = ${address}) AS is_sponsor_ancestor,
+      EXISTS (SELECT 1 FROM matrix_chain WHERE parent_address = ${address}) AS is_matrix_ancestor
   `);
 
-  res.json({ isAncestor: Boolean((rows[0] as any)?.is_ancestor) });
+  const row = rows[0] as any;
+  const isAncestor =
+    Boolean(row?.is_sponsor_ancestor) || Boolean(row?.is_matrix_ancestor);
+
+  res.json({ isAncestor });
 });

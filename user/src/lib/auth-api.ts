@@ -3138,7 +3138,7 @@ export async function fetchSponsorLevelDetail(
           : Promise.resolve([]),
       ]);
 
-      console.log(rows)
+      // console.log(rows)
     if (!profile) return empty;
 
     const ownStringId = profile.stringId || "...";
@@ -5285,4 +5285,18 @@ export async function fetchProgramMaxLevels(walletAddress: string) {
     sponsorMax: Number(data?.sponsor.max) || 0,
     levelMax: Number(data?.level.max) || 0,
   };
+}
+
+export async function fetchSponsorMissedSummary(
+  walletAddress: string,
+): Promise<Record<number, number>> {
+  try {
+    const data = await apiGet<{ counts: Record<number, number> }>(
+      `/users/${walletAddress}/sponsor-missed-summary`,
+    );
+    return data?.counts ?? {};
+  } catch (error) {
+    console.error("Error fetching sponsor missed summary:", error);
+    return {};
+  }
 }

@@ -1,7 +1,6 @@
 import { MatrixGridXThree } from "@/components/matrix-grid";
 import { type LevelData } from "@/components/matrix-level-card";
 import { ProgramPageHeader } from "@/components/programe-page-header";
-// import DataTable, { type Column } from "../data-table";
 import { RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
@@ -80,20 +79,12 @@ const SponserMagic = ({ program }: pageProps) => {
     transactionData: TransactionRow[],
     isRootUser = false,
     recycleCounts: Record<number, number> = {},
-    childAheadTiers: Set<number> = new Set(),
+    childAheadCounts: Record<number, number> = {},
     heldByPackage: Record<number, string[]> = {},
     partnersCounts: Record<number, number> = {},
   ): LevelData[] => {
-    // Sponsor Magic package prices (Direct Income portion)
     const packagePrices = sponsorMagicPackages;
     const levels: LevelData[] = [];
-
-    // Count unique referrers per package. NOTE: recycle count is NOT derived
-    // from here — item.cycle is DirectIncome's within-batch position (1..4,
-    // "this was the Nth paid referral"), not a count of completed recycles.
-    // With 2 partners that's cycle=2, which used to get shown as "2 cycles"
-    // when zero recycles had happened. Real recycle count comes from
-    // recycleCounts (SponsorReEntry events), fetched separately below.
     const levelReferrers: { [key: number]: Set<string> } = {};
 
     transactionData.forEach((item) => {
@@ -103,28 +94,17 @@ const SponserMagic = ({ program }: pageProps) => {
       }
       levelReferrers[level].add(item.refId);
     });
-
-    // Referrals #3/#4 of a batch don't always get paid immediately (see
-    // SponsorIncomeHeld) — their DirectIncome row just doesn't exist yet, so
-    // they were invisible here even though they're real direct partners.
-    // Same fix as the per-level detail page.
     for (const [pkg, ids] of Object.entries(heldByPackage)) {
       const level = Number(pkg);
       if (!levelReferrers[level]) levelReferrers[level] = new Set();
-      for (const id of ids) levelReferrers[level].add(id.replace(/^ID\s*/i, ""));
+      for (const id of ids)
+        levelReferrers[level].add(id.replace(/^ID\s*/i, ""));
     }
 
     for (let i = 1; i <= 9; i++) {
       const isUnlocked = isRootUser || i <= currentPkg;
       const price = packagePrices[i - 1] || 0;
       const cyclesCount = recycleCounts[i] || 0;
-      // Total visible referrals ever, minus the 4 each completed recycle
-      // already used up — every full cycle contributes exactly 4 referrals
-      // to our data (positions 1-4; the 5th always routes to the upline,
-      // invisible to this sponsor), so what's left over is the current,
-      // still-open cycle's count. Same "current cycle" semantic as the
-      // per-level detail page — a tile showing 4/5 right after a recycle
-      // was actually displaying the just-closed cycle, not the new one.
       const totalVisible = levelReferrers[i]?.size || 0;
       const currentCyclePartnersCount = Math.max(totalVisible - 4 * cyclesCount, 0);
       // Label shown on the card is the real total across every cycle,
@@ -144,9 +124,8 @@ const SponserMagic = ({ program }: pageProps) => {
         partnersCount: totalPartnersCount,
         recycleCount: cyclesCount,
         isFreeze: isRootUser ? false : !isUnlocked,
-        // A direct child bought this tier before the current user did — real
-        // signal (child's actual sponsorPackageId), not a guessed tier-distance.
-        isDamage: isRootUser ? false : childAheadTiers.has(i),
+        isDamage: isRootUser ? false : (childAheadCounts[i] || 0) > 0,
+        missedPartnersCount: childAheadCounts[i] || 0,
       });
     }
 
@@ -193,10 +172,7 @@ const SponserMagic = ({ program }: pageProps) => {
             cleanStrId === "1";
           pkgId = isRootUser ? 9 : pkgData.pkgId || 1;
           setActiveLevelsCount(pkgId);
-          // console.log("📛 User String ID:", pkgData.stringId);
-          // console.log("📦 Current Package:", pkgId);
         } catch (err) {
-          // console.warn("Could not fetch member string ID:", err);
           setUserStringId("ID ...");
         }
 
@@ -233,11 +209,6 @@ const SponserMagic = ({ program }: pageProps) => {
             amount: item.amount,
           };
         });
-
-        // Transaction table shows only the current (highest unlocked)
-        // package's income — the package grid above already breaks totals
-        // down per level, this table shouldn't re-mix every level together.
-        // setData(formattedData.filter((row) => row.level === pkgId));
         setTotalIncome(total);
 
         const levels = buildLevelsData(pkgId, formattedData, isRootUser, recycleCounts, childAheadTiers, heldByPackage, partnersCounts);
@@ -254,54 +225,6 @@ const SponserMagic = ({ program }: pageProps) => {
 
     loadData();
   }, []);
-
-  // const getRowIcon = (row: TransactionRow) => (
-  //   <>
-  //     {row.type === "recycle" ? (
-  //       <RefreshCw size={16} className="text-green-500" />
-  //     ) : (
-  //       <User size={16} className="text-gray-300" />
-  //     )}
-  //     {row.type === "recycle" && row.recycleCount != null && (
-  //       <span className="absolute -top-1 -right-1 text-[10px] leading-none text-green-400 font-semibold">
-  //         {row.recycleCount}
-  //       </span>
-  //     )}
-  //   </>
-  // );
-
-  // const columns: Column<TransactionRow>[] = [
-  //   { key: "date", label: "Date" },
-  //   // {
-  //   //   key: "refId",
-  //   //   label: "ID",
-  //   //   render: (r) => (
-  //   //     <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
-  //   //       ID {r.refId}
-  //   //     </span>
-  //   //   ),
-  //   // },
-  //   { key: "level", label: "Package" },
-  //   {
-  //     key: "wallet",
-  //     label: "Income From",
-  //     render: (r) => <span className="text-white">{r.wallet}</span>,
-  //   },
-  //   {
-  //     key: "amount",
-  //     label: "Amount",
-  //     align: "right",
-  //     render: (r) => (
-  //       <span
-  //         className={
-  //           r.type === "recycle" ? "text-green-400 font-semibold" : "text-green-400 font-semibold"
-  //         }
-  //       >
-  //         {r.amount}
-  //       </span>
-  //     ),
-  //   },
-  // ];
 
   if (loading) {
     return (
@@ -325,16 +248,6 @@ const SponserMagic = ({ program }: pageProps) => {
       />
 
       <MatrixGridXThree levels={levelsData} />
-
-      {/* <div className="my-8">
-        <DataTable<TransactionRow>
-          columns={columns}
-          data={data}
-          getRowIcon={getRowIcon}
-          getRowKey={(row) => row.id}
-          pageSize={10}
-        />
-      </div> */}
     </div>
   );
 };

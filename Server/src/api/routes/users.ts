@@ -773,7 +773,8 @@ usersRouter.get(
     for (const slot of filledSlots) {
       nodes[slot.index] = {
         address: slot.address,
-        isDirectPlacement: slot.sponsorAddress.toLowerCase() === slot.parentAddress.toLowerCase(),
+        isDirectPlacement: slot.sponsorAddress.toLowerCase() === user.toLowerCase(),
+        // isDirectPlacement: slot.sponsorAddress.toLowerCase() === slot.parentAddress.toLowerCase(),
         isInDownline: downlineSet.has(slot.address),
       };
     }
@@ -1054,7 +1055,8 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
   for (const slot of filledSlots) {
     nodes[slot.index] = {
       address: slot.address,
-      isDirectPlacement: slot.sponsorAddress === slot.parentAddress,
+      // isDirectPlacement: slot.sponsorAddress === slot.parentAddress,
+      isDirectPlacement: slot.sponsorAddress.toLowerCase() === user.toLowerCase(),
       isInDownline: downlineSet.has(slot.address),
     };
   }
@@ -1209,4 +1211,92 @@ usersRouter.get("/:address/magic-gold-summary", async (req, res) => {
   );
 
   res.json({ packages });
+});
+
+
+// --------- dev-mukesh ---------------
+
+// For the viewing user (rootUser), computes per-tier "missed" counts —
+// how many downline purchases of tier T bubbled past rootUser because
+// rootUser's own sponsor package was below T at the time this is checked.
+// Bubbling rule: walk from a purchaser's sponsor upward; each ancestor whose
+// own current tier < T contributes a miss and the walk continues further up;
+// the first ancestor whose tier >= T absorbs it (real dot) and the walk for
+// that (purchaser, tier) pair stops there — no misses recorded beyond that
+// point. rootUser only cares whether IT gets counted before that stop.
+usersRouter.get("/:address/sponsor-missed-summary", async (req, res) => {
+  const rootUser = req.params.address.toLowerCase();
+  if (!isAddress(rootUser))
+    return res.status(400).json({ error: "invalid address" });
+
+  // 1. Full downline tree (every descendant, any depth) — same recursive
+  // sponsor-chain pattern as getDownlineMembership, just walking down
+  // instead of up.
+  const descendantRows = await db.execute(sql`
+    WITH RECURSIVE downline AS (
+      SELECT member_address, sponsor_address, 1 AS depth
+      FROM user_registrations
+      WHERE sponsor_address = ${rootUser}
+      UNION ALL
+      SELECT ur.member_address, ur.sponsor_address, d.depth + 1
+      FROM user_registrations ur
+      JOIN downline d ON ur.sponsor_address = d.member_address
+      WHERE d.depth < 50
+    )
+    SELECT member_address, sponsor_address FROM downline
+  `);
+
+  const counts: Record<number, number> = {};
+  for (let t = 1; t <= 9; t++) counts[t] = 0;
+
+  const descendants = descendantRows as unknown as {
+    member_address: string;
+    sponsor_address: string;
+  }[];
+  if (!descendants.length) return res.json({ counts });
+
+  const sponsorOf = new Map<string, string>(
+    descendants.map((r) => [r.member_address, r.sponsor_address]),
+  );
+
+  // 2. Batched live tier reads — every descendant plus rootUser itself.
+  // Ancestors we'll ever need to check while walking any (D, t) pair are
+  // guaranteed to be in this set: they're all on the path from D up to
+  // rootUser, i.e. themselves descendants of rootUser (or rootUser).
+  const addressesNeedingTier = [
+    rootUser,
+    ...descendants.map((r) => r.member_address),
+  ];
+  const tierResults = await Promise.all(
+    addressesNeedingTier.map((addr) =>
+      contract.sponsorPackageId(addr).catch(() => 0n),
+    ),
+  );
+  const tierOf = new Map<string, number>(
+    addressesNeedingTier.map((addr, i) => [addr, Number(tierResults[i])]),
+  );
+
+  // 3. For every descendant D, for every tier D actually reached, walk
+  // D's sponsor chain upward until reaching rootUser or a qualifying
+  // ancestor — whichever comes first.
+  for (const d of descendants) {
+    const dTier = tierOf.get(d.member_address) ?? 0;
+    for (let t = 1; t <= dTier; t++) {
+      let ancestor: string | undefined = d.sponsor_address;
+      let guard = 0;
+      while (ancestor && guard < 50) {
+        guard++;
+        if (ancestor === rootUser) {
+          const rootTier = tierOf.get(rootUser) ?? 0;
+          if (rootTier < t) counts[t] += 1;
+          break; // only rootUser's own outcome matters for this endpoint
+        }
+        const ancestorTier = tierOf.get(ancestor) ?? 0;
+        if (ancestorTier >= t) break; // absorbed below rootUser, stop
+        ancestor = sponsorOf.get(ancestor); // keep walking up
+      }
+    }
+  }
+
+  res.json({ counts });
 });

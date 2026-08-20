@@ -1,8 +1,6 @@
 import { MatrixGridXGold } from "@/components/matrix-grid-x-gold";
 import { type LevelDataXGold } from "@/components/matrix-level-card-x-gold";
 import { ProgramPageHeader } from "@/components/programe-page-header";
-// import DataTable, { type Column } from "../data-table";
-// import WalletCell from "../wallet-cell";
 import { RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
@@ -13,7 +11,6 @@ import {
   fetchPackageAndId,
   fetchPurchaseHistory,
   fetchMagicGoldMatrixSummary,
-  // fetchMaxActivePackage,
   fetchMaxActiveMatrixPackage,
 } from "@/lib/auth-api";
 import { useWallet } from "@/lib/use-wallet";
@@ -152,48 +149,6 @@ const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
       tree: metrics.tree && metrics.tree.length > 0 ? metrics.tree : [],
     } as LevelDataXGold;
   });
-
-  // const getRowIcon = (row: TransactionRow) => (
-  //   <>
-  //     {row.type === "recycle" ? (
-  //       <RefreshCw size={16} className="text-green-500" />
-  //     ) : (
-  //       <User size={16} className="text-gray-300" />
-  //     )}
-  //   </>
-  // );
-
-  // const columns: Column<TransactionRow>[] = [
-  //   { key: "date", label: "Date" },
-  //   {
-  //     key: "refId",
-  //     label: "ID",
-  //     render: (r) => (
-  //       <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
-  //         ID {r.refId}
-  //       </span>
-  //     ),
-  //   },
-  //   { key: "level", label: "Package Level" },
-  //   {
-  //     key: "wallet",
-  //     label: "Wallet",
-  //     render: (r) => (
-  //       <WalletCell
-  //         address={r.fullWallet ?? r.wallet}
-  //         displayAddress={r.wallet}
-  //         explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? r.wallet}`}
-  //       />
-  //     ),
-  //   },
-  //   {
-  //     key: "amount",
-  //     label: "USDT",
-  //     align: "right",
-  //     render: (r) => <span className="text-white">{r.amount}</span>,
-  //   },
-  // ];
-
   return (
     <div className="w-full text-white">
       <ProgramPageHeader
@@ -212,16 +167,6 @@ const MagicGoldMatrix = ({ program, walletAddress }: pageProps) => {
       ) : (
         <>
           <MatrixGridXGold levels={levelsData} />
-
-          {/* <div className="my-8">
-            <DataTable<TransactionRow>
-              columns={columns}
-              data={purchaseHistory}
-              getRowIcon={getRowIcon}
-              getRowKey={(row) => row.id}
-              pageSize={10}
-            />
-          </div> */}
         </>
       )}
     </div>
