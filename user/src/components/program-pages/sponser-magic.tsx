@@ -9,6 +9,7 @@ import {
   fetchTotalSponsorIncome,
   fetchSponsorPackageAndIdWithMax,
   fetchSponsorRecycleCounts,
+  fetchSponsorPartnersCounts,
   fetchDirectPartners,
   fetchSponsorHeldSummary,
 } from "@/lib/auth-api";
@@ -81,6 +82,7 @@ const SponserMagic = ({ program }: pageProps) => {
     recycleCounts: Record<number, number> = {},
     childAheadTiers: Set<number> = new Set(),
     heldByPackage: Record<number, string[]> = {},
+    partnersCounts: Record<number, number> = {},
   ): LevelData[] => {
     // Sponsor Magic package prices (Direct Income portion)
     const packagePrices = sponsorMagicPackages;
@@ -124,17 +126,22 @@ const SponserMagic = ({ program }: pageProps) => {
       // per-level detail page — a tile showing 4/5 right after a recycle
       // was actually displaying the just-closed cycle, not the new one.
       const totalVisible = levelReferrers[i]?.size || 0;
-      const partnersCount = Math.max(totalVisible - 4 * cyclesCount, 0);
+      const currentCyclePartnersCount = Math.max(totalVisible - 4 * cyclesCount, 0);
+      // Label shown on the card is the real total across every cycle,
+      // straight from DB (package_purchase_events) — includes each
+      // completed cycle's invisible 5th slot, which the client-side
+      // DirectIncome/held reconstruction above structurally can't see.
+      const totalPartnersCount = partnersCounts[i] ?? totalVisible + cyclesCount;
 
-      // Generate 5 slots based on partners count for package level i
-      const slots = generateSlots(partnersCount);
+      // Generate 5 slots based on the CURRENT cycle's partner count
+      const slots = generateSlots(currentCyclePartnersCount);
 
       levels.push({
         level: i,
         price: price,
         isUnlocked: isUnlocked,
         slots: slots,
-        partnersCount: partnersCount,
+        partnersCount: totalPartnersCount,
         recycleCount: cyclesCount,
         isFreeze: isRootUser ? false : !isUnlocked,
         // A direct child bought this tier before the current user did — real
@@ -194,12 +201,13 @@ const SponserMagic = ({ program }: pageProps) => {
         }
 
         // ✅ Fetch ONLY Sponsor Income data
-        const [history, total, recycleCounts, directPartners, heldByPackage] = await Promise.all([
+        const [history, total, recycleCounts, directPartners, heldByPackage, partnersCounts] = await Promise.all([
           fetchSponsorIncomeHistory(walletAddress),
           fetchTotalSponsorIncome(walletAddress),
           fetchSponsorRecycleCounts(walletAddress),
           fetchDirectPartners(walletAddress),
           fetchSponsorHeldSummary(walletAddress),
+          fetchSponsorPartnersCounts(walletAddress),
         ]);
 
         // Tiers above the current user's own sponsor package that at least
@@ -232,7 +240,7 @@ const SponserMagic = ({ program }: pageProps) => {
         // setData(formattedData.filter((row) => row.level === pkgId));
         setTotalIncome(total);
 
-        const levels = buildLevelsData(pkgId, formattedData, isRootUser, recycleCounts, childAheadTiers, heldByPackage);
+        const levels = buildLevelsData(pkgId, formattedData, isRootUser, recycleCounts, childAheadTiers, heldByPackage, partnersCounts);
         setLevelsData(levels);
         // console.log("✅ Levels data:", levels);
         // console.log("✅ Levels data:", levels);

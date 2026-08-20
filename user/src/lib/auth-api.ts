@@ -3016,6 +3016,24 @@ export async function fetchSponsorRecycleCounts(
   }
 }
 
+// Real total partner count per package tier, straight from DB
+// (package_purchase_events) — includes every completed cycle's invisible
+// 5th slot, unlike the DirectIncome/held-based client-side reconstruction.
+// Powers the Sponsor Magic overview grid's "Partners" stat.
+export async function fetchSponsorPartnersCounts(
+  walletAddress: string,
+): Promise<Record<number, number>> {
+  try {
+    const data = await apiGet<{ counts: Record<number, number> }>(
+      `/users/${walletAddress}/sponsor-partners-counts`,
+    );
+    return data?.counts ?? {};
+  } catch (error) {
+    console.error("Error fetching sponsor partners counts:", error);
+    return {};
+  }
+}
+
 // Batched held-partner ids per package (see the backend route). Powers the
 // Sponsor Magic overview grid's partner slots/count — same held-partner gap
 // as the per-level detail page, fixed with one batched call instead of 9.

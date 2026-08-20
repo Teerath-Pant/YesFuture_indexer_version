@@ -376,6 +376,30 @@ usersRouter.get("/:address/sponsor-recycle-counts", async (req, res) => {
   res.json({ counts });
 });
 
+// Real total partner count per sponsor tier, straight from package_purchase_events
+// (not reconstructed from DirectIncome/held feeds, which structurally can't
+// see a cycle's 5th slot — its income routes to the upline, not this
+// sponsor, see sponsor-recycle-counts above). This counts every direct
+// child who has actually purchased that tier, across every completed and
+// in-progress cycle — the real "total in structure" number.
+usersRouter.get("/:address/sponsor-partners-counts", async (req, res) => {
+  const user = req.params.address.toLowerCase();
+  if (!isAddress(user))
+    return res.status(400).json({ error: "invalid address" });
+
+  const rows = await db.execute(sql`
+    SELECT pp.package_id, count(*)::int AS count
+    FROM package_purchase_events pp
+    JOIN user_registrations ur ON ur.member_address = pp.member_address
+    WHERE pp.track = 'SPONSOR' AND ur.sponsor_address = ${user}
+    GROUP BY pp.package_id
+  `);
+
+  const counts: Record<number, number> = {};
+  for (const r of rows as any[]) counts[r.package_id] = r.count;
+  res.json({ counts });
+});
+
 // Batched version of /history/sponsor-held/:packageId for the Sponsor Magic
 // overview grid — all 9 tiers' held-partner ids in one query instead of 9
 // requests. Same tx_hash join, grouped by package_id. Overview grid's
