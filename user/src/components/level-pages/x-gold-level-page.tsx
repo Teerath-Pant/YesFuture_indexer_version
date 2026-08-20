@@ -442,7 +442,7 @@ export const XGoldLevelPage = ({
     },
   ];
 
-  console.log(incomeRows);
+  // console.log(incomeRows);
 
   return (
     <div className="w-full text-white">

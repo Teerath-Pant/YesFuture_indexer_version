@@ -53,7 +53,7 @@ const PreviewSponsorMagicPackagePage = ({
           fetchSponsorLevelDetail,
           levelNum,
         );
-        console.log(res)
+        // console.log(res)
         if (isMounted && res) {
           setDetail(res);
           const total = Math.max(1, res.cyclesCount || 0);

@@ -66,7 +66,7 @@ function RouteComponent() {
         }
 
         const rows = await fetchTeamAllLevels(addr);
-        console.log(rows)
+        // console.log(rows)
         setData(rows);
       } catch (err) {
         console.error("Failed to load team:", err);

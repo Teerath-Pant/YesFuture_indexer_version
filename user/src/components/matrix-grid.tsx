@@ -1,5 +1,5 @@
 // import React from "react";
-import { Users, RefreshCw, HelpCircle } from "lucide-react";
+import { Users, RefreshCw } from "lucide-react";
 import { MatrixLevelCard,type LevelData } from "@/components/matrix-level-card";
 
 interface MatrixGridProps {

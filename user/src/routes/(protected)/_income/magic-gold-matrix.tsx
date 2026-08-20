@@ -103,7 +103,7 @@ function RouteComponent() {
         const { numericId } = await fetchPackageAndId(connectedWallet);
         setUserNumericId(numericId);
         const historyData = await fetchMatrixIncomeByAddress(connectedWallet);
-        console.log("History Data:", historyData);
+        // console.log("History Data:", historyData);
         if (isMounted && historyData) {
           const formattedHistory: TransactionRow[] = historyData.map(
             (item: any, idx: number) => ({
