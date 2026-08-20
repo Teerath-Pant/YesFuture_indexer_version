@@ -135,12 +135,6 @@ export const CONTRACT_ABI = [
         "internalType": "address"
       },
       {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "uint8"
-      },
-      {
         "name": "level",
         "type": "uint8",
         "indexed": false,
@@ -970,6 +964,11 @@ export const CONTRACT_ABI = [
       },
       {
         "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -1053,6 +1052,11 @@ export const CONTRACT_ABI = [
         "name": "",
         "type": "uint8",
         "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
@@ -1362,6 +1366,11 @@ export const CONTRACT_ABI = [
     "inputs": [
       {
         "name": "sponsorStringId",
+        "type": "string",
+        "internalType": "string"
+      },
+      {
+        "name": "name",
         "type": "string",
         "internalType": "string"
       }

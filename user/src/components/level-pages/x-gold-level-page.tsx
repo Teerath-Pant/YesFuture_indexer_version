@@ -415,7 +415,8 @@ export const XGoldLevelPage = ({
         </span>
       ),
     },
-    { key: "level", label: "Package" },
+    { key: "level", label: "Level" },
+    { key: "packageId", label: "Package" },
     {
       key: "wallet",
       label: "Wallet",
@@ -441,7 +442,7 @@ export const XGoldLevelPage = ({
     },
   ];
 
-  // console.log(incomeRows);
+  console.log(incomeRows);
 
   return (
     <div className="w-full text-white">
