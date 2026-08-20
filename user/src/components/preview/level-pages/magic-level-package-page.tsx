@@ -429,6 +429,7 @@
 
 import { RefreshCw } from "lucide-react";
 import DataTable, { type Column } from "@/components/data-table";
+import TableSkeleton from "@/components/skeletons/table-skeleton";
 import LevelPageLayout from "@/components/level-page-layout";
 import { useNavigate, useRouterState, useSearch } from "@tanstack/react-router";
 import { magicLevelPackages, type ProgramTypes } from "@/constants/programs";
@@ -562,6 +563,7 @@ export const MagicLevelPackagePage = ({
   ];
 
   const goToLevel = (nextLevel: number) => {
+    setIsDataLoading(true);
     navigate({
       to: "/preview/dashboard/$program/$level",
       params: { program, level: level },
@@ -611,12 +613,16 @@ export const MagicLevelPackagePage = ({
       </LevelPageLayout>
 
       <div className="my-8">
-        <DataTable<TeamMemberRow>
-          columns={columns}
-          data={teamMembers}
-          getRowKey={(row) => row.id}
-          pageSize={10}
-        />
+        {isDataLoading ? (
+          <TableSkeleton columns={columns.length} />
+        ) : (
+          <DataTable<TeamMemberRow>
+            columns={columns}
+            data={teamMembers}
+            getRowKey={(row) => row.id}
+            pageSize={10}
+          />
+        )}
       </div>
     </div>
   );

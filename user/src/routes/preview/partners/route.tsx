@@ -211,7 +211,7 @@ function PartnerPage() {
 
       {isLoading && (
         <div className="flex justify-center items-center py-20 text-indigo-400">
-          <RefreshCw className="animate-spin mr-2" /> Loading Partners...
+          <RefreshCw className="animate-spin mr-2" /> Loading direct partners...
         </div>
       )}
 

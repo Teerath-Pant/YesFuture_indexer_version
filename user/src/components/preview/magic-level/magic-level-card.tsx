@@ -36,7 +36,7 @@ export function PreviewUserMagicLevelCard({
           },
         });
       }}
-      className={`relative flex flex-col justify-between overflow-hidden rounded-2xl p-4 transition-all cursor-pointer ${
+      className={`relative flex flex-col justify-between overflow-hidden rounded-2xl p-4 min-h-45 transition-all cursor-pointer ${
         isUnlocked
           ? "bg-[#3865ff] text-white shadow-lg shadow-blue-600/20"
           : isDamage
@@ -64,25 +64,33 @@ export function PreviewUserMagicLevelCard({
       </div>
 
       {/* Middle: Partners + Total Amount */}
-      <div className="my-6 flex items-center justify-around z-10">
-        {/* <div className="flex flex-col items-center gap-1">
-          <Users className="h-5 w-5 opacity-90" />
-          <span className="text-lg font-bold">{partnersCount}</span>
-          <span className={`text-[10px] ${isUnlocked ? "text-blue-100" : "text-gray-400"}`}>
-            Partners
-          </span>
-        </div>
+      {isUnlocked && (
+        <div className="my-6 flex items-center justify-around z-10">
+          {/* <div className="flex flex-col items-center gap-1">
+            <Users className="h-5 w-5 opacity-90" />
+            <span className="text-lg font-bold">{partnersCount}</span>
+            <span
+              className={`text-[10px] ${isUnlocked ? "text-blue-100" : "text-gray-400"}`}
+            >
+              Partners
+            </span>
+          </div> */}
 
-        <div className="h-8 w-px bg-white/20" /> */}
+          {/* <div className="h-8 w-px bg-white/20" /> */}
 
-        <div className="flex flex-col items-center gap-1">
-          <Wallet className="h-5 w-5 opacity-90" />
-          <span className="text-lg font-bold">{totalAmount.toLocaleString()}</span>
-          <span className={`text-[10px] ${isUnlocked ? "text-blue-100" : "text-gray-400"}`}>
-            Total USDT
-          </span>
+          <div className="flex flex-col items-center gap-1">
+            <Wallet className="h-5 w-5 opacity-90" />
+            <span className="text-lg font-bold">
+              {totalAmount.toLocaleString()}
+            </span>
+            <span
+              className={`text-[10px] ${isUnlocked ? "text-blue-100" : "text-gray-400"}`}
+            >
+              Total USDT
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
     </div>
   );

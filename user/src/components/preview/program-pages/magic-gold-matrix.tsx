@@ -1,8 +1,8 @@
 import { type LevelDataXGold } from "@/components/matrix-level-card-x-gold";
 import { ProgramPageHeader } from "@/components/programe-page-header";
-import DataTable, { type Column } from "@/components/data-table";
-import WalletCell from "@/components/wallet-cell";
-import { RefreshCw, User } from "lucide-react";
+// import DataTable, { type Column } from "@/components/data-table";
+// import WalletCell from "@/components/wallet-cell";
+import { RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import { magicGoldMatrixPackages, type ProgramTypes } from "@/constants/programs";
 import { fetchPackageAndId, fetchPurchaseHistory, fetchMagicGoldMatrixSummary, fetchMaxActivePackage, PreviewModeApiCall } from "@/lib/auth-api";
@@ -32,7 +32,7 @@ const PreviewUserMagicGoldMatrix = ({ program }: pageProps) => {
   const [loading, setLoading] = useState(true);
   const [userNumericId, setUserNumericId] = useState("0");
   const [maxActivePkg, setMaxActivePkg] = useState(1);
-  const [purchaseHistory, setPurchaseHistory] = useState<TransactionRow[]>([]);
+  const [_purchaseHistory, setPurchaseHistory] = useState<TransactionRow[]>([]);
   const [packageMetrics, setPackageMetrics] = useState<Record<number, { partnersCount: number; level5Count: number; recycleCount: number; tree?: LevelDataXGold["tree"]; revenue?: number }>>({});
   const [totalRevenue, setTotalRevenue] = useState(0);
 
@@ -143,46 +143,46 @@ useEffect(() => {
     } as LevelDataXGold;
   });
 
-  const getRowIcon = (row: TransactionRow) => (
-    <>
-      {row.type === "recycle" ? (
-        <RefreshCw size={16} className="text-green-500" />
-      ) : (
-        <User size={16} className="text-gray-300" />
-      )}
-    </>
-  );
+  // const getRowIcon = (row: TransactionRow) => (
+  //   <>
+  //     {row.type === "recycle" ? (
+  //       <RefreshCw size={16} className="text-green-500" />
+  //     ) : (
+  //       <User size={16} className="text-gray-300" />
+  //     )}
+  //   </>
+  // );
 
-  const columns: Column<TransactionRow>[] = [
-    { key: "date", label: "Date" },
-    {
-      key: "refId",
-      label: "ID",
-      render: (r) => (
-        <span className="text-blue-400 font-medium px-2 py-1 rounded-full">
-          {r.refId}
-        </span>
-      ),
-    },
-    { key: "level", label: "Package Level" },
-    {
-      key: "wallet",
-      label: "Wallet",
-      render: (r) => (
-        <WalletCell
-          address={r.fullWallet ?? r.wallet}
-          displayAddress={r.wallet}
-          explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? r.wallet}`}
-        />
-      ),
-    },
-    {
-      key: "amount",
-      label: "USDT",
-      align: "right",
-      render: (r) => <span className="text-green-400 font-semibold">{r.amount}</span>,
-    },
-  ];
+  // const columns: Column<TransactionRow>[] = [
+  //   { key: "date", label: "Date" },
+  //   {
+  //     key: "refId",
+  //     label: "ID",
+  //     render: (r) => (
+  //       <span className="text-blue-400 font-medium px-2 py-1 rounded-full">
+  //         {r.refId}
+  //       </span>
+  //     ),
+  //   },
+  //   { key: "level", label: "Package Level" },
+  //   {
+  //     key: "wallet",
+  //     label: "Wallet",
+  //     render: (r) => (
+  //       <WalletCell
+  //         address={r.fullWallet ?? r.wallet}
+  //         displayAddress={r.wallet}
+  //         explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? r.wallet}`}
+  //       />
+  //     ),
+  //   },
+  //   {
+  //     key: "amount",
+  //     label: "USDT",
+  //     align: "right",
+  //     render: (r) => <span className="text-green-400 font-semibold">{r.amount}</span>,
+  //   },
+  // ];
 
   return (
     <div className="w-full text-white">
@@ -202,8 +202,7 @@ useEffect(() => {
         <>
           <PreviewUserMatrixGridXGold levels={levelsData} />
 
-          
-          <div className="my-8">
+          {/* <div className="my-8">
             <DataTable<TransactionRow>
               columns={columns}
               data={purchaseHistory}
@@ -211,7 +210,7 @@ useEffect(() => {
               getRowKey={(row) => row.id}
               pageSize={10}
             />
-          </div>
+          </div> */}
         </>
       )}
     </div>

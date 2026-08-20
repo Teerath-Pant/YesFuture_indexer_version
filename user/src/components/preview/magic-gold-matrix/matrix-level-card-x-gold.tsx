@@ -16,16 +16,8 @@ export interface LevelDataXGold {
   isDamage?: boolean;
 }
 
-function slotColor(slot: SlotType, isUnlocked: boolean, isDamage: boolean): string {
-  // Locked but damaged (downline activity exists) — filled slots show red,
-  // matching the card's red border. Direct/spillover distinction only
-  // matters once the package itself is unlocked.
-  if (!isUnlocked && isDamage) {
-    if (slot === "empty") return "bg-white/15 ring-1 ring-white/10";
-    return "bg-rose-500 shadow-sm shadow-rose-500/50";
-  }
-
-  if (!isUnlocked) return "bg-white/10 border border-white/10";
+function slotColor(slot: SlotType, visible: boolean): string {
+  if (!visible) return "bg-white/10 border border-white/10";
 
   switch (slot) {
     case "direct":
@@ -74,7 +66,7 @@ export function PreviewUserMatrixLevelCardXGold({
       }}
       className={`relative flex flex-col justify-between overflow-hidden rounded-3xl p-4 transition-all duration-200 select-none ${
         isUnlocked
-          ? "bg-[#3865ff] text-white shadow-lg shadow-blue-500/20 cursor-pointer hover:bg-[#325ce6]"
+          ? "bg-[#3865ff] text-white shadow-lg shadow-blue-500/20 hover:bg-[#325ce6]"
           : isDamage
             ? "bg-[#1b1d22] text-white border-2 border-rose-500/60 shadow-lg shadow-rose-500/20"
             : "bg-[#1b1d22] text-gray-400 border border-white/5"
@@ -100,13 +92,12 @@ export function PreviewUserMatrixLevelCardXGold({
       </div>
 
       {/* Tree Visualization */}
-      {isUnlocked || isDamage || (partnersCount ?? 0) > 0 ? (
+      {isUnlocked ? (
         <>
           <div className="my-3 flex flex-col items-center justify-center gap-2 z-10 w-full">
             {normalizedTree.map((row, rowIdx) => {
               const config =
                 ROW_CONFIGS[Math.min(rowIdx, ROW_CONFIGS.length - 1)];
-
               return (
                 <div
                   key={rowIdx}
@@ -115,27 +106,38 @@ export function PreviewUserMatrixLevelCardXGold({
                   {row.map((slot, slotIdx) => (
                     <div
                       key={slotIdx}
-                      className={`rounded-full border transition-all duration-200 ${config.size} ${slotColor(
-                        slot,
-                        isUnlocked,
-                        !!isDamage,
-                      )}`}
+                      className={`rounded-full border transition-all duration-200 ${config.size} ${slotColor(slot, true)}`}
                     />
                   ))}
                 </div>
               );
             })}
           </div>
-          {/* Bottom Footer Stats */}
-          <div className={`flex items-center gap-4 text-xs font-semibold z-10 pt-1 ${isUnlocked ? "text-blue-100/90" : "text-rose-400"}`}>
+          <div className="flex items-center gap-4 text-xs font-semibold text-blue-100/90 z-10 pt-1">
             <div className="flex items-center gap-1.5">
               <Users className="h-4 w-4 opacity-80" />
               <span>{partnersCount ?? 0}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <RefreshCw className="h-4 w-4 opacity-80" />
-              {/* recycleCount counts placements (1 = no recycle yet) — cycles
-                  are displayed 0-indexed project-wide. */}
+              <span>{Math.max((recycleCount ?? 0) - 1, 0)}</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Wallet className="h-4 w-4 opacity-80" />
+              <span>{(revenue ?? 0).toLocaleString()} USDT</span>
+            </div>
+          </div>
+        </>
+      ) : isDamage ? (
+        <>
+          <div className="my-6 flex flex-col items-center justify-center gap-1 z-10">
+            <span className="text-4xl font-extrabold text-rose-500">
+              {partnersCount ?? 0}
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-xs font-semibold text-rose-400 z-10 pt-1">
+            <div className="flex items-center gap-1.5">
+              <RefreshCw className="h-4 w-4 opacity-80" />
               <span>{Math.max((recycleCount ?? 0) - 1, 0)}</span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -145,7 +147,6 @@ export function PreviewUserMatrixLevelCardXGold({
           </div>
         </>
       ) : (
-        /* Lock Placeholder for Locked Levels */
         <div className="my-8 flex flex-col items-center justify-center gap-2 opacity-20">
           <div className="grid grid-cols-2 gap-6">
             <div className="h-6 w-6 rounded-full border-2 border-white/40" />

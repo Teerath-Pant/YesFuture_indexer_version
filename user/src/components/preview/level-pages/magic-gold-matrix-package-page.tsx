@@ -21,6 +21,7 @@ import {
   PreviewModeApiCall,
 } from "@/lib/auth-api";
 import type { ProgramTypes } from "@/constants/programs";
+import { formattedWalletAddress } from "@/lib/helper";
 
 interface TransactionRow {
   id: number;
@@ -389,20 +390,21 @@ export const PreviewMagicGoldMatrixLevelPackagePage = ({
       key: "refId",
       label: "ID",
       render: (r) => (
-        <span className="text-blue-400 font-medium px-2 py-1 rounded-full">
-          {r.refId}
+        <span className="text-blue-400  px-2 py-1 rounded-full font-medium">
+          ID {r.refId}
         </span>
       ),
     },
     { key: "level", label: "Level" },
+    { key: "packageId", label: "Package" },
     {
       key: "wallet",
       label: "Wallet",
       render: (r) => (
         <WalletCell
-          address={r.fullWallet ?? r.wallet}
-          displayAddress={r.wallet}
-          explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? r.wallet}`}
+          address={r.fullWallet ?? ""}
+          displayAddress={formattedWalletAddress(r.fullWallet ?? "")}
+          explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? ""}`}
         />
       ),
     },
@@ -428,14 +430,13 @@ export const PreviewMagicGoldMatrixLevelPackagePage = ({
           { label: program },
           { label: `Package ${level}` },
         ]}
-        title={`Package ${level}`}
-        uplineId={`Upline ${uplineId}`}
+        uplineId={`${uplineId}`}
         isLoading={isNavigating || isLoadingMatrix}
         level={{
           current: levelNum,
-          totalLevels: 10,
+          totalLevels: 15,
           hasPrev: levelNum > 1,
-          hasNext: levelNum < 10,
+          hasNext: levelNum < 15,
           onPrev: () =>
             navigate({
               to: "/preview/dashboard/$program/$level",

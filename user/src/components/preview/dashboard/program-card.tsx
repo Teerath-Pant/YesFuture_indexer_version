@@ -1,4 +1,5 @@
 import type { ProgramTypes } from "@/constants/programs";
+import { formatAmount } from "@/lib/helper";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import type {CSSProperties} from "react";
 
@@ -62,7 +63,7 @@ export function PreviewProgramCard({
       <div className="flex flex-col self-end pt-3">
         {/* <span className="text-xs font-medium text-gray-400">Total Profit</span> */}
         <span className="text-xl px-4 font-extrabold tracking-wide text-white">
-          ${totalProfit}
+          ${formatAmount(totalProfit)}
         </span>
       </div>
 
@@ -71,7 +72,7 @@ export function PreviewProgramCard({
         {isInactive ? (
           <p className="px-2 text-xs leading-relaxed text-gray-400">{description}</p>
         ) : (
-          <div className="flex w-full flex-col sm:flex-row gap-5 sm:justify-between sm:items-end">
+          <div className="flex w-full py-5 flex-col sm:flex-row gap-5 sm:justify-between sm:items-end">
             <div className="grid grid-cols-5 gap-2 w-full sm:max-w-55">
               {Array.from({ length: totalLevels }).map((_, index) => {
                 const isActive = index < activeLevels;

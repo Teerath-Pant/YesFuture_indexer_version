@@ -14,6 +14,7 @@ import SponsorLevelSummaryCard, {
   type PartnerSlot,
 } from "@/components/sponser-level-summary-card";
 import { sponsorMagicPackages, type ProgramTypes } from "@/constants/programs";
+import { formattedWalletAddress } from "@/lib/helper";
 
 const SPONSOR_PACKAGE_PRICES = sponsorMagicPackages;
 
@@ -84,6 +85,7 @@ const PreviewSponsorMagicPackagePage = ({
         id: cleanId,
         to: `/preview/dashboard/${program}/${levelNum}`, // sirf path
         searchId: cleanId,
+        isHeld: partner.isHeld,
       };
     }
     return {};
@@ -127,8 +129,8 @@ const PreviewSponsorMagicPackagePage = ({
       key: "refId",
       label: "ID",
       render: (r) => (
-        <span className="text-blue-400 bg-indigo-500/15 px-2 py-1 rounded-full font-medium font-mono">
-          {r.refId}
+        <span className="text-blue-400 px-2 py-1 rounded-full font-mono font-medium">
+        {r.refId}
         </span>
       ),
     },
@@ -137,8 +139,8 @@ const PreviewSponsorMagicPackagePage = ({
       label: "Wallet",
       render: (r) => (
         <WalletCell
-          address={r.fullWallet || r.wallet}
-          displayAddress={r.wallet}
+          address={r.fullWallet}
+          displayAddress={formattedWalletAddress(r.fullWallet)}
           explorerUrl={
             r.fullWallet && r.fullWallet.startsWith("0x")
               ? `https://bscscan.com/address/${r.fullWallet}`

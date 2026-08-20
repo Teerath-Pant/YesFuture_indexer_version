@@ -229,7 +229,7 @@ export function PreviewUserStatsOverview({
               {ratio} %
             </div>
             <span className="text-sm font-medium text-emerald-400">
-              {ratioInDay}
+              {ratioInDay} %
             </span>
           </div>
         </div>

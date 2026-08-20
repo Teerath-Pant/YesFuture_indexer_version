@@ -117,11 +117,23 @@ contract meta20 is ReentrancyGuard {
     mapping(uint8 => mapping(address => uint256)) public matrixHoldByPkg;
 
     // ---------------------------------------------------------------
-    // MATRIX PLACEMENT QUEUE (persistent FIFO, unbounded — replaces old
-    // fixed-1024 BFS array approach; O(1) placement, no tree-size cap)
+    // MATRIX PLACEMENT QUEUE (persistent FIFO, unbounded)
+    // FIX: made GLOBAL per package (single tree rooted at adminWallet),
+    // instead of one separate queue+head per sponsor address. The old
+    // per-sponsor keying let the same node act as both "root of its own
+    // queue" and "a slot inside its upline's queue" at once — two
+    // independent head counters wrote into the same shared
+    // matrixChildrenByPkg[slot] array without knowing about each other,
+    // so a single node could end up with 3+ children instead of the
+    // max-2 rule. A single global queue per package removes the
+    // duplicate bookkeeping entirely: one FIFO, one head, one source of
+    // truth for whether a slot still has room. This also matches the
+    // intended placement rule — one shared matrix per package, filled
+    // strictly left-to-right, top-to-bottom, regardless of who directly
+    // sponsored whom.
     // ---------------------------------------------------------------
-    mapping(uint8 => mapping(address => address[])) public matrixOpenQueue;
-    mapping(uint8 => mapping(address => uint256))    public matrixQueueHead;
+    mapping(uint8 => address[]) public matrixOpenQueue;
+    mapping(uint8 => uint256)    public matrixQueueHead;
 
     // ---------------------------------------------------------------
     // SPONSOR 5-CYCLE VARIABLES
@@ -172,7 +184,8 @@ contract meta20 is ReentrancyGuard {
     
     event MatrixIncome(address indexed receiver, address indexed from, uint8 packageId, uint8 level, uint256 amount);
     event DirectIncome(address indexed receiver, address indexed from, uint8 packageId, uint256 cycle, uint256 amount);
-    event LevelIncome(address indexed receiver, address indexed from, uint8 level, uint256 amount);
+    // FIX: added packageId so UI can show which package tier this level income came from
+    event LevelIncome(address indexed receiver, address indexed from, uint8 packageId, uint8 level, uint256 amount);
     
     event MatrixIncomeHeld(address indexed user, uint8 indexed packageId, uint256 amount, uint256 memberCount);
     event SponsorIncomeHeld(address indexed sponsor, uint8 indexed packageId, uint256 amount, uint256 count);
@@ -313,8 +326,10 @@ contract meta20 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // REGISTRATION (Auto-buys Package 1 for all 3 tracks)
+    // FIX: removed `name` param — registration no longer stores a display
+    // name. Use setDisplayName() after registering if a name is wanted.
     // ---------------------------------------------------------------
-    function registerMember(string calldata sponsorStringId, string calldata name) external nonReentrant {
+    function registerMember(string calldata sponsorStringId) external nonReentrant {
         require(memberId[msg.sender] == 0, "ALREADY_REGISTERED");
 
         address sponsorAddr = memberByStringId[sponsorStringId];
@@ -349,11 +364,6 @@ contract meta20 is ReentrancyGuard {
         emit ManualUpgrade(msg.sender, 1, "MATRIX");
         emit ManualUpgrade(msg.sender, 1, "SPONSOR");
         emit ManualUpgrade(msg.sender, 1, "LEVEL");
-
-        if (bytes(name).length > 0 && bytes(name).length <= 32) {
-            displayName[msg.sender] = name;
-            emit NameUpdated(msg.sender, name);
-        }
 
         emit UserRegistered(msg.sender, sponsorAddr, memberCounter, newStringId);
 
@@ -452,22 +462,26 @@ contract meta20 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // MATRIX PLACEMENT
+    // FIX: single global FIFO queue per packageId (rooted at adminWallet)
+    // instead of one queue+head per sponsor address. See comment on
+    // matrixOpenQueue/matrixQueueHead declaration above for why the old
+    // per-sponsor approach caused nodes to receive 3+ children.
     // ---------------------------------------------------------------
-    function _placeInMatrixForPackage(uint8 packageId, address _user, address _teamSponsor) internal {
-        address[] storage queue = matrixOpenQueue[packageId][_teamSponsor];
+    function _placeInMatrixForPackage(uint8 packageId, address _user) internal {
+        address[] storage queue = matrixOpenQueue[packageId];
         if (queue.length == 0) {
-            queue.push(_teamSponsor);
+            queue.push(adminWallet);
         }
 
-        uint256 head = matrixQueueHead[packageId][_teamSponsor];
+        uint256 head = matrixQueueHead[packageId];
         address slot = queue[head];
 
         matrixParentByPkg[packageId][_user] = slot;
         matrixChildrenByPkg[packageId][slot].push(_user);
-        emit MatrixPlaced(_user, slot, _teamSponsor, packageId);
+        emit MatrixPlaced(_user, slot, sponsor[_user], packageId);
 
         if (matrixChildrenByPkg[packageId][slot].length >= 2) {
-            matrixQueueHead[packageId][_teamSponsor] = head + 1;
+            matrixQueueHead[packageId] = head + 1;
         }
 
         queue.push(_user);
@@ -475,10 +489,8 @@ contract meta20 is ReentrancyGuard {
 
     function _placeInPackageTreeIfNeeded(address user, uint8 packageId) internal {
         if (matrixParentByPkg[packageId][user] != address(0)) return;
-        address anchor = sponsor[user] != address(0) ? sponsor[user] : adminWallet;
-        _placeInMatrixForPackage(packageId, user, anchor);
+        _placeInMatrixForPackage(packageId, user);
         cycleRootByPkg[packageId][user].push(user);
-
     }
 
     // ---------------------------------------------------------------
@@ -591,9 +603,11 @@ contract meta20 is ReentrancyGuard {
 
     // FIX: recycle cost now routed to nearest eligible matrix upline
     // (maxMatrixPackage >= packageId), mirroring sponsor track's count-5
-    // pattern, instead of unconditionally to admin. Phantom is anchored
-    // under that same eligible upline. Falls back to admin if no eligible
-    // upline exists in the chain.
+    // pattern, instead of unconditionally to admin. Phantom is placed
+    // into the single global matrix queue like any other node — the
+    // eligibleUpline is used only for payout routing now, not placement
+    // anchoring (placement is global, see _placeInMatrixForPackage).
+    // Falls back to admin if no eligible upline exists in the chain.
     function _level5ReEntry(uint8 packageId, address userA) internal {
         level5MemberCountByPkg[packageId][userA] = 0;
         recycleCount[userA]++;
@@ -616,7 +630,7 @@ contract meta20 is ReentrancyGuard {
             emit MatrixIncome(eligibleUpline, userA, packageId, 5, paidCost);
         }
 
-        _placeInMatrixForPackage(packageId, phantomNode, eligibleUpline);
+        _placeInMatrixForPackage(packageId, phantomNode);
 
         cycleRootByPkg[packageId][userA].push(phantomNode);
 
@@ -714,9 +728,10 @@ contract meta20 is ReentrancyGuard {
             topupFlag[phantom] = true;
             maxSponsorPackage[phantom] = maxSponsorPackage[directSponsor];
             
-            // FIX: phantom placed under the same eligible upline that
-            // received the count-5 payout, not blindly sponsor[directSponsor]
-            _placeInMatrixForPackage(packageId, phantom, eligibleUpline);
+            // FIX: phantom placed into the single global matrix queue,
+            // same as any other node (placement is no longer anchored
+            // per-sponsor — see _placeInMatrixForPackage).
+            _placeInMatrixForPackage(packageId, phantom);
             
             emit SponsorReEntry(directSponsor, packageId);
         }
@@ -739,7 +754,9 @@ contract meta20 is ReentrancyGuard {
 
     // FIX: matrix-track equivalent — finds nearest upline holding
     // maxMatrixPackage >= packageId, for matrix-recycle (32-cycle) payout
-    // and phantom placement anchor. Falls back to adminWallet.
+    // routing. Falls back to adminWallet. (No longer used for placement
+    // anchoring — matrix placement is global, see
+    // _placeInMatrixForPackage.)
     function _findEligibleMatrixUpline(address startFrom, uint8 packageId) internal view returns (address) {
         address current = sponsor[startFrom];
         while (current != address(0)) {
@@ -779,6 +796,8 @@ contract meta20 is ReentrancyGuard {
     // FIX: now takes packageId param. Gate changed from hardcoded
     // maxLevelPackage[parent] >= 1 to maxLevelPackage[parent] >= packageId,
     // matching the matrix track's tier-gate pattern.
+    // FIX: LevelIncome event now includes packageId (see event decl above)
+    // so the UI can show which package tier a given level payout came from.
     // ---------------------------------------------------------------
     function _releaseLevelIncome(address buyer, uint8 packageId, uint256 fullAmount) internal {
         address parent = sponsor[buyer];
@@ -806,7 +825,7 @@ contract meta20 is ReentrancyGuard {
                 userLevelIncome[parent][level] += paidShare;
                 totalLevelIncomeByLevel[level] += paidShare;
 
-                emit LevelIncome(parent, buyer, level, paidShare);
+                emit LevelIncome(parent, buyer, packageId, level, paidShare);
             } else {
                 adminLeftover += share;
                 if (topupFlag[parent] && !hasTier) {

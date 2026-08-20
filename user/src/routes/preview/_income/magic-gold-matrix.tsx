@@ -41,7 +41,7 @@ function RouteComponent() {
     { key: "date", label: "Date" },
     {
       key: "refId",
-      label: "ID",
+      label: "ID From",
       render: (r) => (
         <span className="text-blue-400 font-medium px-2 py-1 rounded-full">
           {r.refId}

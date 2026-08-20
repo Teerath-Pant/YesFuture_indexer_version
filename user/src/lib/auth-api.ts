@@ -3785,7 +3785,6 @@ export async function verifySponsorId(sponsorId: string): Promise<boolean> {
 }
 export async function registerUser(
   sponsorStringId: string,
-  name: string,
   onStatusChange: (status: string) => void,
 ) {
   if (!window.ethereum) throw new Error("Please install a Web3 wallet");
@@ -3859,12 +3858,9 @@ export async function registerUser(
     await approveTx.wait();
   }
 
-  // 6. Register member + display name, single tx
+  // 6. Register member
   onStatusChange("registering");
-  const registerTx = await contract.registerMember(
-    sponsorStringId,
-    name.trim(),
-  );
+  const registerTx = await contract.registerMember(sponsorStringId);
   await registerTx.wait();
 }
 

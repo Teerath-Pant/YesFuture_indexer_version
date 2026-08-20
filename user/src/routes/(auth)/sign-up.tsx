@@ -46,9 +46,6 @@ function SignUpPage() {
   const [isResolvingSponsor, setIsResolvingSponsor] = useState(false);
   const [sponsorNotFound, setSponsorNotFound] = useState(false);
 
-  // Name state
-  const [nameInput, setNameInput] = useState("");
-
   // Registration check state
   const [isAlreadyRegistered, setIsAlreadyRegistered] = useState(false);
   const [isCheckingWallet, setIsCheckingWallet] = useState(false);
@@ -124,7 +121,6 @@ function SignUpPage() {
   const canRegister = Boolean(
     isSponsorValid &&
     connectedWallet &&
-    nameInput.trim().length > 0 &&
     !isAlreadyRegistered &&
     !isCheckingWallet &&
     registrationStep === null,
@@ -134,7 +130,7 @@ function SignUpPage() {
 
     setRegisterError(null);
     try {
-      await registerUser(sponsorIdInput, nameInput.trim(), (status) => {
+      await registerUser(sponsorIdInput, (status) => {
         setRegistrationStep(status as RegistrationStep);
       });
 
@@ -256,17 +252,6 @@ function SignUpPage() {
             </span>
           )}
       </div>
-
-      <Field label="YOUR NAME *">
-        <input
-          value={nameInput}
-          onChange={(e) => setNameInput(e.target.value)}
-          placeholder="Enter your name"
-          spellCheck={false}
-          maxLength={32}
-          className={inputClasses}
-        />
-      </Field>
 
       <div className="flex flex-col gap-2">
         <label className="text-xs font-bold tracking-wider text-gray-400 uppercase">

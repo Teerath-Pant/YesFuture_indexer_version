@@ -237,7 +237,7 @@ function RouteComponent() {
         <WalletCell
           address={r.fullWallet ?? r.wallet}
           displayAddress={r.wallet}
-          explorerUrl={`https://bscscan.com/address/${r.fullWallet ?? r.wallet}`}
+
         />
       ),
     },
@@ -246,7 +246,7 @@ function RouteComponent() {
       label: "Total Bussiness",
       align: "center",
       render: (r) => (
-        <span className="text-green-400 font-semibold">{r.totalBussiness}</span>
+        <span className="text-green-400 font-semibold"> ${r.totalBussiness}</span>
       ),
     },
   ];

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { Filter, RefreshCw } from "lucide-react";
+import { Filter, RefreshCw, Clock } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import FilterSection from "@/components/filter-section";
 import DataTable, { type Column } from "@/components/data-table";
@@ -77,7 +77,7 @@ function MagicLevelIncomePage() {
       key: "level",
       label: "Level",
       render: (r) => (
-        <span className="text-blue-600 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
+        <span className="text-blue-600 bg-indigo-500/15 px-2 py-1 rounded-full text-xs font-medium">
           Level {r.level}
         </span>
       ),
@@ -86,11 +86,30 @@ function MagicLevelIncomePage() {
       key: "income",
       label: "Income",
       render: (r) => (
-        <span className="text-green-500 font-medium">{r.income}</span>
+        <span className="text-green-500 font-semibold">{r.income}</span>
       ),
     },
-    { key: "incomeFrom", label: "Income from" },
-    { key: "time", label: "Time" },
+    {
+      key: "incomeFrom",
+      label: "Income from",
+      render: (r) => <span className="text-blue-400 font-medium">{r.incomeFrom}</span>,
+    },
+    {
+      key: "time",
+      label: "Time",
+      render: (r) => {
+        // Check if time is valid
+        if (r.time && r.time !== "Pending" && r.time !== "undefined" && r.time !== "") {
+          return <span className="text-gray-300">{r.time}</span>;
+        }
+        return (
+          <span className="flex items-center gap-1 text-yellow-500 text-xs">
+            <Clock className="h-3 w-3" />
+            Pending
+          </span>
+        );
+      },
+    },
   ];
 
   return (
@@ -148,12 +167,19 @@ function MagicLevelIncomePage() {
           history...
         </div>
       ) : (
-        <DataTable<MagicLevelIncomeRow>
-          columns={columns}
-          data={filteredData}
-          getRowKey={(row) => row.id}
-          pageSize={10}
-        />
+        <>
+          <div className="text-gray-400 text-sm mb-4">
+            Showing {filteredData.length} of {data.length} records
+            {level && ` • Filtered by Level ${level}`}
+            {search && ` • Search: "${search}"`}
+          </div>
+          <DataTable<MagicLevelIncomeRow>
+            columns={columns}
+            data={filteredData}
+            getRowKey={(row) => row.id}
+            pageSize={10}
+          />
+        </>
       )}
     </PageLayout>
   );

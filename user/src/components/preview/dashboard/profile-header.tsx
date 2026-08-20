@@ -105,7 +105,7 @@ export function PreviewUserProfileHeader() {
         <div className="flex flex-col gap-6 rounded-2xl p-2 pt-4 text-white md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-4 sm:gap-6">
             <div className="relative shrink-0">
-              <div className="relative flex h-24 w-24 sm:h-36 sm:w-36 items-center justify-center rounded-full bg-linear-to-tr from-cyan-500 via-purple-500 to-pink-500 p-0.75">
+              <div className="relative flex h-36 w-36 items-center justify-center rounded-full bg-linear-to-tr from-cyan-500 via-purple-500 to-pink-500 p-0.75">
                 <div className="flex h-full w-full items-center justify-center rounded-full bg-[#1e2330]">
                   <div className="animate-pulse h-16 w-16 rounded-full bg-gray-700" />
                 </div>
@@ -176,7 +176,7 @@ export function PreviewUserProfileHeader() {
         </div>
 
         {/* Right Section: Personal Link Card */}
-        <div className="flex flex-col h-28 justify-between rounded-md bg-[#181c28] p-4 md:w-95">
+        <div className="flex flex-col h-28 justify-between rounded-xl bg-[#181c28] p-4 md:w-95">
           <div className="flex items-center gap-1.5 text-sm font-medium text-gray-400">
             <span>Personal link</span>
             <HelpCircle className="h-4 w-4 text-gray-400 cursor-pointer stroke-[#1d1e1f] fill-white" />

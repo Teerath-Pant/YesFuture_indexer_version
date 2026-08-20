@@ -357,7 +357,7 @@ const PreviewUserMagicLevels = ({ program }: pageProps) => {
     <div className="w-full text-white">
       <ProgramPageHeader
         userId={userStringId.replace("ID ", "")}
-        programName={program || "Sponsor Magic"}
+        programName={program || "Magic Level"}
         activeLevelsCount={activeLevelsCount}
         totalLevelsCount={totalLevelsCount}
         totalProfit={`${totalIncome} USDT`}

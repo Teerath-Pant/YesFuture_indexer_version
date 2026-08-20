@@ -535,10 +535,9 @@ usersRouter.get(
   },
 );
 
-// Same tx_hash-join trick as matrix-income-total: LevelIncome carries no
-// packageId either (its "level" field is sponsor-chain depth, not package
-// tier), but every payout it emits happens inside the same transaction as
-// the purchase that triggered the cascade.
+// LevelIncome now carries its own packageId (its "level" field is still
+// sponsor-chain depth, not package tier). Same COALESCE-with-tx_hash-join
+// fallback as matrix-income-total, for rows indexed before this field existed.
 usersRouter.get("/:address/level-income-total/:packageId", async (req, res) => {
   const user = req.params.address.toLowerCase();
   const packageId = Number(req.params.packageId);
@@ -546,11 +545,11 @@ usersRouter.get("/:address/level-income-total/:packageId", async (req, res) => {
   const rows = await db.execute(sql`
     SELECT COALESCE(SUM(li.amount), 0) AS total
     FROM level_income_events li
-    JOIN package_purchase_events pp
+    LEFT JOIN package_purchase_events pp
       ON pp.tx_hash = li.tx_hash
       AND pp.track = 'LEVEL'
       AND pp.member_address = li.from_address
-    WHERE li.receiver = ${user} AND pp.package_id = ${packageId}
+    WHERE li.receiver = ${user} AND COALESCE(li.package_id, pp.package_id) = ${packageId}
   `);
 
   res.json({ total: (rows[0] as any)?.total ?? "0" });
