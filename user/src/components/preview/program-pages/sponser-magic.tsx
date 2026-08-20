@@ -13,6 +13,7 @@ import {
   fetchSponsorRecycleCounts,
   fetchDirectPartners,
   fetchSponsorHeldSummary,
+  fetchSponsorPartnersCounts,
 } from "@/lib/auth-api";
 import { useSearch } from "@tanstack/react-router";
 import { toast } from "sonner";
@@ -92,8 +93,9 @@ const PreviewUserSponserMagic = ({ program }: pageProps) => {
     transactionData: TransactionRow[],
     isRootUser = false,
     recycleCounts: Record<number, number> = {},
-    childAheadTiers: Set<number> = new Set(),
+    childAheadCounts: Record<number, number> = {},
     heldByPackage: Record<number, string[]> = {},
+    partnersCounts: Record<number, number> = {},
   ): LevelData[] => {
     // Sponsor Magic package prices (Direct Income portion)
     const packagePrices = sponsorMagicPackages;
@@ -120,20 +122,26 @@ const PreviewUserSponserMagic = ({ program }: pageProps) => {
       const price = packagePrices[i - 1] || 0;
       const cyclesCount = recycleCounts[i] || 0;
       const totalVisible = levelReferrers[i]?.size || 0;
-      const partnersCount = Math.max(totalVisible - 4 * cyclesCount, 0);
+      const currentCyclePartnersCount = Math.max(totalVisible - 4 * cyclesCount, 0);
+      // Real total across every cycle, straight from DB — includes each
+      // completed cycle's invisible 5th slot, which the client-side
+      // reconstruction above structurally can't see. Falls back to the
+      // reconstructed total if the DB-backed count isn't available.
+      const totalPartnersCount = partnersCounts[i] ?? totalVisible + cyclesCount;
 
-      // Generate 5 slots based on partners count for package level i
-      const slots = generateSlots(i, partnersCount);
+      // Generate 5 slots based on the CURRENT cycle's partner count
+      const slots = generateSlots(i, currentCyclePartnersCount);
 
       levels.push({
         level: i,
         price: price,
         isUnlocked: isUnlocked,
         slots: slots,
-        partnersCount: partnersCount,
+        partnersCount: totalPartnersCount,
         recycleCount: cyclesCount,
         isFreeze: isRootUser ? false : !isUnlocked,
-        isDamage: isRootUser ? false : childAheadTiers.has(i),
+        isDamage: isRootUser ? false : (childAheadCounts[i] || 0) > 0,
+        missedPartnersCount: childAheadCounts[i] || 0,
       });
     }
 
@@ -169,12 +177,13 @@ const PreviewUserSponserMagic = ({ program }: pageProps) => {
           setUserStringId("ID ...");
         }
 
-        const [history, total, recycleCounts, directPartners, heldByPackage] = await Promise.all([
+        const [history, total, recycleCounts, directPartners, heldByPackage, partnersCounts] = await Promise.all([
           PreviewModeApiCall(userId, fetchSponsorIncomeHistory),
           PreviewModeApiCall(userId, fetchTotalSponsorIncome),
           PreviewModeApiCall(userId, fetchSponsorRecycleCounts),
           PreviewModeApiCall(userId, fetchDirectPartners),
           PreviewModeApiCall(userId, fetchSponsorHeldSummary),
+          PreviewModeApiCall(userId, fetchSponsorPartnersCounts),
         ]);
 
         const safeHistory = history ?? [];
@@ -182,12 +191,15 @@ const PreviewUserSponserMagic = ({ program }: pageProps) => {
         const safeRecycleCounts = recycleCounts ?? {};
         const safeDirectPartners = directPartners ?? [];
         const safeHeldByPackage = heldByPackage ?? {};
+        const safePartnersCounts = partnersCounts ?? {};
 
-        // Tiers above the current user's own sponsor package that at least
-        // one direct child has already reached.
-        const childAheadTiers = new Set<number>();
+        // Per tier above the current user's own sponsor package, how many
+        // direct children have already reached it.
+        const childAheadCounts: Record<number, number> = {};
         for (const p of safeDirectPartners) {
-          for (let t = pkgId + 1; t <= p.x3; t++) childAheadTiers.add(t);
+          for (let t = pkgId + 1; t <= p.x3; t++) {
+            childAheadCounts[t] = (childAheadCounts[t] || 0) + 1;
+          }
         }
 
         const formattedData: TransactionRow[] = safeHistory.map(
@@ -210,7 +222,7 @@ const PreviewUserSponserMagic = ({ program }: pageProps) => {
         setData(formattedData);
         setTotalIncome(safeTotal);
 
-        const levels = buildLevelsData(pkgId, formattedData, isRootUser, safeRecycleCounts, childAheadTiers, safeHeldByPackage);
+        const levels = buildLevelsData(pkgId, formattedData, isRootUser, safeRecycleCounts, childAheadCounts, safeHeldByPackage, safePartnersCounts);
         setLevelsData(levels);
       } catch (err) {
         toast.error("❌ Failed to load sponsor income data:");

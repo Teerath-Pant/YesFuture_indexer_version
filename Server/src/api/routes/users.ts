@@ -768,14 +768,28 @@ usersRouter.get(
         : new Array(Math.pow(2, lvl)).fill("");
     }
 
-    const downlineSet = await getDownlineMembership(user, filledSlots.map((s) => s.address));
+    // isInDownline checks who PLACED this node (sponsorAddress, the search
+    // anchor), not the node's own address — a node one of the viewed
+    // user's own downline separately referred (their own anchor search)
+    // still shows as "spillover from your own team" (yellow) rather than
+    // "from upline" (orange). Real-sponsor-chain ancestry (getDownlineMembership)
+    // is the WRONG check here — e.g. YF00008 placed by YF00005 should read
+    // yellow while viewing YF00003's tree even though YF00005's actual
+    // sponsor is YF00002 (a sibling of YF00003, not their descendant).
+    // "Downline" for coloring purposes means positional: the placer
+    // (sponsorAddress) is itself a node visibly rendered somewhere in THIS
+    // tree (root or one of its own filled slots) — no DB query needed,
+    // every such address is already in filledSlots by construction (BFS
+    // can only reach a slot through nodes already part of the walk).
+    const treeAddresses = new Set(
+      [root, ...filledSlots.map((s) => s.address)].map((a) => a.toLowerCase()),
+    );
 
     for (const slot of filledSlots) {
       nodes[slot.index] = {
         address: slot.address,
         isDirectPlacement: slot.sponsorAddress.toLowerCase() === user.toLowerCase(),
-        // isDirectPlacement: slot.sponsorAddress.toLowerCase() === slot.parentAddress.toLowerCase(),
-        isInDownline: downlineSet.has(slot.address),
+        isInDownline: treeAddresses.has(slot.sponsorAddress.toLowerCase()),
       };
     }
 
@@ -861,46 +875,6 @@ type MatrixNode = {
   isDirectPlacement: boolean;
   isInDownline: boolean;
 } | null;
-
-// Given a root user and a batch of candidate addresses, returns the subset
-// that are within the root's referral downline — walking each candidate's
-// sponsor chain, if it ever reaches the root as a sponsor, they're "in
-// downline". Used to tell "spillover from your own team" (yellow) apart
-// from "spillover from outside/upline" (orange).
-async function getDownlineMembership(
-  rootUser: string,
-  addresses: string[],
-): Promise<Set<string>> {
-  const candidates = Array.from(new Set(addresses.filter(Boolean)));
-  if (candidates.length === 0) return new Set();
-
-  // Build an explicit ARRAY[...] literal instead of binding a JS array as a
-  // single parameter — drizzle's sql tag doesn't reliably serialize JS
-  // arrays into Postgres array params (fails/mis-serializes for small
-  // arrays, e.g. length 1), causing "malformed array literal" errors.
-  const candidatesArray = sql.join(
-    candidates.map((c) => sql`${c}`),
-    sql`, `,
-  );
-
-  const rows = await db.execute(sql`
-    WITH RECURSIVE ancestry AS (
-      SELECT member_address AS origin, sponsor_address, 1 AS depth
-      FROM user_registrations
-      WHERE member_address = ANY(ARRAY[${candidatesArray}]::text[])
-      UNION ALL
-      SELECT a.origin, ur.sponsor_address, a.depth + 1
-      FROM user_registrations ur
-      JOIN ancestry a ON ur.member_address = a.sponsor_address
-      WHERE a.depth < 50 AND a.sponsor_address != ${rootUser}
-    )
-    SELECT DISTINCT origin
-    FROM ancestry
-    WHERE sponsor_address = ${rootUser}
-  `);
-
-  return new Set(rows.map((r: any) => r.origin as string));
-}
 
 // Counts filled slots across a cycle root's full 5-level tree (62 slots,
 // levels 1-5) by walking matrix_placements same as computePackageMatrixSummary's
@@ -1047,17 +1021,18 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
       : new Array(Math.pow(2, lvl)).fill("");
   }
 
-  const downlineSet = await getDownlineMembership(
-    user,
-    filledSlots.map((s) => s.address),
+  // See the matrix-tree/:cycleIndex route above — "downline" for coloring
+  // is positional (is the placer a node visibly rendered in THIS tree),
+  // not real sponsor-chain ancestry.
+  const treeAddresses = new Set(
+    [latestRoot, ...filledSlots.map((s) => s.address)].map((a) => a.toLowerCase()),
   );
 
   for (const slot of filledSlots) {
     nodes[slot.index] = {
       address: slot.address,
-      // isDirectPlacement: slot.sponsorAddress === slot.parentAddress,
       isDirectPlacement: slot.sponsorAddress.toLowerCase() === user.toLowerCase(),
-      isInDownline: downlineSet.has(slot.address),
+      isInDownline: treeAddresses.has(slot.sponsorAddress.toLowerCase()),
     };
   }
 

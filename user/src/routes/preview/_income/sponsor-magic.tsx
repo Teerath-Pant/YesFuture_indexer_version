@@ -16,7 +16,7 @@ interface TransactionRow {
     id: number;
     date: string;
     refId: string;
-    level: number;
+    package: number;
     wallet: string;
     fullWallet?: string;
     type: "join" | "recycle";
@@ -39,34 +39,40 @@ function RouteComponent() {
     const [data, setData] = useState<TransactionRow[]>([]);
 
     const columns: Column<TransactionRow>[] = [
-        { key: "date", label: "Date" },
-        // {
-        //     key: "refId",
-        //     label: "ID",
-        //     render: (r) => (
-        //         <span className="text-indigo-300 bg-indigo-500/15 px-2 py-1 rounded-full text-xs">
-        //             ID {r.refId}
-        //         </span>
-        //     ),
-        // },
-        { key: "level", label: "Package" },
         {
-            key: "wallet",
-            label: "Income From",
+            key: "package",
+            label: "Package",
             render: (r) => (
-                <span className="text-white">{r.wallet}</span>
+                <span className="text-yellow-400 bg-yellow-500/15 px-2 py-1 rounded-full text-xs font-medium">
+                    Package {r.package}
+                </span>
             ),
         },
         {
             key: "amount",
-            label: "Amount",
-            align: "right",
+            label: "Income",
             render: (r) => (
                 <span className={r.type === "recycle" ? "text-green-400 font-semibold" : "text-green-400 font-semibold"}>
                     {r.amount}
                 </span>
             ),
         },
+        {
+            key: "refId",
+            label: "Income From",
+            render: (r) => (
+                <span className="text-blue-400 font-medium">{r.refId}</span>
+            ),
+        },
+        { key: "date", label: "Date" },
+
+        // {
+        //     key: "wallet",
+        //     label: "Income From",
+        //     render: (r) => (
+        //         <span className="text-white">{r.wallet}</span>
+        //     ),
+        // },
     ];
 
     const getPackageLevelFromAmount = (amountStr: string): number => {
@@ -98,7 +104,7 @@ function RouteComponent() {
                             id: index + 1,
                             date: item.date || "Pending",
                             refId: item.childId.replace("ID ", ""),
-                            level: pkgLevel,
+                            package: pkgLevel,
                             wallet: item.childId,
                             fullWallet: "",
                             type: "join",
@@ -123,7 +129,7 @@ const filteredData = useMemo(() => {
   let result = data;
 
   if (appliedLevel) {
-    result = result.filter((row) => row.level === Number(appliedLevel));
+    result = result.filter((row) => row.package === Number(appliedLevel));
   }
 
   if (appliedSearch.trim()) {
@@ -159,12 +165,12 @@ const filteredData = useMemo(() => {
                 <FilterSection
                     fields={[
                         {
-                            key: "level",
-                            label: "Level",
+                            key: "packages",
+                            label: "Packages",
                             type: "select",
                             value: level,
                             onChange: setLevel,
-                            options: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => ({
+                            options: [1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => ({
                                 label: String(n),
                                 value: String(n),
                             })),

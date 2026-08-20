@@ -10,6 +10,7 @@ export interface LevelData {
   recycleCount: number;
   isFreeze?: boolean;
   isDamage?:boolean;
+  missedPartnersCount?: number;
 }
 
 export function PreviewUserMatrixLevelCard({
@@ -21,6 +22,7 @@ export function PreviewUserMatrixLevelCard({
   recycleCount,
   isFreeze = false,
   isDamage = false,
+  missedPartnersCount = 5,
 }: LevelData) {
   const navigate = useNavigate();
   const { id } = useSearch({ from: "/preview" });
@@ -64,34 +66,36 @@ export function PreviewUserMatrixLevelCard({
         </div>
       </div>
 
-      {/* Middle: 3 Matrix Circles */}
-      <div className="my-6 flex items-center justify-between w-9/11 mx-auto gap-1 z-10">
-        {slots.map((slotType, idx) => {
-          let circleBg = "bg-white/20"; // empty default for unlocked
+      {isDamage ? (
+        <div className="my-6 flex flex-col items-center justify-center gap-1 z-10">
+          <span className="text-4xl font-extrabold text-rose-500">
+            {missedPartnersCount}
+          </span>
+        </div>
+      ) : (
+        <div className="my-6 flex items-center justify-between w-9/11 mx-auto gap-1 z-10">
+          {slots.map((slotType, idx) => {
+            let circleBg = "bg-white/20"; // empty default for unlocked
 
-          if (isDamage) {
-            // A direct child reached this locked tier — flag their slot red,
-            // rest stay dim (see childAheadTiers in the caller).
-            circleBg = slotType === "direct" ? "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.8)]" : "bg-white/5";
-          } else if (!isUnlocked) {
-            circleBg = "bg-white/5";
-          } else if (slotType === "direct") {
-            circleBg = "bg-white shadow-sm";
-          } else if (slotType === "gift") {
-            circleBg = "bg-orange-300 shadow-sm";
-          }
-          else if (slotType === "cross") {
-            circleBg = "bg-yellow-300 shadow-sm";
-          }
+            if (!isUnlocked) {
+              circleBg = "bg-white/5";
+            } else if (slotType === "direct") {
+              circleBg = "bg-white shadow-sm";
+            } else if (slotType === "gift") {
+              circleBg = "bg-orange-300 shadow-sm";
+            } else if (slotType === "cross") {
+              circleBg = "bg-yellow-300 shadow-sm";
+            }
 
-          return (
-            <div
-              key={idx}
-              className={`sm:h-7 sm:w-7 h-10 w-10 rounded-full transition-all ${circleBg}`}
-            />
-          );
-        })}
-      </div>
+            return (
+              <div
+                key={idx}
+                className={`sm:h-7 sm:w-7 h-10 w-10 rounded-full transition-all ${circleBg}`}
+              />
+            );
+          })}
+        </div>
+      )}
 
       {/* Bottom Stats Footer */}
       {isUnlocked || isDamage ? (

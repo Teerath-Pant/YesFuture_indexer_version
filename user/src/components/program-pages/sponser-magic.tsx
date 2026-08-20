@@ -186,11 +186,13 @@ const SponserMagic = ({ program }: pageProps) => {
           fetchSponsorPartnersCounts(walletAddress),
         ]);
 
-        // Tiers above the current user's own sponsor package that at least
-        // one direct child has already reached.
-        const childAheadTiers = new Set<number>();
+        // Per tier above the current user's own sponsor package, how many
+        // direct children have already reached it.
+        const childAheadCounts: Record<number, number> = {};
         for (const p of directPartners) {
-          for (let t = pkgId + 1; t <= p.x3; t++) childAheadTiers.add(t);
+          for (let t = pkgId + 1; t <= p.x3; t++) {
+            childAheadCounts[t] = (childAheadCounts[t] || 0) + 1;
+          }
         }
 
         // console.log("📊 Sponsor History:", history);
@@ -211,7 +213,7 @@ const SponserMagic = ({ program }: pageProps) => {
         });
         setTotalIncome(total);
 
-        const levels = buildLevelsData(pkgId, formattedData, isRootUser, recycleCounts, childAheadTiers, heldByPackage, partnersCounts);
+        const levels = buildLevelsData(pkgId, formattedData, isRootUser, recycleCounts, childAheadCounts, heldByPackage, partnersCounts);
         setLevelsData(levels);
         // console.log("✅ Levels data:", levels);
         // console.log("✅ Levels data:", levels);

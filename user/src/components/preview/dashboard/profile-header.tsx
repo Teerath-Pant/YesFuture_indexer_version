@@ -135,11 +135,9 @@ export function PreviewUserProfileHeader() {
               </div>
             </div>
 
-            {userName !== "" && (
-              <div className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-purple-500/40 bg-[#121624] px-3 py-0.5 text-xs font-medium text-purple-300 shadow-lg text-nowrap">
-                <span>{userName}</span>
-              </div>
-            )}
+            <div className="absolute -bottom-2 left-1/2 flex -translate-x-1/2 items-center rounded-full border border-purple-500/40 bg-[#121624] px-3 py-0.5 text-sm sm:text-md font-medium text-purple-300 shadow-lg text-nowrap max-w-35 sm:max-w-50 overflow-hidden">
+              <span>{userName || "No name set"}</span>
+            </div>
           </div>
 
           {/* User Info Details */}

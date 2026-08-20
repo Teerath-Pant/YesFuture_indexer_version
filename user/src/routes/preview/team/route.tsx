@@ -22,6 +22,7 @@ export interface TeamRow {
   level: number;
   packageId: number;
   totalBussiness: number;
+  totalIncome?: number;
 }
 
 function RouteComponent() {
@@ -29,6 +30,7 @@ function RouteComponent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [level, setLevel] = useState("");
+  const [packageId, setPackageId] = useState("");
   const [search, setSearch] = useState("");
   const [data, setData] = useState<TeamRow[]>([]);
   const [isFilterSectionShow, setIsFilterSectionShow] = useState(false);
@@ -65,10 +67,11 @@ function RouteComponent() {
 
   const filtered = data.filter((r) => {
     const matchesLevel = level ? r.level === Number(level) : true;
+    const matchesPackage = packageId ? r.packageId === Number(packageId) : true;
     const matchesSearch = search
       ? r.refId.toLowerCase().includes(search.toLowerCase())
       : true;
-    return matchesLevel && matchesSearch;
+    return matchesLevel && matchesSearch && matchesPackage;
   });
 
   const columns: Column<TeamRow>[] = [
@@ -111,12 +114,20 @@ function RouteComponent() {
         />
       ),
     },
+    // {
+    //   key: "totalBussiness",
+    //   label: "Total Bussiness",
+    //   align: "center",
+    //   render: (r) => (
+    //     <span className="text-green-400 font-semibold"> ${r.totalBussiness}</span>
+    //   ),
+    // },
     {
-      key: "totalBussiness",
-      label: "Total Bussiness",
+      key: "totalIncome",
+      label: "Total Income",
       align: "center",
       render: (r) => (
-        <span className="text-green-400 font-semibold"> ${r.totalBussiness}</span>
+        <span className="text-green-400 font-semibold"> ${r.totalIncome}</span>
       ),
     },
   ];
@@ -158,6 +169,17 @@ function RouteComponent() {
               })),
             },
             {
+              key: "packageId",
+              label: "Package",
+              type: "select",
+              value: packageId,
+              onChange: setPackageId,
+              options: Array.from({ length: 9 }, (_, i) => i + 1).map((n) => ({
+                label: String(n),
+                value: String(n),
+              })),
+            },
+            {
               key: "search",
               label: "Search ID",
               type: "text",
@@ -169,6 +191,7 @@ function RouteComponent() {
           onApply={() => setIsFilterSectionShow(false)}
           onReset={() => {
             setLevel("");
+            setPackageId("");
             setSearch("");
           }}
         />

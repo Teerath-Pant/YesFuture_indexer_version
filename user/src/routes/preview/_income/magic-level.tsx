@@ -17,6 +17,7 @@ export const Route = createFileRoute("/preview/_income/magic-level")({
 interface MagicLevelIncomeRow {
   id: number;
   level: number;
+  package_id: number | null;
   income: string;
   incomeFrom: string;
   time: string;
@@ -25,6 +26,7 @@ interface MagicLevelIncomeRow {
 function MagicLevelIncomePage() {
   const { id } = Route.useSearch();
   const [level, setLevel] = useState("");
+  const [packageId, setPackageId] = useState("");
   const [isFilterSectionShow, setIsFilterSectionShow] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -48,6 +50,7 @@ function MagicLevelIncomePage() {
           (item, index) => ({
             id: index,
             level: item.level,
+            package_id: item.package_id ?? 0,
             income: item.amount,
             incomeFrom: item.childId,
             time: item.date,
@@ -66,10 +69,13 @@ function MagicLevelIncomePage() {
   // Filter logic based on selected level and search input
   const filteredData = data.filter((row) => {
     const matchesLevel = level ? row.level === Number(level) : true;
+    const matchesPackages = packageId
+      ? row.package_id === Number(packageId)
+      : true;
     const matchesSearch = search
       ? row.incomeFrom.toLowerCase().includes(search.toLowerCase())
       : true;
-    return matchesLevel && matchesSearch;
+    return matchesLevel && matchesSearch && matchesPackages;
   });
 
   const columns: Column<MagicLevelIncomeRow>[] = [
@@ -77,8 +83,17 @@ function MagicLevelIncomePage() {
       key: "level",
       label: "Level",
       render: (r) => (
-        <span className="text-blue-600 bg-indigo-500/15 px-2 py-1 rounded-full text-xs font-medium">
+        <span className="text-purple-400 bg-purple-500/15 px-2 py-1 rounded-full text-xs font-medium">
           Level {r.level}
+        </span>
+      ),
+    },
+    {
+      key: "package_id",
+      label: "Package",
+      render: (r) => (
+        <span className="text-yellow-400 bg-yellow-500/15 px-2 py-1 rounded-full text-xs font-medium">
+          Package {r.package_id}
         </span>
       ),
     },
@@ -145,6 +160,17 @@ function MagicLevelIncomePage() {
               })),
             },
             {
+              key: "package_id",
+              label: "Package",
+              type: "select",
+              value: packageId,
+              onChange: setPackageId,
+              options: Array.from({ length: 9 }, (_, i) => i + 1).map((n) => ({
+                label: String(n),
+                value: String(n),
+              })),
+            },
+            {
               key: "search",
               label: "Search ID",
               type: "text",
@@ -156,6 +182,7 @@ function MagicLevelIncomePage() {
           onApply={() => setIsFilterSectionShow(false)}
           onReset={() => {
             setLevel("");
+            setPackageId("");
             setSearch("");
           }}
         />
