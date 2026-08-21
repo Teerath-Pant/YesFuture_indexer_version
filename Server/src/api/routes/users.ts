@@ -459,12 +459,7 @@ usersRouter.get("/:address/sponsor-held-summary", async (req, res) => {
   const rows = await db.execute(sql`
     SELECT held.package_id, ur.string_id AS from_string_id
     FROM transactions held
-    JOIN transactions buyer
-      ON buyer.tx_hash = held.tx_hash
-      AND buyer.type = 'PACKAGE_PURCHASE'
-      AND buyer.track = 'SPONSOR'
-      AND buyer.package_id = held.package_id
-    LEFT JOIN user_registrations ur ON ur.member_address = buyer.wallet_address
+    LEFT JOIN user_registrations ur ON ur.member_address = held.counterparty_address
     WHERE held.type = 'SPONSOR_INCOME_HELD' AND held.wallet_address = ${user}
     ORDER BY held.block_number, held.log_index
   `);
@@ -492,16 +487,11 @@ usersRouter.get(
     const packageId = Number(req.params.packageId);
 
     const rows = await db.execute(sql`
-    SELECT held.id, held.wallet_address AS receiver, buyer.wallet_address AS from_address,
+    SELECT held.id, held.wallet_address AS receiver, held.counterparty_address AS from_address,
            held.package_id, held.cycle, held.amount, held.block_timestamp,
            ur.string_id AS from_string_id
     FROM transactions held
-    JOIN transactions buyer
-      ON buyer.tx_hash = held.tx_hash
-      AND buyer.type = 'PACKAGE_PURCHASE'
-      AND buyer.track = 'SPONSOR'
-      AND buyer.package_id = held.package_id
-    LEFT JOIN user_registrations ur ON ur.member_address = buyer.wallet_address
+    LEFT JOIN user_registrations ur ON ur.member_address = held.counterparty_address
     WHERE held.type = 'SPONSOR_INCOME_HELD' AND held.wallet_address = ${user} AND held.package_id = ${packageId}
     ORDER BY held.block_number, held.log_index
   `);

@@ -482,12 +482,6 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
     // registrations' own sponsor is already known from the event itself
     for (const log of registrations) sponsorMap.set(lc((log as any).args.user), lc((log as any).args._sponsor));
 
-    const sponsorPurchaseByTxPkg = new Map<string, string>();
-    for (const row of [...manualPurchaseRows, ...autoUpgradeRows]) {
-      if (row.track === "SPONSOR" || row.track === "SPONSOR_AUTO") {
-        sponsorPurchaseByTxPkg.set(`${row.txHash}:${row.packageId}`, row.memberAddress);
-      }
-    }
     const sponsorReentryByTxPkg = new Map<string, string>();
     for (const log of sponsorReentries) {
       sponsorReentryByTxPkg.set(
@@ -522,7 +516,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
           packageId,
           cyclePosition: Number((log as any).args.count) || 0,
           userAddress: lc((log as any).args.sponsor),
-          directPartnerAddress: sponsorPurchaseByTxPkg.get(`${log.transactionHash}:${packageId}`) ?? "",
+          directPartnerAddress: lc((log as any).args.from),
           totalReferralIncome: ((log as any).args.amount as bigint).toString(),
           isHeld: true,
           blockNumber: BigInt(log.blockNumber),
@@ -537,7 +531,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
           packageId,
           cyclePosition: 5,
           userAddress: lc((log as any).args.sponsor),
-          directPartnerAddress: sponsorPurchaseByTxPkg.get(`${log.transactionHash}:${packageId}`) ?? "",
+          directPartnerAddress: lc((log as any).args.from),
           totalReferralIncome: "0",
           isHeld: false,
           blockNumber: BigInt(log.blockNumber),
@@ -619,7 +613,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
       const wallet = lc((log as any).args.sponsor);
       txRows.push({
         type: "SPONSOR_REENTRY", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
-        packageId: Number((log as any).args.packageId),
+        counterpartyAddress: lc((log as any).args.from), packageId: Number((log as any).args.packageId),
         blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
       });
     }
@@ -636,7 +630,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
       const wallet = lc((log as any).args.sponsor);
       txRows.push({
         type: "SPONSOR_INCOME_HELD", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
-        packageId: Number((log as any).args.packageId), amount: ((log as any).args.amount as bigint).toString(),
+        counterpartyAddress: lc((log as any).args.from), packageId: Number((log as any).args.packageId), amount: ((log as any).args.amount as bigint).toString(),
         cycle: (log as any).args.count as bigint,
         blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
       });

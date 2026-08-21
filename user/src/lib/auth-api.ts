@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x4744a8b0e0b5a475116f89b00c306a726ea6bc55";
 // const CONTRACT_ADDRESS = "0x299724c47e64812a4139034e673f79d9534375fe";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
-const CONTRACT_ADDRESS = "0xd857cb15b0aea53afdbccfbadbd104dd903df171";
+const CONTRACT_ADDRESS = "0xaa99a5c892d2cf96b4a0b2fef82c54448524d5c7";
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
 
@@ -512,9 +512,15 @@ const CORE_ABI = [
         "internalType": "address"
       },
       {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
         "name": "packageId",
         "type": "uint8",
-        "indexed": true,
+        "indexed": false,
         "internalType": "uint8"
       },
       {
@@ -574,9 +580,15 @@ const CORE_ABI = [
         "internalType": "address"
       },
       {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
         "name": "packageId",
         "type": "uint8",
-        "indexed": true,
+        "indexed": false,
         "internalType": "uint8"
       }
     ],

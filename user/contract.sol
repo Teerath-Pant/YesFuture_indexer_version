@@ -37,7 +37,7 @@ contract ReentrancyGuard {
     }
 }
 
-contract meta25 is ReentrancyGuard {
+contract meta26 is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 public usdt;
@@ -167,7 +167,7 @@ contract meta25 is ReentrancyGuard {
     event LevelIncome(address indexed receiver, address indexed from, uint8 packageId, uint8 level, uint256 amount);
     
     event MatrixIncomeHeld(address indexed user, uint8 indexed packageId, uint256 amount, uint256 memberCount);
-    event SponsorIncomeHeld(address indexed sponsor, uint8 indexed packageId, uint256 amount, uint256 count);
+  event SponsorIncomeHeld(address indexed sponsor, address indexed from, uint8 packageId, uint256 amount, uint256 count);
     
     event MatrixAutoUpgrade(address indexed user, uint8 fromPackageId, uint8 newPackageId, uint256 priceUsed);
     event SponsorAutoUpgrade(address indexed sponsor, uint8 fromPackageId, uint8 newPackageId, uint256 priceUsed);
@@ -175,7 +175,7 @@ contract meta25 is ReentrancyGuard {
     
     event MatrixPlaced(address indexed user, address indexed matrixParent, address indexed sponsor, uint8 packageId);
     event Level5ReEntry(address indexed user, uint8 indexed packageId, uint256 cycleNumber, address phantomNode);
-    event SponsorReEntry(address indexed sponsor, uint8 indexed packageId);
+event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packageId);
 
     event SponsorHoldRefunded(address indexed user, uint8 packageId, uint256 amount);
     event MatrixHoldRefunded(address indexed user, uint8 packageId, uint256 amount);
@@ -639,7 +639,7 @@ contract meta25 is ReentrancyGuard {
                     emit DirectIncome(currentSponsor, sourceUser, packageId, count, paidNet);
                 } else {
                     sponsorHoldByPkg[packageId][currentSponsor] += sponsorShare;
-                    emit SponsorIncomeHeld(currentSponsor, packageId, sponsorShare, count);
+                  emit SponsorIncomeHeld(currentSponsor, sourceUser, packageId, sponsorShare, count);
                 }
                 break;
             }
@@ -651,7 +651,7 @@ contract meta25 is ReentrancyGuard {
                     emit DirectIncome(currentSponsor, sourceUser, packageId, count, paidNet);
                 } else {
                     sponsorHoldByPkg[packageId][currentSponsor] += sponsorShare;
-                    emit SponsorIncomeHeld(currentSponsor, packageId, sponsorShare, count);
+                   emit SponsorIncomeHeld(currentSponsor, sourceUser, packageId, sponsorShare, count);
                     _trySponsorAutoUpgrade(packageId, currentSponsor);
                 }
                 break;
@@ -672,7 +672,7 @@ contract meta25 is ReentrancyGuard {
                 maxSponsorPackage[phantom] = maxSponsorPackage[currentSponsor];
                 
                 _placeInMatrixForPackage(TRACK_SPONSOR, packageId, phantom, eligibleUpline);
-                emit SponsorReEntry(currentSponsor, packageId);
+              emit SponsorReEntry(currentSponsor, sourceUser, packageId);
                 
                 sourceUser = currentSponsor;
                 currentSponsor = eligibleUpline;

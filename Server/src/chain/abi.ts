@@ -503,9 +503,15 @@ export const CONTRACT_ABI = [
         "internalType": "address"
       },
       {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
         "name": "packageId",
         "type": "uint8",
-        "indexed": true,
+        "indexed": false,
         "internalType": "uint8"
       },
       {
@@ -565,9 +571,15 @@ export const CONTRACT_ABI = [
         "internalType": "address"
       },
       {
+        "name": "from",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
         "name": "packageId",
         "type": "uint8",
-        "indexed": true,
+        "indexed": false,
         "internalType": "uint8"
       }
     ],
