@@ -689,6 +689,30 @@ export const CONTRACT_ABI = [
     "stateMutability": "view"
   },
   {
+    "name": "activeMatrixNodeByPkg",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "name": "adminWallet",
     "type": "function",
     "inputs": [],

@@ -1,4 +1,4 @@
-import { pgTable, serial, text, smallint, integer, bigint, numeric, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { boolean, pgTable, serial, text, smallint, integer, bigint, numeric, timestamp, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { sql, type SQL } from "drizzle-orm";
 
 // One row per UserRegistered event. Rebuilds the team tree (walk `sponsorAddress`
@@ -198,6 +198,30 @@ export const transactions = pgTable("transactions", {
   walletIdx: index("transactions_wallet_idx").on(t.walletAddress, t.blockTimestamp),
   typeIdx: index("transactions_type_idx").on(t.type),
   txLogUnique: uniqueIndex("transactions_tx_log_unique").on(t.txHash, t.logIndex),
+}));
+
+// UI-ready Sponsor Magic cycle slots. This is intentionally denormalized so
+// the package/cycle page can read one purpose-built table instead of
+// reconstructing circles from the generic transactions feed every time.
+export const sponsorCycleUi = pgTable("sponsor_cycle_ui", {
+  id: serial("id").primaryKey(),
+  packageId: smallint("package_id").notNull(),
+  cycle: bigint("cycle", { mode: "bigint" }).notNull(),
+  cyclePosition: smallint("cycle_position").notNull(),
+  userAddress: text("user_address").notNull(),
+  sponsorStringId: text("sponsor_string_id").notNull().default(""),
+  sponsorAddress: text("sponsor_address").notNull().default(""),
+  directPartnerAddress: text("direct_partner_address").notNull(),
+  directPartnerStringId: text("direct_partner_string_id").notNull().default("ID ..."),
+  totalReferralIncome: numeric("total_referral_income", { precision: 78, scale: 0 }).notNull().default("0"),
+  isHeld: boolean("is_held").notNull().default(false),
+  blockNumber: bigint("block_number", { mode: "bigint" }).notNull(),
+  txHash: text("tx_hash").notNull(),
+  logIndex: integer("log_index").notNull(),
+  blockTimestamp: timestamp("block_timestamp").notNull(),
+}, (t) => ({
+  userPkgCycleIdx: index("sponsor_cycle_ui_user_pkg_cycle_idx").on(t.userAddress, t.packageId, t.cycle),
+  txLogUnique: uniqueIndex("sponsor_cycle_ui_tx_log_unique").on(t.txHash, t.logIndex, t.userAddress),
 }));
 
 // One row per (userAddress, levelId) — running count of userAddress's downline

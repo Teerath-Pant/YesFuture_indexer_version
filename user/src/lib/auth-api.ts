@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x4744a8b0e0b5a475116f89b00c306a726ea6bc55";
 // const CONTRACT_ADDRESS = "0x299724c47e64812a4139034e673f79d9534375fe";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
-const CONTRACT_ADDRESS = "0xa5b8d9e8507122eb3ab84f676e76ffd8c5318ec9";
+const CONTRACT_ADDRESS = "0xdc05d55ac4a0f9d81c6b26ce877b968469e8b94c";
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
 
@@ -693,6 +693,30 @@ const CORE_ABI = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "activeMatrixNodeByPkg",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "stateMutability": "view"
@@ -3082,6 +3106,21 @@ export interface SponsorLevelDetail {
   transactions: SponsorLevelTransaction[];
 }
 
+interface SponsorCycleUiApiRow {
+  id: number;
+  packageId: number;
+  cycle: string;
+  cyclePosition: number;
+  userAddress: string;
+  sponsorStringId: string;
+  sponsorAddress: string;
+  directPartnerAddress: string;
+  directPartnerStringId: string;
+  totalReferralIncome: string;
+  isHeld: boolean;
+  blockTimestamp: string;
+}
+
 // Replaces the dead referralIncomeHistory-array-getter-based version (that
 // mapping no longer exists on the trimmed contract — see
 // [[contract_gas_strip]]). Sourced from GET /users/:address/profile
@@ -3143,6 +3182,80 @@ export async function fetchSponsorLevelDetail(
 
     const ownStringId = profile.stringId || "...";
     const uplineStringId = profile.sponsorStringId || "NONE";
+
+    const sponsorCycleRows = await apiGet<SponsorCycleUiApiRow[]>(
+      `/users/${targetAddress}/sponsor-cycle-ui/${packageId}`,
+    );
+    if (sponsorCycleRows?.length) {
+      const sortedRows = [...sponsorCycleRows].sort((a, b) => {
+        const cycleDiff = Number(a.cycle) - Number(b.cycle);
+        if (cycleDiff !== 0) return cycleDiff;
+        return a.cyclePosition - b.cyclePosition;
+      });
+
+      const cyclePartnerIds: CyclePartner[][] = [];
+      for (const row of sortedRows) {
+        const cycleIndex = Math.max(0, Number(row.cycle || 1) - 1);
+        while (cyclePartnerIds.length <= cycleIndex) cyclePartnerIds.push([]);
+        cyclePartnerIds[cycleIndex].push({
+          id: row.directPartnerStringId || "ID ...",
+          isHeld: row.isHeld,
+        });
+      }
+
+      const totalRevenue = sortedRows
+        .filter((row) => !row.isHeld)
+        .reduce(
+          (sum, row) =>
+            sum +
+            parseFloat(
+              ethers.formatUnits(row.totalReferralIncome || "0", 18),
+            ),
+          0,
+        )
+        .toFixed(3);
+
+      const transactions: SponsorLevelTransaction[] = sortedRows
+        .filter(
+          (row) =>
+            !row.isHeld && BigInt(row.totalReferralIncome || "0") > 0n,
+        )
+        .map((row, idx) => {
+          const isRecycle = row.cyclePosition === 5;
+          return {
+            id: idx + 1,
+            date: formatDate(
+              Math.floor(new Date(row.blockTimestamp).getTime() / 1000),
+            ),
+            refId: (row.directPartnerStringId || "ID ...").replace(
+              /^ID\s*/i,
+              "",
+            ),
+            level: packageId,
+            wallet: row.directPartnerStringId || "ID ...",
+            fullWallet: row.directPartnerAddress,
+            type: isRecycle ? ("recycle" as const) : ("join" as const),
+            recycleCount: isRecycle ? Number(row.cycle) : undefined,
+            amount: isRecycle
+              ? "recycle"
+              : `${ethers.formatUnits(row.totalReferralIncome || "0", 18)} USDT`,
+          };
+        })
+        .reverse();
+
+      const lastCycle = cyclePartnerIds[cyclePartnerIds.length - 1];
+      if (lastCycle?.length >= 5) cyclePartnerIds.push([]);
+
+      return {
+        ownStringId,
+        uplineStringId,
+        partnersCount: sortedRows.length,
+        cyclesCount: cyclePartnerIds.length,
+        totalRevenue,
+        cyclePartnerIds,
+        transactions,
+      };
+    }
 
     const rawMatches = (rows ?? [])
       .filter((r) => (r.package_id ?? 0) === packageId)
