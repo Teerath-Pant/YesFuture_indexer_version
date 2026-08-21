@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x4744a8b0e0b5a475116f89b00c306a726ea6bc55";
 // const CONTRACT_ADDRESS = "0x299724c47e64812a4139034e673f79d9534375fe";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
-const CONTRACT_ADDRESS = "0xdc05d55ac4a0f9d81c6b26ce877b968469e8b94c";
+const CONTRACT_ADDRESS = "0xcc4554e27bb7ce7fa129506fbd1438ca9f12a715";
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
 
@@ -92,37 +92,6 @@ const CORE_ABI = [
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "name": "Level5ReEntry",
-    "type": "event",
-    "inputs": [
-      {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
-      },
-      {
-        "name": "cycleNumber",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "phantomNode",
-        "type": "address",
-        "indexed": false,
-        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -367,7 +336,20 @@ const CORE_ABI = [
         "internalType": "address"
       },
       {
-        "name": "sponsor",
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "MatrixReEntry",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "user",
         "type": "address",
         "indexed": true,
         "internalType": "address"
@@ -375,8 +357,20 @@ const CORE_ABI = [
       {
         "name": "packageId",
         "type": "uint8",
-        "indexed": false,
+        "indexed": true,
         "internalType": "uint8"
+      },
+      {
+        "name": "cycleNumber",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "phantomNode",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
       }
     ],
     "anonymous": false
@@ -564,6 +558,31 @@ const CORE_ABI = [
     "anonymous": false
   },
   {
+    "name": "SponsorPlaced",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "sponsorParent",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "name": "SponsorReEntry",
     "type": "event",
     "inputs": [
@@ -578,6 +597,37 @@ const CORE_ABI = [
         "type": "uint8",
         "indexed": true,
         "internalType": "uint8"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "TrackPkgCapUnlocked",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "track",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "directsCount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -698,30 +748,6 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
-    "name": "activeMatrixNodeByPkg",
-    "type": "function",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
     "name": "adminWallet",
     "type": "function",
     "inputs": [],
@@ -764,6 +790,35 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
+    "name": "directsBoughtTrackPkgCount",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "name": "displayName",
     "type": "function",
     "inputs": [
@@ -783,20 +838,35 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
-    "name": "getEarningsCap",
+    "name": "getEarningsCapForTrackPkg",
     "type": "function",
     "inputs": [
       {
         "name": "user",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "track",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "cap",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "unlimited",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -821,6 +891,88 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
+    "name": "getMatrixChildren",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "parent",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getMatrixCycleInfo",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "currentCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "remainingSlots",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalCycles",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getMatrixParent",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "name": "getMatrixPrice",
     "type": "function",
     "inputs": [
@@ -840,18 +992,57 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
-    "name": "getSponsorPrice",
+    "name": "getSponsorChildren",
     "type": "function",
     "inputs": [
       {
         "name": "packageId",
         "type": "uint8",
         "internalType": "uint8"
+      },
+      {
+        "name": "parent",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
       {
         "name": "",
+        "type": "address[]",
+        "internalType": "address[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getSponsorCycleInfo",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "currentCount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "remainingSlots",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "totalCycles",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -859,13 +1050,37 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
-    "name": "getTotalEarned",
+    "name": "getSponsorParent",
     "type": "function",
     "inputs": [
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
       {
         "name": "user",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getSponsorPrice",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "outputs": [
@@ -943,11 +1158,6 @@ const CORE_ABI = [
     "name": "matrixChildrenByPkg",
     "type": "function",
     "inputs": [
-      {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
       {
         "name": "",
         "type": "uint8",
@@ -1048,6 +1258,49 @@ const CORE_ABI = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "matrixRealOwnerByPkg",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "matrixRecycleCount",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [
@@ -1290,30 +1543,6 @@ const CORE_ABI = [
     "stateMutability": "nonpayable"
   },
   {
-    "name": "realOwnerByPkg",
-    "type": "function",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
     "name": "recycleCount",
     "type": "function",
     "inputs": [
@@ -1435,6 +1664,35 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
+    "name": "sponsorChildrenByPkg",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "name": "sponsorCycleCountByPkg",
     "type": "function",
     "inputs": [
@@ -1497,6 +1755,49 @@ const CORE_ABI = [
         "name": "",
         "type": "uint8",
         "internalType": "uint8"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "sponsorParentByPkg",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "sponsorRecycleCount",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -1574,6 +1875,64 @@ const CORE_ABI = [
         "name": "",
         "type": "address",
         "internalType": "contract IERC20"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "userEarnedByTrackPkg",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "userInvestByTrackPkg",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
