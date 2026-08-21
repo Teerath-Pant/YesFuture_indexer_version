@@ -574,6 +574,37 @@ export const CONTRACT_ABI = [
     "anonymous": false
   },
   {
+    "name": "TrackPkgCapUnlocked",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "track",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
+        "name": "directsCount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "name": "UserRegistered",
     "type": "event",
     "inputs": [
@@ -689,30 +720,6 @@ export const CONTRACT_ABI = [
     "stateMutability": "view"
   },
   {
-    "name": "activeMatrixNodeByPkg",
-    "type": "function",
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
     "name": "adminWallet",
     "type": "function",
     "inputs": [],
@@ -755,6 +762,35 @@ export const CONTRACT_ABI = [
     "stateMutability": "view"
   },
   {
+    "name": "directsBoughtTrackPkgCount",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "name": "displayName",
     "type": "function",
     "inputs": [
@@ -774,20 +810,35 @@ export const CONTRACT_ABI = [
     "stateMutability": "view"
   },
   {
-    "name": "getEarningsCap",
+    "name": "getEarningsCapForTrackPkg",
     "type": "function",
     "inputs": [
       {
         "name": "user",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "track",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "cap",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "unlimited",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -838,25 +889,6 @@ export const CONTRACT_ABI = [
         "name": "packageId",
         "type": "uint8",
         "internalType": "uint8"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "name": "getTotalEarned",
-    "type": "function",
-    "inputs": [
-      {
-        "name": "user",
-        "type": "address",
-        "internalType": "address"
       }
     ],
     "outputs": [
@@ -1565,6 +1597,64 @@ export const CONTRACT_ABI = [
         "name": "",
         "type": "address",
         "internalType": "contract IERC20"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "userEarnedByTrackPkg",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "userInvestByTrackPkg",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"

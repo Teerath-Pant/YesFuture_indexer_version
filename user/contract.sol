@@ -108,24 +108,6 @@ contract meta20 is ReentrancyGuard {
     mapping(uint8 => mapping(address => address))   public matrixParentByPkg;
     mapping(uint8 => mapping(address => address))   public realOwnerByPkg;
 
-    // Confirmed rule: placement is anchored at the buyer's nearest eligible
-    // upline (their own sponsor chain), then BFS left-right/top-down from
-    // that anchor, max 2 children per node, unbounded depth.
-    // matrixChildrenByPkg is flat per (track, packageId) — no per-anchor
-    // dimension, since matrixParentByPkg (the mapping the income walk
-    // actually reads) is already flat/global, one parent per address, so a
-    // node's capacity must ALSO be tracked globally within its own track.
-    //
-    // TRACK dimension: Magic Gold Matrix (TRACK_MATRIX) and Sponsor Magic's
-    // 5-cycle re-entry phantoms (TRACK_SPONSOR) both call
-    // _placeInMatrixForPackage, and packageId is the SAME shared tier
-    // numbering (1-9) across every track — a real address (e.g. someone's
-    // upline) is routinely both a real Matrix-tree node AND a Sponsor
-    // phantom's anchor for the identical packageId. Without a track key,
-    // matrixChildrenByPkg[packageId][thatAddress] would silently mix a
-    // Matrix-track child in with a Sponsor-track phantom child in ONE
-    // array — wrong slot count, wrong cross-linking between two otherwise
-    // unrelated trees. Keying by track keeps them fully separate.
     uint8 constant TRACK_MATRIX = 1;
     uint8 constant TRACK_SPONSOR = 2;
     mapping(uint8 => mapping(uint8 => mapping(address => address[]))) public matrixChildrenByPkg;
@@ -171,6 +153,16 @@ contract meta20 is ReentrancyGuard {
     uint256[6] public matrixPercent; 
 
     mapping(uint8 => mapping(address => address[])) public cycleRootByPkg;
+
+    // Tracks which node (real address or latest phantom) new referrals
+    // should be routed into for a given (packageId, upline). Zero means
+    // "use the upline address itself" (no recycle has happened yet).
+    mapping(uint8 => mapping(address => address)) public activeMatrixNodeByPkg;
+
+    function _resolveActiveAnchor(uint8 packageId, address baseUpline) internal view returns (address) {
+        address active = activeMatrixNodeByPkg[packageId][baseUpline];
+        return active != address(0) ? active : baseUpline;
+    }
 
     // ---------------------------------------------------------------
     // EVENTS
@@ -287,6 +279,10 @@ contract meta20 is ReentrancyGuard {
     function _payCapped(address user, uint256 desiredAmount) internal returns (uint256 paid) {
         if (user == adminWallet) {
             if (desiredAmount > 0) usdt.safeTransfer(adminWallet, desiredAmount);
+            return desiredAmount;
+        }
+        if (referralCount[user] >= 5) {
+            if (desiredAmount > 0) usdt.safeTransfer(user, desiredAmount);
             return desiredAmount;
         }
         (uint256 payableAmount, uint256 excessAmount) = _splitByCap(user, desiredAmount);
@@ -431,21 +427,7 @@ contract meta20 is ReentrancyGuard {
 
     // ---------------------------------------------------------------
     // MATRIX PLACEMENT
-    // _anchor = nearest eligible upline in the buyer's own sponsor chain
-    // (see _findEligibleMatrixUpline below). Placement BFS-searches
-    // _anchor's own subtree, left-to-right, for the first node with a free
-    // child slot — checking/writing the FLAT matrixChildrenByPkg array, so
-    // a node's capacity is the same whether this search reaches it as
-    // someone's own referral or as an ancestor's overflow.
     // ---------------------------------------------------------------
-    // ponytail: live BFS walk per placement, bounded to
-    // MAX_MATRIX_SEARCH_NODES so gas stays capped — cheaper than
-    // maintaining a persistent per-anchor queue would need to be to stay
-    // correct once two different anchors' searches can reach the same
-    // shared node (a queue's cached "next candidate" can go stale the
-    // moment another anchor's search fills it first). Fine while trees are
-    // small/youngish; if real usage grows deep enough to make repeated
-    // level scans expensive, revisit with a self-healing persistent queue.
     uint256 constant MAX_MATRIX_SEARCH_NODES = 512;
 
     function _placeInMatrixForPackage(uint8 track, uint8 packageId, address _user, address _anchor) internal {
@@ -476,15 +458,10 @@ contract meta20 is ReentrancyGuard {
         revert("MATRIX_SEARCH_BOUND");
     }
 
-    // FIX: anchor now walks to nearest eligible upline (maxMatrixPackage
-    // >= packageId), not just raw direct sponsor. Old code anchored to
-    // sponsor[user] unconditionally — broke when direct sponsor hadn't
-    // bought this package tier yet (e.g. child buys pkg3 before parent
-    // does), placing child under an ineligible sponsor's tree instead of
-    // walking up to the next qualified upline (admin as ultimate fallback).
     function _placeInPackageTreeIfNeeded(address user, uint8 packageId) internal {
         if (matrixParentByPkg[packageId][user] != address(0)) return;
-        address anchor = _findEligibleMatrixUpline(user, packageId);
+        address baseUpline = _findEligibleMatrixUpline(user, packageId);
+        address anchor = _resolveActiveAnchor(packageId, baseUpline);
         _placeInMatrixForPackage(TRACK_MATRIX, packageId, user, anchor);
         cycleRootByPkg[packageId][user].push(user);
     }
@@ -591,18 +568,11 @@ contract meta20 is ReentrancyGuard {
             if (nextPackageId > maxMatrixPackage[userA]) maxMatrixPackage[userA] = nextPackageId;
 
             _placeInPackageTreeIfNeeded(userA, nextPackageId);
-            // Auto-upgrade IS a purchase of nextPackageId — must release
-            // income the same as a manual purchase does (was missing
-            // entirely before: userA's own upline never got paid for this
-            // tier when userA auto-upgraded into it).
             _releaseMatrixIncome(userA, nextPackageId);
             emit MatrixAutoUpgrade(userA, packageId, nextPackageId, requiredHeld);
         }
     }
 
-    // Phantom re-entry's BFS search anchors at userA — finds the first open
-    // slot in userA's own subtree (shared/flat storage, see
-    // _placeInMatrixForPackage above).
     function _level5ReEntry(uint8 packageId, address userA) internal {
         level5MemberCountByPkg[packageId][userA] = 0;
         recycleCount[userA]++;
@@ -616,6 +586,7 @@ contract meta20 is ReentrancyGuard {
         maxMatrixPackage[phantomNode] = maxMatrixPackage[userA] >= packageId ? maxMatrixPackage[userA] : packageId;
 
         address eligibleUpline = _findEligibleMatrixUpline(userA, packageId);
+        address uplineAnchor = _resolveActiveAnchor(packageId, eligibleUpline);
 
         uint256 reEntryCost = getMatrixPrice(packageId);
         if (matrixHoldByPkg[packageId][userA] >= reEntryCost) {
@@ -625,15 +596,22 @@ contract meta20 is ReentrancyGuard {
             emit MatrixIncome(eligibleUpline, userA, packageId, 5, paidCost);
         }
 
-        _placeInMatrixForPackage(TRACK_MATRIX, packageId, phantomNode, userA);
+        _placeInMatrixForPackage(TRACK_MATRIX, packageId, phantomNode, uplineAnchor);
 
         cycleRootByPkg[packageId][userA].push(phantomNode);
+
+        activeMatrixNodeByPkg[packageId][userA] = phantomNode;
 
         emit Level5ReEntry(userA, packageId, recycleCount[userA], phantomNode);
     }
 
     // ---------------------------------------------------------------
     // 2. SPONSOR INCOME (5-Member Cycle) — 90/10 SPLIT
+    // FIX: eligibleSponsor now walks sponsor[] chain to nearest upline
+    // whose maxSponsorPackage >= packageId, instead of pinning to the
+    // fixed direct sponsor. Old code checked sponsor[buyer] only and
+    // redirected straight to admin if that one address hadn't bought
+    // this tier yet — skipping any qualified upline above it entirely.
     // ---------------------------------------------------------------
     function _splitSponsorShare(uint256 grossShare) internal pure returns (uint256 sponsorNet, uint256 adminCut) {
         sponsorNet = grossShare * 900000 / PERCENT_DENOMINATOR; // 90%
@@ -641,83 +619,74 @@ contract meta20 is ReentrancyGuard {
     }
 
     function _releaseDirectIncome(address buyer, uint8 packageId, uint256 fullAmount) internal {
-        address directSponsor = sponsor[buyer];
+        address eligibleSponsor = _findEligibleSponsorUpline(buyer, packageId);
         uint256 sponsorShare = fullAmount * DIRECT_INCOME_PERCENT / PERCENT_DENOMINATOR; 
-        
-        if (directSponsor == address(0)) {
+
+        if (eligibleSponsor == adminWallet) {
             usdt.safeTransfer(adminWallet, sponsorShare);
+            emit SponsorIncomeRedirected(sponsor[buyer], buyer, packageId, sponsorShare);
             return;
         }
 
-        bool sponsorQualifies = topupFlag[directSponsor] && maxSponsorPackage[directSponsor] >= packageId;
-        if (!sponsorQualifies) {
-            usdt.safeTransfer(adminWallet, sponsorShare);
-            emit SponsorIncomeRedirected(directSponsor, buyer, packageId, sponsorShare);
-            return;
-        }
-
-        sponsorCycleCountByPkg[packageId][directSponsor]++;
-        uint256 count = sponsorCycleCountByPkg[packageId][directSponsor];
+        sponsorCycleCountByPkg[packageId][eligibleSponsor]++;
+        uint256 count = sponsorCycleCountByPkg[packageId][eligibleSponsor];
         
-        bool upgraded = (packageId >= MAX_PACKAGE) || (sponsorPackageId[directSponsor] > packageId);
+        bool upgraded = (packageId >= MAX_PACKAGE) || (sponsorPackageId[eligibleSponsor] > packageId);
 
         (uint256 sponsorNet, uint256 adminCut) = _splitSponsorShare(sponsorShare);
 
         if (count == 1 || count == 2) {
             usdt.safeTransfer(adminWallet, adminCut);
-            uint256 paidNet = _payCapped(directSponsor, sponsorNet);
-            userTotalDirectIncome[directSponsor] += paidNet;
-            emit DirectIncome(directSponsor, buyer, packageId, count, paidNet);
+            uint256 paidNet = _payCapped(eligibleSponsor, sponsorNet);
+            userTotalDirectIncome[eligibleSponsor] += paidNet;
+            emit DirectIncome(eligibleSponsor, buyer, packageId, count, paidNet);
         }
         else if (count == 3) {
             if (upgraded) {
                 usdt.safeTransfer(adminWallet, adminCut);
-                uint256 paidNet = _payCapped(directSponsor, sponsorNet);
-                userTotalDirectIncome[directSponsor] += paidNet;
-                emit DirectIncome(directSponsor, buyer, packageId, count, paidNet);
+                uint256 paidNet = _payCapped(eligibleSponsor, sponsorNet);
+                userTotalDirectIncome[eligibleSponsor] += paidNet;
+                emit DirectIncome(eligibleSponsor, buyer, packageId, count, paidNet);
             } else {
-                sponsorHoldByPkg[packageId][directSponsor] += sponsorShare;
-                emit SponsorIncomeHeld(directSponsor, packageId, sponsorShare, count);
+                sponsorHoldByPkg[packageId][eligibleSponsor] += sponsorShare;
+                emit SponsorIncomeHeld(eligibleSponsor, packageId, sponsorShare, count);
             }
         }
         else if (count == 4) {
             if (upgraded) {
                 usdt.safeTransfer(adminWallet, adminCut);
-                uint256 paidNet = _payCapped(directSponsor, sponsorNet);
-                userTotalDirectIncome[directSponsor] += paidNet;
-                emit DirectIncome(directSponsor, buyer, packageId, count, paidNet);
+                uint256 paidNet = _payCapped(eligibleSponsor, sponsorNet);
+                userTotalDirectIncome[eligibleSponsor] += paidNet;
+                emit DirectIncome(eligibleSponsor, buyer, packageId, count, paidNet);
             } else {
-                sponsorHoldByPkg[packageId][directSponsor] += sponsorShare;
-                emit SponsorIncomeHeld(directSponsor, packageId, sponsorShare, count);
-                _trySponsorAutoUpgrade(packageId, directSponsor);
+                sponsorHoldByPkg[packageId][eligibleSponsor] += sponsorShare;
+                emit SponsorIncomeHeld(eligibleSponsor, packageId, sponsorShare, count);
+                _trySponsorAutoUpgrade(packageId, eligibleSponsor);
             }
         }
         else if (count == 5) {
-            address eligibleUpline = _findEligibleSponsorUpline(directSponsor, packageId);
+            address nextUpline = _findEligibleSponsorUpline(eligibleSponsor, packageId);
 
             usdt.safeTransfer(adminWallet, adminCut);
-            uint256 paidNet = _payCapped(eligibleUpline, sponsorNet);
-            userTotalDirectIncome[eligibleUpline] += paidNet;
-            emit DirectIncome(eligibleUpline, buyer, packageId, count, paidNet);
+            uint256 paidNet = _payCapped(nextUpline, sponsorNet);
+            userTotalDirectIncome[nextUpline] += paidNet;
+            emit DirectIncome(nextUpline, buyer, packageId, count, paidNet);
 
-            sponsorCycleCountByPkg[packageId][directSponsor] = 0;
-            recycleCount[directSponsor]++;
+            sponsorCycleCountByPkg[packageId][eligibleSponsor] = 0;
+            recycleCount[eligibleSponsor]++;
             
             phantomCounter++;
             address phantom = address(uint160(uint256(keccak256(
-                abi.encodePacked("SPONSOR_RE", packageId, directSponsor, phantomCounter, block.timestamp)
+                abi.encodePacked("SPONSOR_RE", packageId, eligibleSponsor, phantomCounter, block.timestamp)
             ))));
             
-            realOwnerByPkg[packageId][phantom] = directSponsor;
+            realOwnerByPkg[packageId][phantom] = eligibleSponsor;
             topupFlag[phantom] = true;
-            maxSponsorPackage[phantom] = maxSponsorPackage[directSponsor];
+            maxSponsorPackage[phantom] = maxSponsorPackage[eligibleSponsor];
             
-            // BFS search anchors at directSponsor, in the SPONSOR track's
-            // own separate slot-namespace — see _placeInMatrixForPackage
-            // above for why track separation matters here.
-            _placeInMatrixForPackage(TRACK_SPONSOR, packageId, phantom, directSponsor);
+            _placeInMatrixForPackage(TRACK_SPONSOR, packageId, phantom, nextUpline);
             
-            emit SponsorReEntry(directSponsor, packageId);
+            emit SponsorReEntry(eligibleSponsor, packageId);
         }
     }
 
@@ -761,11 +730,6 @@ contract meta20 is ReentrancyGuard {
             sponsorPackageId[userA] = nextPackageId;
             if (nextPackageId > maxSponsorPackage[userA]) maxSponsorPackage[userA] = nextPackageId;
 
-            // Same missing-income bug as matrix auto-upgrade above: this IS
-            // a purchase of nextPackageId, needs the same _releaseDirectIncome
-            // call manual purchaseSponsorPackage makes, with the FULL package
-            // price (not requiredHeld, which is already DIRECT_INCOME_PERCENT's
-            // slice — _releaseDirectIncome re-slices internally).
             _releaseDirectIncome(userA, nextPackageId, packages[nextPackageId].price);
             emit SponsorAutoUpgrade(userA, packageId, nextPackageId, requiredHeld);
         }

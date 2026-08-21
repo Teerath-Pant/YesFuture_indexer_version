@@ -503,12 +503,19 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
         const reentrySponsor = cyclePosition === 5
           ? sponsorReentryByTxPkg.get(`${log.transactionHash}:${packageId}`)
           : undefined;
+        // count==5 payout goes to nextUpline (see contract.sol _releaseDirectIncome),
+        // but the slot being filled is eligibleSponsor's own position 5 — attribute
+        // the row to eligibleSponsor (reentrySponsor), filled by the real buyer.
+        // eligibleSponsor gets no money here (nextUpline does, via bumpIncome/
+        // transactions feed separately), so this row carries 0 referral income.
         return {
           packageId,
           cyclePosition,
-          userAddress: lc((log as any).args.receiver),
-          directPartnerAddress: reentrySponsor ?? lc((log as any).args.from),
-          totalReferralIncome: ((log as any).args.amount as bigint).toString(),
+          userAddress: reentrySponsor ?? lc((log as any).args.receiver),
+          directPartnerAddress: lc((log as any).args.from),
+          totalReferralIncome: reentrySponsor
+            ? "0"
+            : ((log as any).args.amount as bigint).toString(),
           isHeld: false,
           blockNumber: BigInt(log.blockNumber),
           txHash: log.transactionHash,
