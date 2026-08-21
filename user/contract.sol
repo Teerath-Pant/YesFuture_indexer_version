@@ -37,7 +37,7 @@ contract ReentrancyGuard {
     }
 }
 
-contract meta26 is ReentrancyGuard {
+contract meta27 is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     IERC20 public usdt;
@@ -173,7 +173,7 @@ contract meta26 is ReentrancyGuard {
     event SponsorAutoUpgrade(address indexed sponsor, uint8 fromPackageId, uint8 newPackageId, uint256 priceUsed);
     event ManualUpgrade(address indexed user, uint8 packageId, string track);
     
-    event MatrixPlaced(address indexed user, address indexed matrixParent, address indexed sponsor, uint8 packageId);
+   event MatrixPlaced(address indexed user, address indexed matrixParent, address indexed sponsor, uint8 packageId, uint8 track);
     event Level5ReEntry(address indexed user, uint8 indexed packageId, uint256 cycleNumber, address phantomNode);
 event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packageId);
 
@@ -421,7 +421,7 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
 
         matrixParentByPkg[packageId][_user] = slot;
         matrixChildrenByPkg[track][packageId][slot].push(_user);
-        emit MatrixPlaced(_user, slot, _anchor, packageId);
+        emit MatrixPlaced(_user, slot, _anchor, packageId, track);
     }
 
     function _findOpenMatrixSlot(uint8 track, uint8 packageId, address anchor) internal view returns (address) {

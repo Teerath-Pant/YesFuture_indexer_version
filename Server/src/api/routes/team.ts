@@ -223,14 +223,15 @@ teamRouter.get("/:address/is-ancestor-of/:targetAddress", async (req, res) => {
     matrix_chain AS (
       SELECT child_address, parent_address, package_id, 1 AS depth
       FROM matrix_placements
-      WHERE child_address = ${targetAddress}
+      WHERE child_address = ${targetAddress} AND track = 1
       UNION ALL
       SELECT mp.child_address, mp.parent_address, mp.package_id, mc.depth + 1
       FROM matrix_placements mp
       JOIN matrix_chain mc
         ON mp.child_address = mc.parent_address
         AND mp.package_id = mc.package_id
-      WHERE mc.depth < 50
+      WHERE mp.track = 1
+        AND mc.depth < 50
     )
     SELECT
       EXISTS (SELECT 1 FROM sponsor_chain WHERE sponsor_address = ${address}) AS is_sponsor_ancestor,

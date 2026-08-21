@@ -101,6 +101,7 @@ export const packagePurchaseEvents = pgTable("package_purchase_events", {
 export const matrixPlacements = pgTable("matrix_placements", {
   id: serial("id").primaryKey(),
   packageId: smallint("package_id").notNull(),
+  track: smallint("track").notNull().default(1),
   childAddress: text("child_address").notNull(),
   parentAddress: text("parent_address").notNull(),
   sponsorAddress: text("sponsor_address").notNull(),
@@ -109,7 +110,7 @@ export const matrixPlacements = pgTable("matrix_placements", {
   logIndex: integer("log_index").notNull(),
   blockTimestamp: timestamp("block_timestamp").notNull(),
 }, (t) => ({
-  parentPkgIdx: index("matrix_placement_parent_pkg_idx").on(t.packageId, t.parentAddress),
+  parentPkgIdx: index("matrix_placement_parent_pkg_idx").on(t.packageId, t.track, t.parentAddress),
   childIdx: index("matrix_placement_child_idx").on(t.childAddress),
   txLogUnique: uniqueIndex("matrix_placement_tx_log_unique").on(t.txHash, t.logIndex),
 }));

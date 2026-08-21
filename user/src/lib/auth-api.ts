@@ -377,6 +377,12 @@ const CORE_ABI = [
         "type": "uint8",
         "indexed": false,
         "internalType": "uint8"
+      },
+      {
+        "name": "track",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       }
     ],
     "anonymous": false

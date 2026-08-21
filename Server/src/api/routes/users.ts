@@ -4,6 +4,7 @@ import { db, schema } from "../../db/client.js";
 import { contract } from "../../chain/contract.js";
 
 export const usersRouter = Router();
+const MATRIX_TRACK = 1;
 
 function isAddress(v: string) {
   return /^0x[0-9a-fA-F]{40}$/.test(v);
@@ -545,6 +546,7 @@ usersRouter.get("/:address/matrix-tree/:packageId", async (req, res) => {
         and(
           eq(schema.matrixPlacements.childAddress, user),
           eq(schema.matrixPlacements.packageId, packageId),
+          eq(schema.matrixPlacements.track, MATRIX_TRACK),
         ),
       )
       .limit(1),
@@ -555,6 +557,7 @@ usersRouter.get("/:address/matrix-tree/:packageId", async (req, res) => {
         and(
           eq(schema.matrixPlacements.parentAddress, user),
           eq(schema.matrixPlacements.packageId, packageId),
+          eq(schema.matrixPlacements.track, MATRIX_TRACK),
         ),
       )
       .orderBy(
@@ -764,6 +767,7 @@ usersRouter.get(
             .where(
               and(
                 eq(schema.matrixPlacements.packageId, packageId),
+                eq(schema.matrixPlacements.track, MATRIX_TRACK),
                 inArray(
                   schema.matrixPlacements.parentAddress,
                   currentLevelParents,
@@ -931,6 +935,7 @@ async function countFilledSlotsForRoot(
       .where(
         and(
           eq(schema.matrixPlacements.packageId, packageId),
+          eq(schema.matrixPlacements.track, MATRIX_TRACK),
           inArray(schema.matrixPlacements.parentAddress, currentLevelParents),
         ),
       );
@@ -964,6 +969,7 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
           and(
             eq(schema.matrixPlacements.parentAddress, user),
             eq(schema.matrixPlacements.packageId, packageId),
+            eq(schema.matrixPlacements.track, MATRIX_TRACK),
           ),
         ),
       db
@@ -1017,6 +1023,7 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
           .where(
             and(
               eq(schema.matrixPlacements.packageId, packageId),
+              eq(schema.matrixPlacements.track, MATRIX_TRACK),
               inArray(
                 schema.matrixPlacements.parentAddress,
                 currentLevelParents,

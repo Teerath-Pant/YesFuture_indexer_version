@@ -404,6 +404,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
       await tx.insert(schema.matrixPlacements).values(
         await Promise.all(matrixPlacements.map(async (log) => ({
           packageId: Number((log as any).args.packageId),
+          track: Number((log as any).args.track ?? 1),
           childAddress: lc((log as any).args.user),
           parentAddress: lc((log as any).args.matrixParent),
           sponsorAddress: lc((log as any).args.sponsor),
