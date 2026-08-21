@@ -155,7 +155,6 @@ export default function PackagePurchasePage() {
           fetchLevelPackageAndIdWithMax(address),
           fetchSponsorPackageAndIdWithMax(address),
         ]);
-
       setCurrentPkg(pkgData.pkgId);
       setUserId(pkgData.stringId);
       setHistoryData(history);
@@ -164,14 +163,6 @@ export default function PackagePurchasePage() {
       setSelectedPackageId(next.toString());
 
       const selId = next;
-
-      // Each track's own next tier — NOT the shared carousel selection.
-      // Tracks can fall out of lockstep (sponsor auto-upgrades independently
-      // of matrix/level manual purchases), and purchaseSponsorPackage etc.
-      // require strictly sequential tiers on-chain (packageId - 1 check). A
-      // track that's behind must buy its own next step, not whatever tier
-      // the carousel happens to have selected — buying the wrong tier there
-      // reverts on-chain instead of just being a display mismatch.
       const ownNext = (pkgId: number) => Math.min((pkgId ?? 0) + 1, 9);
 
       setProgramStatuses([
@@ -245,67 +236,6 @@ export default function PackagePurchasePage() {
   const pendingPrograms = programStatuses.filter(
     (p) => !p.isPurchasedForSelected,
   );
-
-  // const handlePurchaseAllPending = async () => {
-  //   if (!selectedPackage || !address) return;
-
-  //   if (pendingPrograms.length === 0) {
-  //     toast.message("All types for this package have already been purchased!");
-  //     return;
-  //   }
-
-  //   setIsSubmitting(true);
-
-  //   try {
-  //     const targetId = Number(selectedPackage.id);
-  //     for (const p of pendingPrograms) {
-  //       // A track behind the selected tier must buy every step in between —
-  //       // purchaseSponsorPackage/etc. require strictly sequential tiers
-  //       // on-chain (packageId - 1 check). Buying straight to the selected
-  //       // tier while behind reverts; catch it up one tier at a time instead.
-  //       for (let tier = p.currentPkg + 1; tier <= targetId; tier++) {
-  //         const splitPkg = AMOUNT_MAP[p.key].find((x) => x.id === String(tier));
-  //         if (!splitPkg) {
-  //           console.error(`No split price found for ${p.key}, package ${tier}`);
-  //           continue;
-  //         }
-
-  //         setTxStatus(`purchasing-${p.key}`);
-  //         await BUY_FN_MAP[p.key](
-  //           tier,
-  //           splitPkg.amount, // ✅ sahi — us program ka apna split amount
-  //           (status: string) => setTxStatus(status),
-  //         );
-  //       }
-  //     }
-
-  //     toast.success(
-  //       `Purchased: ${pendingPrograms.map((p) => p.label).join(", ")}`,
-  //     );
-
-  //     // Sab kuch re-fetch — rows automatically Pending → Purchased flip ho jayenge
-  //     await loadAllData();
-  //   } catch (error: any) {
-  //     console.error("Purchase error details:", error);
-  //     if (
-  //       error?.code === 4001 ||
-  //       error?.code === "ACTION_REJECTED" ||
-  //       error?.message?.includes("user rejected action")
-  //     ) {
-  //       toast.message("Transaction cancelled by user.");
-  //     } else {
-  //       toast.error(
-  //         "Transaction failed. Please check your balance and try again.",
-  //       );
-  //     }
-  //     // Error ke baad bhi ek reload kar do taaki state sync rahe
-  //     await loadAllData();
-  //   } finally {
-  //     setIsSubmitting(false);
-  //     setTxStatus("idle");
-  //   }
-  // };
-
   const handlePurchaseAllPending = async () => {
     if (!selectedPackage || !address) return;
 
@@ -319,9 +249,6 @@ export default function PackagePurchasePage() {
     try {
       const targetId = Number(selectedPackage.id);
 
-      // Pre-compute the full flat list of (program, tier) steps so the
-      // overlay can show "X of Y" — the nested loop below buys them one at
-      // a time, in order, same as before.
       type PlannedStep = {
         program: (typeof pendingPrograms)[number];
         tier: number;
@@ -477,28 +404,6 @@ export default function PackagePurchasePage() {
             </div>
           ))}
         </div>
-
-        {/* <div className="mt-4 w-full">
-          <PackagePurchaseForm
-            walletId={address || "Connect Wallet"}
-            selectedPackage={selectedPackage}
-            onPurchase={handlePurchaseAllPending}
-            isSubmitting={isSubmitting}
-            purchaseLabel={purchaseButtonLabel}
-            purchaseDisabled={isSubmitting || pendingPrograms.length === 0}
-          />
-          {txStatus === "approving" && (
-            <p className="text-center text-xs mt-2 text-yellow-500 animate-pulse">
-              Approving USDT...
-            </p>
-          )}
-          {(txStatus === "purchasing" ||
-            txStatus.startsWith("purchasing-")) && (
-            <p className="text-center text-xs mt-2 text-blue-500 animate-pulse">
-              Confirming Purchase...
-            </p>
-          )}
-        </div> */}
         <div className="mt-4 w-full">
           <PurchaseOverlay step={purchaseStep} context={purchaseContext} />
           <PackagePurchaseForm

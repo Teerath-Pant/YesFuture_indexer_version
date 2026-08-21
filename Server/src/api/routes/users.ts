@@ -71,15 +71,25 @@ usersRouter.get("/string-ids", async (req, res) => {
     .from(schema.userRegistrations)
     .where(inArray(schema.userRegistrations.memberAddress, addresses));
 
-  const result: Record<string, string> = Object.fromEntries(rows.map((r) => [r.address, r.stringId]));
+  const result: Record<string, string> = Object.fromEntries(
+    rows.map((r) => [r.address, r.stringId]),
+  );
 
   let unresolved = addresses.filter((a) => !(a in result));
   if (unresolved.length) {
-    const phantomRows = await db.select({
-      phantomNode: schema.level5Reentries.phantomNode,
-      stringId: schema.userRegistrations.stringId,
-    }).from(schema.level5Reentries)
-      .innerJoin(schema.userRegistrations, eq(schema.userRegistrations.memberAddress, schema.level5Reentries.userAddress))
+    const phantomRows = await db
+      .select({
+        phantomNode: schema.level5Reentries.phantomNode,
+        stringId: schema.userRegistrations.stringId,
+      })
+      .from(schema.level5Reentries)
+      .innerJoin(
+        schema.userRegistrations,
+        eq(
+          schema.userRegistrations.memberAddress,
+          schema.level5Reentries.userAddress,
+        ),
+      )
       .where(inArray(schema.level5Reentries.phantomNode, unresolved));
     for (const r of phantomRows) result[r.phantomNode] = r.stringId;
     unresolved = unresolved.filter((a) => !(a in result));
@@ -90,20 +100,32 @@ usersRouter.get("/string-ids", async (req, res) => {
     const owners = await Promise.all(
       unresolved.map((a) => contract.realOwnerByPkg(packageId, a).catch(() => null)),
     );
-    const ownerAddrs = [...new Set(
-      owners.filter((o): o is string => !!o && o !== "0x0000000000000000000000000000000000000000")
-        .map((o) => o.toLowerCase()),
-    )];
+    const ownerAddrs = [
+      ...new Set(
+        owners
+          .filter(
+            (o): o is string =>
+              !!o && o !== "0x0000000000000000000000000000000000000000",
+          )
+          .map((o) => o.toLowerCase()),
+      ),
+    ];
     if (ownerAddrs.length) {
-      const ownerRows = await db.select({
-        address: schema.userRegistrations.memberAddress,
-        stringId: schema.userRegistrations.stringId,
-      }).from(schema.userRegistrations)
+      const ownerRows = await db
+        .select({
+          address: schema.userRegistrations.memberAddress,
+          stringId: schema.userRegistrations.stringId,
+        })
+        .from(schema.userRegistrations)
         .where(inArray(schema.userRegistrations.memberAddress, ownerAddrs));
-      const stringIdByOwner = new Map(ownerRows.map((r) => [r.address, r.stringId]));
+      const stringIdByOwner = new Map(
+        ownerRows.map((r) => [r.address, r.stringId]),
+      );
       unresolved.forEach((addr, i) => {
         const owner = owners[i];
-        const stringId = owner ? stringIdByOwner.get(owner.toLowerCase()) : undefined;
+        const stringId = owner
+          ? stringIdByOwner.get(owner.toLowerCase())
+          : undefined;
         if (stringId) result[addr] = stringId;
       });
     }
@@ -717,7 +739,6 @@ usersRouter.get("/:address/magic-gold/:packageId/cycles", async (req, res) => {
 //   },
 // );
 
-
 usersRouter.get(
   "/:address/magic-gold/:packageId/:cycleIndex",
   async (req, res) => {
@@ -745,14 +766,23 @@ usersRouter.get(
     }
 
     // 5-level, 2-children-per-node tree = 62 nodes total. Walk level by level.
-    type MatrixNodeInfo = { address: string; isDirectPlacement: boolean; isInDownline: boolean } | null;
+    type MatrixNodeInfo = {
+      address: string;
+      isDirectPlacement: boolean;
+      isInDownline: boolean;
+    } | null;
     const nodes: MatrixNodeInfo[] = new Array(62).fill(null);
     const levelStart = [0, 0, 2, 6, 14, 30];
     let currentLevelParents = [root];
 
     // Track filled slots during the walk so we can batch the downline check
     // afterward instead of querying per node.
-    const filledSlots: { index: number; address: string; sponsorAddress: string; parentAddress: string }[] = [];
+    const filledSlots: {
+      index: number;
+      address: string;
+      sponsorAddress: string;
+      parentAddress: string;
+    }[] = [];
 
     for (let lvl = 1; lvl <= 5; lvl++) {
       const start = levelStart[lvl];
@@ -826,7 +856,8 @@ usersRouter.get(
     for (const slot of filledSlots) {
       nodes[slot.index] = {
         address: slot.address,
-        isDirectPlacement: slot.sponsorAddress.toLowerCase() === user.toLowerCase(),
+        isDirectPlacement:
+          slot.sponsorAddress.toLowerCase() === user.toLowerCase(),
         isInDownline: treeAddresses.has(slot.sponsorAddress.toLowerCase()),
       };
     }
@@ -1066,13 +1097,16 @@ async function computePackageMatrixSummary(user: string, packageId: number) {
   // is positional (is the placer a node visibly rendered in THIS tree),
   // not real sponsor-chain ancestry.
   const treeAddresses = new Set(
-    [latestRoot, ...filledSlots.map((s) => s.address)].map((a) => a.toLowerCase()),
+    [latestRoot, ...filledSlots.map((s) => s.address)].map((a) =>
+      a.toLowerCase(),
+    ),
   );
 
   for (const slot of filledSlots) {
     nodes[slot.index] = {
       address: slot.address,
-      isDirectPlacement: slot.sponsorAddress.toLowerCase() === user.toLowerCase(),
+      isDirectPlacement:
+        slot.sponsorAddress.toLowerCase() === user.toLowerCase(),
       isInDownline: treeAddresses.has(slot.sponsorAddress.toLowerCase()),
     };
   }
@@ -1229,7 +1263,6 @@ usersRouter.get("/:address/magic-gold-summary", async (req, res) => {
   res.json({ packages });
 });
 
-
 // --------- dev-mukesh ---------------
 
 // For the viewing user (rootUser), computes per-tier "missed" counts —
@@ -1316,3 +1349,185 @@ usersRouter.get("/:address/sponsor-missed-summary", async (req, res) => {
 
   res.json({ counts });
 });
+
+usersRouter.get("/:address/sponsor-cycles/:packageId", async (req, res) => {
+  const user = req.params.address.toLowerCase();
+  const packageId = Number(req.params.packageId);
+
+  const rows = await db.execute(sql`
+    WITH ordered_events AS (
+      SELECT
+        t.id, t.type, t.cycle, t.amount, t.block_number, t.log_index, t.block_timestamp,
+        COALESCE(ur.string_id, ur_held.string_id) AS child_string_id,
+        CAST(NULL AS text) AS child_address,
+        false AS is_reentry_marker
+      FROM transactions t
+      LEFT JOIN user_registrations ur ON ur.member_address = t.counterparty_address
+      LEFT JOIN transactions held_buyer
+        ON held_buyer.tx_hash = t.tx_hash
+        AND held_buyer.type = 'PACKAGE_PURCHASE'
+        AND held_buyer.track = 'SPONSOR'
+        AND held_buyer.package_id = ${packageId}
+        AND t.type = 'SPONSOR_INCOME_HELD'
+      LEFT JOIN user_registrations ur_held ON ur_held.member_address = held_buyer.wallet_address
+      WHERE t.wallet_address = ${user}
+        AND t.package_id = ${packageId}
+        AND t.type IN ('DIRECT_INCOME', 'SPONSOR_INCOME_HELD')
+        AND t.cycle < 5
+
+      UNION ALL
+
+      SELECT
+        t.id, t.type, 5 AS cycle, NULL AS amount, t.block_number, t.log_index, t.block_timestamp,
+        ur.string_id AS child_string_id,
+        buyer.wallet_address AS child_address,
+        true AS is_reentry_marker
+      FROM transactions t
+      LEFT JOIN transactions buyer
+        ON buyer.tx_hash = t.tx_hash
+        AND buyer.type = 'PACKAGE_PURCHASE'
+        AND buyer.track = 'SPONSOR'
+        AND buyer.package_id = ${packageId}
+      LEFT JOIN user_registrations ur ON ur.member_address = buyer.wallet_address
+      WHERE t.wallet_address = ${user}
+        AND t.package_id = ${packageId}
+        AND t.type = 'SPONSOR_REENTRY'
+    ),
+    numbered AS (
+      SELECT *,
+        SUM(CASE WHEN is_reentry_marker THEN 1 ELSE 0 END)
+          OVER (ORDER BY block_number, log_index ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+          AS running_reentries
+      FROM ordered_events
+    )
+    SELECT *,
+      CASE WHEN is_reentry_marker THEN running_reentries ELSE running_reentries + 1 END AS batch_number
+    FROM numbered
+    ORDER BY batch_number, block_number, log_index
+  `);
+
+  res.json(rows);
+});
+
+// usersRouter.get("/:address/sponsor-cycles/:packageId", async (req, res) => {
+//   const user = req.params.address.toLowerCase();
+//   const packageId = Number(req.params.packageId);
+
+//   const rows = await db.execute(sql`
+//     WITH ordered_events AS (
+//       SELECT
+//         t.id, t.type, t.cycle, t.amount, t.block_number, t.log_index, t.block_timestamp,
+//         COALESCE(ur.string_id, ur_held.string_id) AS child_string_id,
+//         false AS is_reentry_marker
+//       FROM transactions t
+//       LEFT JOIN user_registrations ur ON ur.member_address = t.counterparty_address
+//       LEFT JOIN transactions held_buyer
+//         ON held_buyer.tx_hash = t.tx_hash
+//         AND held_buyer.type = 'PACKAGE_PURCHASE'
+//         AND held_buyer.track = 'SPONSOR'
+//         AND held_buyer.package_id = ${packageId}
+//         AND t.type = 'SPONSOR_INCOME_HELD'
+//       LEFT JOIN user_registrations ur_held ON ur_held.member_address = held_buyer.wallet_address
+//       WHERE t.wallet_address = ${user}
+//         AND t.package_id = ${packageId}
+//         AND t.type IN ('DIRECT_INCOME', 'SPONSOR_INCOME_HELD')
+//         AND t.cycle < 5
+
+//       UNION ALL
+
+//       SELECT
+//   t.id, t.type, 5 AS cycle, NULL AS amount, t.block_number, t.log_index, t.block_timestamp,
+//   ur.string_id AS child_string_id,
+//   buyer.wallet_address AS child_address,
+//   true AS is_reentry_marker
+// FROM transactions t
+// LEFT JOIN transactions buyer
+//   ON buyer.tx_hash = t.tx_hash
+//   AND buyer.type = 'PACKAGE_PURCHASE'
+//   AND buyer.track = 'SPONSOR'
+//   AND buyer.package_id = ${packageId}
+// LEFT JOIN user_registrations ur ON ur.member_address = buyer.wallet_address
+// WHERE t.wallet_address = ${user}
+//   AND t.package_id = ${packageId}
+//   AND t.type = 'SPONSOR_REENTRY'
+
+//       -- SELECT
+//       --   t.id, t.type, 5 AS cycle, NULL AS amount, t.block_number, t.log_index, t.block_timestamp,
+//       --   ur.string_id AS child_string_id,
+//       --   true AS is_reentry_marker
+//       -- FROM transactions t
+//       -- LEFT JOIN transactions buyer
+//       --   ON buyer.tx_hash = t.tx_hash
+//       --   AND buyer.type = 'PACKAGE_PURCHASE'
+//       --   AND buyer.track = 'SPONSOR'
+//       --   AND buyer.package_id = ${packageId}
+//       -- LEFT JOIN user_registrations ur ON ur.member_address = buyer.wallet_address
+//       -- WHERE t.wallet_address = ${user}
+//       --   AND t.package_id = ${packageId}
+//       --   AND t.type = 'SPONSOR_REENTRY'
+//     ),
+//     numbered AS (
+//       SELECT *,
+//         SUM(CASE WHEN is_reentry_marker THEN 1 ELSE 0 END)
+//           OVER (ORDER BY block_number, log_index ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+//           AS running_reentries
+//       FROM ordered_events
+//     )
+//     SELECT *,
+//       CASE WHEN is_reentry_marker THEN running_reentries ELSE running_reentries + 1 END AS batch_number
+//     FROM numbered
+//     ORDER BY batch_number, block_number, log_index
+//   `);
+
+//   res.json(rows);
+// });
+
+// usersRouter.get("/:address/sponsor-cycles/:packageId", async (req, res) => {
+//   const user = req.params.address.toLowerCase();
+//   const packageId = Number(req.params.packageId);
+
+//   const rows = await db.execute(sql`
+//     WITH ordered_events AS (
+//       SELECT
+//         t.id, t.type, t.cycle, t.amount, t.block_number, t.log_index, t.block_timestamp,
+//         ur.string_id AS child_string_id,
+//         false AS is_reentry_marker
+//       FROM transactions t
+//       LEFT JOIN user_registrations ur ON ur.member_address = t.counterparty_address
+//       WHERE t.wallet_address = ${user}
+//         AND t.package_id = ${packageId}
+//         AND t.type IN ('DIRECT_INCOME', 'SPONSOR_INCOME_HELD')
+//         AND t.cycle < 5
+
+//       UNION ALL
+
+//       SELECT
+//         t.id, t.type, 5 AS cycle, NULL AS amount, t.block_number, t.log_index, t.block_timestamp,
+//         ur.string_id AS child_string_id,
+//         true AS is_reentry_marker
+//       FROM transactions t
+//       LEFT JOIN transactions buyer
+//         ON buyer.tx_hash = t.tx_hash
+//         AND buyer.type = 'PACKAGE_PURCHASE'
+//         AND buyer.track = 'SPONSOR'
+//         AND buyer.package_id = ${packageId}
+//       LEFT JOIN user_registrations ur ON ur.member_address = buyer.wallet_address
+//       WHERE t.wallet_address = ${user}
+//         AND t.package_id = ${packageId}
+//         AND t.type = 'SPONSOR_REENTRY'
+//     ),
+//     numbered AS (
+//       SELECT *,
+//         SUM(CASE WHEN is_reentry_marker THEN 1 ELSE 0 END)
+//           OVER (ORDER BY block_number, log_index ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+//           AS running_reentries
+//       FROM ordered_events
+//     )
+//     SELECT *,
+//       CASE WHEN is_reentry_marker THEN running_reentries ELSE running_reentries + 1 END AS batch_number
+//     FROM numbered
+//     ORDER BY batch_number, block_number, log_index
+//   `);
+
+//   res.json(rows);
+// });

@@ -13,7 +13,7 @@ import {
 import WalletCell from "../wallet-cell";
 
 const SPONSOR_PACKAGE_PRICES = magicLevelPackages;
-const MAX_LEVEL = 100;
+const MAX_LEVEL = 10;
 
 interface TeamMemberRow {
   id: number;
