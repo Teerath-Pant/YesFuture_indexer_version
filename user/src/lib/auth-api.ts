@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x4744a8b0e0b5a475116f89b00c306a726ea6bc55";
 // const CONTRACT_ADDRESS = "0x299724c47e64812a4139034e673f79d9534375fe";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
-const CONTRACT_ADDRESS = "0xaa99a5c892d2cf96b4a0b2fef82c54448524d5c7";
+const CONTRACT_ADDRESS = "0xc097692d44a7445dd648a0bf5c58a8d60bb1d282";
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
 
@@ -1906,7 +1906,7 @@ export interface PurchasedPackageRow {
 
 export interface LevelIncomeRow {
   level: number;
-  package_id:number | null;
+  package_id: number | null;
   childId: string;
   amount: string;
   date: string;
@@ -2338,26 +2338,50 @@ export async function fetchUserTotalDirectIncome(
 // intentionally stay the LEVEL track (matches original behavior — every
 // caller gets the level package regardless of which program page it's on;
 // not changing that quirk here, out of scope).
+
 export async function fetchPackageAndId(walletAddress: string) {
   const [profile, packages] = await Promise.all([
     apiGet<{ stringId: string; numericId: string; sponsorStringId: string }>(
       `/users/${walletAddress}/profile`,
     ),
-    // package ids come back as strings (server serializes bigint -> string);
-    // Number(...) here is load-bearing, not cosmetic — `currentPkg + 1`
-    // silently does string concatenation ("1"+1="11") without it.
     apiGet<{ level: { current: string; max: string } }>(
       `/users/${walletAddress}/packages`,
     ),
   ]);
+
+  const cleanStrId = (profile?.stringId || "")
+    .replace(/^ID\s*/i, "")
+    .trim()
+    .toUpperCase();
+  const isRoot =
+    profile?.numericId === "1" || cleanStrId === RootID || cleanStrId === "1";
+
   return {
-    pkgId: Number(packages?.level.current) || 1,
+    pkgId: isRoot ? 9 : Number(packages?.level.current) || 1,
     uplineId: profile?.sponsorStringId,
-    maxPkg: Number(packages?.level.max) || 1,
+    maxPkg: isRoot ? 9 : Number(packages?.level.max) || 1,
     numericId: profile?.numericId ?? "...",
     stringId: profile?.stringId ?? "...",
   };
 }
+
+// export async function fetchPackageAndId(walletAddress: string) {
+//   const [profile, packages] = await Promise.all([
+//     apiGet<{ stringId: string; numericId: string; sponsorStringId: string }>(
+//       `/users/${walletAddress}/profile`,
+//     ),
+//     apiGet<{ level: { current: string; max: string } }>(
+//       `/users/${walletAddress}/packages`,
+//     ),
+//   ]);
+//   return {
+//     pkgId: Number(packages?.level.current) || 1,
+//     uplineId: profile?.sponsorStringId,
+//     maxPkg: Number(packages?.level.max) || 1,
+//     numericId: profile?.numericId ?? "...",
+//     stringId: profile?.stringId ?? "...",
+//   };
+// }
 
 // Shared by fetch{Matrix,Level,Sponsor}PackageAndIdWithMax — replaces the dead
 // getUserProfile/getUserPackages-based versions. isRoot override preserved
@@ -2484,7 +2508,7 @@ export async function fetchLevelIncomeHistory(
       );
       return {
         level: r.level ?? 0,
-        package_id:r.package_id,
+        package_id: r.package_id,
         childId: r.counterparty_string_id ?? "ID ...",
         amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
         date: formatDate(dateSeconds),
@@ -3122,6 +3146,217 @@ interface SponsorCycleUiApiRow {
 // (DirectIncome carries its own real packageId + cycle now — no more
 // amount-matching heuristic to guess which package a payout belongs to, and
 // cycle grouping uses the real `cycle` field instead of positional slicing).
+// export async function fetchSponsorLevelDetail(
+//   walletAddress: string,
+//   packageId: number,
+// ): Promise<SponsorLevelDetail> {
+//   const empty: SponsorLevelDetail = {
+//     ownStringId: "...",
+//     uplineStringId: "NONE",
+//     partnersCount: 0,
+//     cyclesCount: 0,
+//     totalRevenue: "0",
+//     cyclePartnerIds: [],
+//     transactions: [],
+//   };
+
+//   try {
+//     let targetAddress = walletAddress;
+//     if (targetAddress && !targetAddress.startsWith("0x")) {
+//       const resolved = await getWalletAddressFromUserId(targetAddress);
+//       if (resolved) {
+//         targetAddress = resolved;
+//       }
+//     }
+
+//     const [profile, rows, heldRows, recycleCounts, directPartners] =
+//       await Promise.all([
+//         apiGet<{ stringId: string; sponsorStringId: string }>(
+//           `/users/${targetAddress}/profile`,
+//         ),
+//         apiGet<TransactionApiRow[]>(
+//           `/transactions/${targetAddress}?type=DIRECT_INCOME`,
+//         ),
+//         apiGet<
+//           {
+//             from_string_id: string | null;
+//             cycle: string | null;
+//             amount: string;
+//             block_timestamp: string;
+//           }[]
+//         >(`/users/${targetAddress}/history/sponsor-held/${packageId}`),
+//         fetchSponsorRecycleCounts(targetAddress),
+//         // Only meaningful for packageId 1: everyone auto-buys sponsor package 1
+//         // at registration, so registration order === package-1 cycle order.
+//         // For packageId > 1, purchase order isn't known from this endpoint, so
+//         // it's not used there.
+//         packageId === 1
+//           ? fetchDirectPartners(targetAddress)
+//           : Promise.resolve([]),
+//       ]);
+
+//       console.log(rows)
+//     if (!profile) return empty;
+
+//     const ownStringId = profile.stringId || "...";
+//     const uplineStringId = profile.sponsorStringId || "NONE";
+
+//     const rawMatches = (rows ?? [])
+//       .filter((r) => (r.package_id ?? 0) === packageId)
+//       .map((r) => ({
+//         // cycle 5 = a recycle: show the sponsor whose cycle completed, not
+//         // whoever's registration happened to trigger it.
+//         childId:
+//           (Number(r.cycle) === 5 ? r.recycled_sponsor_string_id : null) ??
+//           r.counterparty_string_id ??
+//           "ID ...",
+//         childFullAddr: r.counterparty_address ?? "ADDRESS ...",
+//         amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
+//         rawAmount: parseFloat(ethers.formatUnits(r.amount, 18)),
+//         cycle: Number(r.cycle) || 0,
+//         date: formatDate(
+//           Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+//         ),
+//         rawDate: Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+//         isHeld: false,
+//       }))
+//       .sort((a, b) => a.rawDate - b.rawDate);
+
+//     // Partners #3/#4 of a batch don't always get paid out immediately — if the
+//     // sponsor hasn't manually upgraded yet, their share is held toward an
+//     // auto-upgrade instead (SponsorIncomeHeld, not DirectIncome — see
+//     // /history/sponsor-held). Those partners are just as real; merge them in
+//     // so the partner-slot count matches actual direct partners instead of
+//     // silently dropping whoever landed on a held count. Excluded from
+//     // totalRevenue/transactions below since that money hasn't reached the
+//     // sponsor's wallet yet.
+//     const heldMatches = (heldRows ?? []).map((r) => ({
+//       childId: r.from_string_id ?? "ID ...",
+//       childFullAddr: "",
+//       amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
+//       rawAmount: 0,
+//       cycle: Number(r.cycle) || 0,
+//       date: formatDate(
+//         Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+//       ),
+//       rawDate: Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+//       isHeld: true,
+//     }));
+
+//     const allMatches = [...rawMatches, ...heldMatches].sort(
+//       (a, b) => a.rawDate - b.rawDate,
+//     );
+//     const cyclePartnerIds: CyclePartner[][] = [];
+//     let prevCyclePos = 0;
+//     const matches = allMatches.map((m) => {
+//       if (m.cycle <= prevCyclePos || cyclePartnerIds.length === 0)
+//         cyclePartnerIds.push([]);
+//       prevCyclePos = m.cycle;
+//       cyclePartnerIds[cyclePartnerIds.length - 1].push({
+//         id: m.childId,
+//         isHeld: m.isHeld,
+//       });
+//       return { ...m, batchNumber: cyclePartnerIds.length };
+//     });
+
+//     const totalRevenue = matches
+//       .filter((m) => !m.isHeld)
+//       .reduce((sum, m) => sum + m.rawAmount, 0)
+//       .toFixed(3);
+
+//     const transactions: SponsorLevelTransaction[] = matches
+//       .filter((m) => !m.isHeld)
+//       .map((m, idx) => {
+//         const isRecycle = m.cycle === 5;
+//         return {
+//           id: idx + 1,
+//           date: m.date,
+//           refId: m.childId.replace(/^ID\s*/i, ""),
+//           level: packageId,
+//           wallet: m.childId,
+//           fullWallet: m.childFullAddr,
+//           type: isRecycle ? ("recycle" as const) : ("join" as const),
+//           recycleCount: isRecycle ? m.batchNumber : undefined,
+//           amount: m.amount,
+//           // amount: isRecycle ? "recycle" : m.amount,
+//         };
+//       })
+//       .reverse();
+
+//     // cyclePartnerIds is inferred purely from referral rows — it can't see a
+//     // recycle until a 6th referral actually lands and produces a new
+//     // cycle-position-1 row. If the real SponsorReEntry count (see
+//     // fetchSponsorRecycleCounts) is ahead of what the inferred groups show,
+//     // a cycle has completed with nobody new yet — pad in the empty new
+//     // cycle so the page defaults to showing it instead of the stale,
+//     // already-recycled batch.
+//     const realRecycleCount = recycleCounts[packageId] ?? 0;
+//     while (cyclePartnerIds.length < realRecycleCount + 1)
+//       cyclePartnerIds.push([]);
+
+//     // The 5th referral of a closed batch is invisible to this sponsor's own
+//     // data — DirectIncome for count==5 pays the sponsor's OWN upline, not
+//     // this sponsor (see the contract's recycle branch), so it never shows up
+//     // in either the paid or held feeds above. For packageId 1, recover it
+//     // from registration order (everyone auto-buys package 1 at registration,
+//     // so the Nth direct partner IS the Nth package-1 cycle slot) and fill it
+//     // in as each closed batch's 5th slot, paid (that slot's income really
+//     // was paid out — just to someone else, not held).
+//     if (packageId === 1 && directPartners.length) {
+//       for (let batch = 0; batch < realRecycleCount; batch++) {
+//         const fifth = directPartners[batch * 5 + 4];
+//         if (fifth && cyclePartnerIds[batch]) {
+//           cyclePartnerIds[batch].push({ id: fifth.refId, isHeld: false });
+//         }
+//       }
+//     }
+
+//     // matches.length undercounts by 1 per completed cycle — the 5th slot
+//     // is backfilled into cyclePartnerIds above (not into matches, since it
+//     // has no paid/held DirectIncome row of its own). Sum cyclePartnerIds
+//     // directly so the count always matches what's actually rendered.
+//     const partnersCount = cyclePartnerIds.reduce(
+//       (sum, batch) => sum + batch.length,
+//       0,
+//     );
+
+//     return {
+//       ownStringId,
+//       uplineStringId,
+//       partnersCount,
+//       cyclesCount: cyclePartnerIds.length,
+//       totalRevenue,
+//       cyclePartnerIds,
+//       transactions,
+//     };
+//   } catch (error) {
+//     console.error(
+//       `Error fetching sponsor level detail for package ${packageId}:`,
+//       error,
+//     );
+//     return empty;
+//   }
+// }
+
+// Toggle: whether held (not-yet-paid) partner rows/slots count at all.
+// Kept as one flag so it can be switched off later without touching
+// the surrounding logic.
+const INCLUDE_HELD_PARTNERS = true;
+
+interface SponsorCycleApiRow {
+  id: number;
+  type: string;
+  cycle: string | null;
+  amount: string | null;
+  block_number: string;
+  log_index: number;
+  block_timestamp: string;
+  child_string_id: string | null;
+  child_address : string | null;
+  is_reentry_marker: boolean;
+  batch_number: string;
+}
+
 export async function fetchSponsorLevelDetail(
   walletAddress: string,
   packageId: number,
@@ -3395,6 +3630,330 @@ export async function fetchSponsorLevelDetail(
     return empty;
   }
 }
+
+// export async function fetchSponsorLevelDetail(
+//   walletAddress: string,
+//   packageId: number,
+// ): Promise<SponsorLevelDetail> {
+//   const empty: SponsorLevelDetail = {
+//     ownStringId: "...",
+//     uplineStringId: "NONE",
+//     partnersCount: 0,
+//     cyclesCount: 0,
+//     totalRevenue: "0",
+//     cyclePartnerIds: [],
+//     transactions: [],
+//   };
+
+//   try {
+//     let targetAddress = walletAddress;
+//     if (targetAddress && !targetAddress.startsWith("0x")) {
+//       const resolved = await getWalletAddressFromUserId(targetAddress);
+//       if (resolved) {
+//         targetAddress = resolved;
+//       }
+//     }
+
+//     const [
+//       profile,
+//       rows,
+//       heldRows,
+//       recycleCounts,
+//       directPartners,
+//       sponsorCycleRows,
+//     ] = await Promise.all([
+//       apiGet<{ stringId: string; sponsorStringId: string }>(
+//         `/users/${targetAddress}/profile`,
+//       ),
+//       apiGet<TransactionApiRow[]>(
+//         `/transactions/${targetAddress}?type=DIRECT_INCOME`,
+//       ),
+//       apiGet<
+//         {
+//           from_string_id: string | null;
+//           cycle: string | null;
+//           amount: string;
+//           block_timestamp: string;
+//         }[]
+//       >(`/users/${targetAddress}/history/sponsor-held/${packageId}`),
+//       fetchSponsorRecycleCounts(targetAddress),
+
+//       packageId === 1
+//         ? fetchDirectPartners(targetAddress)
+//         : Promise.resolve([]),
+
+//       apiGet<SponsorCycleApiRow[]>(
+//         `/users/${targetAddress}/sponsor-cycles/${packageId}`,
+//       ),
+//     ]);
+
+//     if (!profile) return empty;
+
+//     const ownStringId = profile.stringId || "...";
+//     const uplineStringId = profile.sponsorStringId || "NONE";
+
+//     const sponsorCycleRows = await apiGet<SponsorCycleUiApiRow[]>(
+//       `/users/${targetAddress}/sponsor-cycle-ui/${packageId}`,
+//     );
+//     if (sponsorCycleRows?.length) {
+//       const sortedRows = [...sponsorCycleRows].sort((a, b) => {
+//         const cycleDiff = Number(a.cycle) - Number(b.cycle);
+//         if (cycleDiff !== 0) return cycleDiff;
+//         return a.cyclePosition - b.cyclePosition;
+//       });
+
+//       const cyclePartnerIds: CyclePartner[][] = [];
+//       for (const row of sortedRows) {
+//         const cycleIndex = Math.max(0, Number(row.cycle || 1) - 1);
+//         while (cyclePartnerIds.length <= cycleIndex) cyclePartnerIds.push([]);
+//         cyclePartnerIds[cycleIndex].push({
+//           id: row.directPartnerStringId || "ID ...",
+//           isHeld: row.isHeld,
+//         });
+//       }
+
+//       const totalRevenue = sortedRows
+//         .filter((row) => !row.isHeld)
+//         .reduce(
+//           (sum, row) =>
+//             sum +
+//             parseFloat(
+//               ethers.formatUnits(row.totalReferralIncome || "0", 18),
+//             ),
+//           0,
+//         )
+//         .toFixed(3);
+
+//       const transactions: SponsorLevelTransaction[] = sortedRows
+//         .filter(
+//           (row) =>
+//             !row.isHeld && BigInt(row.totalReferralIncome || "0") > 0n,
+//         )
+//         .map((row, idx) => {
+//           const isRecycle = row.cyclePosition === 5;
+//           return {
+//             id: idx + 1,
+//             date: formatDate(
+//               Math.floor(new Date(row.blockTimestamp).getTime() / 1000),
+//             ),
+//             refId: (row.directPartnerStringId || "ID ...").replace(
+//               /^ID\s*/i,
+//               "",
+//             ),
+//             level: packageId,
+//             wallet: row.directPartnerStringId || "ID ...",
+//             fullWallet: row.directPartnerAddress,
+//             type: isRecycle ? ("recycle" as const) : ("join" as const),
+//             recycleCount: isRecycle ? Number(row.cycle) : undefined,
+//             amount: isRecycle
+//               ? "recycle"
+//               : `${ethers.formatUnits(row.totalReferralIncome || "0", 18)} USDT`,
+//           };
+//         })
+//         .reverse();
+
+//       const lastCycle = cyclePartnerIds[cyclePartnerIds.length - 1];
+//       if (lastCycle?.length >= 5) cyclePartnerIds.push([]);
+
+//       return {
+//         ownStringId,
+//         uplineStringId,
+//         partnersCount: sortedRows.length,
+//         cyclesCount: cyclePartnerIds.length,
+//         totalRevenue,
+//         cyclePartnerIds,
+//         transactions,
+//       };
+//     }
+
+//     const rawMatches = (rows ?? [])
+//       .filter((r) => (r.package_id ?? 0) === packageId)
+//       .map((r) => ({
+//         // cycle 5 = a recycle: show the sponsor whose cycle completed, not
+//         // whoever's registration happened to trigger it.
+//         childId:
+//           (Number(r.cycle) === 5 ? r.recycled_sponsor_string_id : null) ??
+//           r.counterparty_string_id ??
+//           "ID ...",
+//         childFullAddr: r.counterparty_address ?? "ADDRESS ...",
+//         amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
+//         rawAmount: parseFloat(ethers.formatUnits(r.amount, 18)),
+//         cycle: Number(r.cycle) || 0,
+//         date: formatDate(
+//           Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+//         ),
+//         rawDate: Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+//         isHeld: false,
+//       }))
+//       .sort((a, b) => a.rawDate - b.rawDate);
+
+//     const heldMatches = INCLUDE_HELD_PARTNERS
+//       ? (heldRows ?? []).map((r) => ({
+//           childId: r.from_string_id ?? "ID ...",
+//           childFullAddr: "",
+//           amount: `${ethers.formatUnits(r.amount, 18)} USDT`,
+//           rawAmount: 0,
+//           cycle: Number(r.cycle) || 0,
+//           date: formatDate(
+//             Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+//           ),
+//           rawDate: Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+//           isHeld: true,
+//         }))
+//       : [];
+
+//     const allMatches = [...rawMatches, ...heldMatches].sort(
+//       (a, b) => a.rawDate - b.rawDate,
+//     );
+//     const cyclePartnerIds: CyclePartner[][] = [];
+//     let prevCyclePos = 0;
+//     const matches = allMatches.map((m) => {
+//       if (m.cycle <= prevCyclePos || cyclePartnerIds.length === 0)
+//         cyclePartnerIds.push([]);
+//       prevCyclePos = m.cycle;
+//       cyclePartnerIds[cyclePartnerIds.length - 1].push({
+//         id: m.childId,
+//         isHeld: m.isHeld,
+//       });
+//       return { ...m, batchNumber: cyclePartnerIds.length };
+//     });
+
+//     const totalRevenue = matches
+//       .filter((m) => !m.isHeld)
+//       .reduce((sum, m) => sum + m.rawAmount, 0)
+//       .toFixed(3);
+
+//     // const receivedTransactions = matches
+//     //   .filter((m) => !m.isHeld)
+//     //   .map((m) => {
+//     //     const isRecycle = m.cycle === 5;
+//     //     return {
+//     //       rawDate: m.rawDate,
+//     //       date: m.date,
+//     //       refId: m.childId.replace(/^ID\s*/i, ""),
+//     //       level: packageId,
+//     //       wallet: m.childId,
+//     //       fullWallet: m.childFullAddr,
+//     //       type: isRecycle ? ("recycle" as const) : ("join" as const),
+//     //       recycleCount: isRecycle ? m.batchNumber : undefined,
+//     //       amount: m.amount,
+//     //     };
+//     //   });
+
+//     const childRecycleCounts: Record<string, number> = {};
+
+//     const receivedTransactions = matches
+//       .filter((m) => !m.isHeld)
+//       .map((m) => {
+//         const isRecycle = m.cycle === 5;
+//         let recycleCount: number | undefined;
+//         if (isRecycle) {
+//           childRecycleCounts[m.childId] =
+//             (childRecycleCounts[m.childId] ?? 0) + 1;
+//           recycleCount = childRecycleCounts[m.childId];
+//         }
+//         return {
+//           rawDate: m.rawDate,
+//           date: m.date,
+//           refId: m.childId.replace(/^ID\s*/i, ""),
+//           level: packageId,
+//           wallet: m.childId,
+//           fullWallet: m.childFullAddr,
+//           type: isRecycle ? ("recycle" as const) : ("join" as const),
+//           recycleCount,
+//           amount: m.amount,
+//         };
+//       });
+//     const ownRecycleTransactions = (sponsorCycleRows ?? [])
+//       .filter((r) => r.is_reentry_marker)
+//       .map((r) => {
+//         const rawDate = Math.floor(
+//           new Date(r.block_timestamp).getTime() / 1000,
+//         );
+//         return {
+//           rawDate,
+//           date: formatDate(rawDate),
+//           refId: (r.child_string_id ?? "ID ...").replace(/^ID\s*/i, ""),
+//           level: packageId,
+//           wallet: r.child_string_id ?? "ID ...",
+//           fullWallet: r.child_address ?? "",
+//           type: "recycle" as const,
+//           recycleCount: Number(r.batch_number) || undefined,
+//           amount: "Recycle",
+//         };
+//       });
+
+//     // const ownRecycleTransactions = (sponsorCycleRows ?? [])
+//     //   .filter((r) => r.is_reentry_marker)
+//     //   .map((r) => {
+//     //     const rawDate = Math.floor(
+//     //       new Date(r.block_timestamp).getTime() / 1000,
+//     //     );
+//     //     return {
+//     //       rawDate,
+//     //       date: formatDate(rawDate),
+//     //       refId: (r.child_string_id ?? "ID ...").replace(/^ID\s*/i, ""),
+//     //       level: packageId,
+//     //       wallet: r.child_string_id ?? "ID ...",
+//     //       fullWallet: "",
+//     //       type: "recycle" as const,
+//     //       recycleCount: Number(r.batch_number) || undefined,
+//     //       amount: "Recycle",
+//     //     };
+//     //   });
+
+//     const transactions: SponsorLevelTransaction[] = [
+//       ...receivedTransactions,
+//       ...ownRecycleTransactions,
+//     ]
+//       .sort((a, b) => a.rawDate - b.rawDate)
+//       .map((t, idx) => ({
+//         id: idx + 1,
+//         date: t.date,
+//         refId: t.refId,
+//         level: t.level,
+//         wallet: t.wallet,
+//         fullWallet: t.fullWallet,
+//         type: t.type,
+//         recycleCount: t.recycleCount,
+//         amount: t.amount,
+//       }))
+//       .reverse();
+
+//     const realRecycleCount = recycleCounts[packageId] ?? 0;
+//     while (cyclePartnerIds.length < realRecycleCount + 1)
+//       cyclePartnerIds.push([]);
+
+//     if (packageId === 1 && directPartners.length) {
+//       for (let batch = 0; batch < realRecycleCount; batch++) {
+//         const fifth = directPartners[batch * 5 + 4];
+//         if (fifth && cyclePartnerIds[batch]) {
+//           cyclePartnerIds[batch].push({ id: fifth.refId, isHeld: false });
+//         }
+//       }
+//     }
+//     const partnersCount = cyclePartnerIds.reduce(
+//       (sum, batch) => sum + batch.length,
+//       0,
+//     );
+
+//     return {
+//       ownStringId,
+//       uplineStringId,
+//       partnersCount,
+//       cyclesCount: cyclePartnerIds.length,
+//       totalRevenue,
+//       cyclePartnerIds,
+//       transactions,
+//     };
+//   } catch (error) {
+//     console.error(
+//       `Error fetching sponsor level detail for package ${packageId}:`,
+//       error,
+//     );
+//     return empty;
+//   }
+// }
 
 // =========================================================================
 // MATRIX MAGIC - SPECIFIC FUNCTIONS
@@ -3791,7 +4350,8 @@ export async function fetchUserMatrixIncomeHistory(
         id: index + 1,
         date: formatDate(dateSeconds),
         refId,
-        level: Number(r.package_id) || packageId,
+        level: Number(r.level) ,
+        packageId: Number(r.package_id),
         wallet: refId,
         fullWallet: r.from_address, // ← ye fix hua
         type: "join" as const,
@@ -5206,7 +5766,7 @@ export interface TeamLevelRow {
   level: number;
   packageId: number;
   totalBussiness: number;
-  totalIncome?:number;
+  totalIncome?: number;
 }
 
 interface TeamApiRow {
@@ -5218,7 +5778,6 @@ interface TeamApiRow {
   packageId: number;
   totalBussiness: string;
   totalIncome: string;
-  
 }
 
 // Replaces the dead directReferrals-array-getter-based BFS (that mapping no

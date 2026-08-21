@@ -16,7 +16,7 @@ import { sponsorMagicPackages, type ProgramTypes } from "@/constants/programs";
 import { useWallet } from "@/lib/use-wallet";
 import { formattedWalletAddress } from "@/lib/helper";
 
-const SPONSOR_PACKAGE_PRICES = sponsorMagicPackages
+const SPONSOR_PACKAGE_PRICES = sponsorMagicPackages;
 
 export const XThreeLevelPage = ({
   level,
@@ -25,8 +25,8 @@ export const XThreeLevelPage = ({
   level: string;
   program: ProgramTypes;
 }) => {
-  const {address : targetUserOrAddress} = useWallet();
-  const [searchId,setSearchId] = useState("");
+  const { address: targetUserOrAddress } = useWallet();
+  const [searchId, setSearchId] = useState("");
   const levelNum = Number(level);
   const isNavigating = useRouterState().status === "pending";
   // const search: Record<string, string> = useSearch({ strict: false }) || {};
@@ -55,7 +55,7 @@ export const XThreeLevelPage = ({
         );
         if (isMounted && res) {
           setDetail(res);
-          setSearchId(res.ownStringId)
+          setSearchId(res.ownStringId);
           const total = Math.max(1, res.cyclesCount || 0);
           setCycle(total);
         }
@@ -108,20 +108,42 @@ export const XThreeLevelPage = ({
 
   const coinValue = SPONSOR_PACKAGE_PRICES[levelNum - 1] || levelNum;
 
+  // const getRowIcon = (row: SponsorLevelTransaction) => (
+  //   <>
+  //     {row.type === "recycle" ? (
+  //       <RefreshCw size={16} className="text-green-500" />
+  //     ) : (
+  //       <User size={16} className="text-gray-300" />
+  //     )}
+  //     {row.type === "recycle" && row.recycleCount != null && (
+  //       <span className="absolute -top-1 -right-1 text-[10px] leading-none text-green-400 font-semibold">
+  //         {row.recycleCount}
+  //       </span>
+  //     )}
+  //   </>
+  // );
+
   const getRowIcon = (row: SponsorLevelTransaction) => (
-    <>
-      {row.type === "recycle" ? (
-        <RefreshCw size={16} className="text-green-500" />
-      ) : (
-        <User size={16} className="text-gray-300" />
-      )}
-      {row.type === "recycle" && row.recycleCount != null && (
-        <span className="absolute -top-1 -right-1 text-[10px] leading-none text-green-400 font-semibold">
-          {row.recycleCount}
-        </span>
-      )}
-    </>
-  );
+  <>
+    {row.type === "recycle" ? (
+      <RefreshCw
+        size={16}
+        className={row.amount === "Recycle" ? "text-gray-400" : "text-green-500"}
+      />
+    ) : (
+      <User size={16} className="text-gray-300" />
+    )}
+    {row.type === "recycle" && row.recycleCount != null && (
+      <span
+        className={`absolute -top-1 -right-1 text-[10px] leading-none font-semibold ${
+          row.amount === "Recycle" ? "text-gray-400" : "text-green-400"
+        }`}
+      >
+        {row.recycleCount}
+      </span>
+    )}
+  </>
+);
 
   const columns: Column<SponsorLevelTransaction>[] = [
     { key: "date", label: "Date" },
@@ -130,7 +152,7 @@ export const XThreeLevelPage = ({
       label: "ID",
       render: (r) => (
         <span className="text-blue-400 px-2 py-1 rounded-full font-mono font-medium">
-        {r.refId}
+          {r.refId}
         </span>
       ),
     },
@@ -149,6 +171,22 @@ export const XThreeLevelPage = ({
         />
       ),
     },
+    // {
+    //   key: "amount",
+    //   label: "USDT",
+    //   align: "right",
+    //   render: (r) => (
+    //     <span
+    //       className={
+    //         r.type === "recycle"
+    //           ? "text-green-400 font-semibold"
+    //           : "text-green-400 font-semibold"
+    //       }
+    //     >
+    //       {r.amount}
+    //     </span>
+    //   ),
+    // },
     {
       key: "amount",
       label: "USDT",
@@ -156,8 +194,8 @@ export const XThreeLevelPage = ({
       render: (r) => (
         <span
           className={
-            r.type === "recycle"
-              ? "text-green-400 font-semibold"
+            r.amount === "Recycle"
+              ? "text-gray-400 italic font-medium"
               : "text-green-400 font-semibold"
           }
         >
@@ -177,6 +215,8 @@ export const XThreeLevelPage = ({
       </div>
     );
   }
+
+  console.log("details-transaction", detail?.transactions);
 
   return (
     <div className="w-full text-white">

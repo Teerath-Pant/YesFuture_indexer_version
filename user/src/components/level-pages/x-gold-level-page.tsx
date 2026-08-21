@@ -100,8 +100,8 @@ export const XGoldLevelPage = ({
           ),
         ]);
 
-        // const visibleNodes = structure.nodes.slice(0, 62);
-        // const idByAddress = await fetchMemberIdsForAddresses(visibleNodes);
+
+        // console.log("strucher",structure)
 
         const visibleNodes = structure.nodeInfos.slice(0, 62);
         const idByAddress = await fetchMemberIdsForAddresses(
@@ -111,16 +111,6 @@ export const XGoldLevelPage = ({
           targetAddress,
           levelNum,
         );
-        // const toNode = (nodeAddress: string): TreeNode => {
-        //   if (!nodeAddress || nodeAddress === "0x0000000000000000000000000000000000000000") {
-        //     return { slot: "empty" };
-        //   }
-
-        //   return {
-        //     slot: "direct",
-        //     id: idByAddress[nodeAddress.toLowerCase()] || undefined,
-        //   };
-        // };
 
         const toNode = (
           node: {
@@ -187,6 +177,8 @@ export const XGoldLevelPage = ({
     };
   }, [address, cycle, levelNum]);
 
+  // console.log("income",incomeRows)
+
   const getRowIcon = (row: TransactionRow) => {
     if (row.type === "release")
       return <RefreshCw size={16} className="text-violet-400" />;
@@ -236,6 +228,8 @@ export const XGoldLevelPage = ({
       ),
     },
   ];
+
+  // console.log("tree",tree)
 
   return (
     <div className="w-full text-white">
