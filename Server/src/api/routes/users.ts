@@ -376,6 +376,50 @@ usersRouter.get("/:address/sponsor-recycle-counts", async (req, res) => {
   res.json({ counts });
 });
 
+// UI-ready Sponsor Magic cycle slots. This reads the purpose-built
+// sponsor_cycle_ui table so the frontend does not need to reconstruct the
+// package/cycle card from the generic transactions feed.
+usersRouter.get("/:address/sponsor-cycle-ui/:packageId", async (req, res) => {
+  const user = req.params.address.toLowerCase();
+  const packageId = Number(req.params.packageId);
+  if (!isAddress(user))
+    return res.status(400).json({ error: "invalid address" });
+  if (!Number.isInteger(packageId) || packageId < 1)
+    return res.status(400).json({ error: "invalid package" });
+
+  const rows = await db
+    .select()
+    .from(schema.sponsorCycleUi)
+    .where(and(
+      eq(schema.sponsorCycleUi.userAddress, user),
+      eq(schema.sponsorCycleUi.packageId, packageId),
+    ))
+    .orderBy(
+      schema.sponsorCycleUi.cycle,
+      schema.sponsorCycleUi.cyclePosition,
+      schema.sponsorCycleUi.blockNumber,
+      schema.sponsorCycleUi.logIndex,
+    );
+
+  res.json(rows.map((r) => ({
+    id: r.id,
+    packageId: r.packageId,
+    cycle: r.cycle.toString(),
+    cyclePosition: r.cyclePosition,
+    userAddress: r.userAddress,
+    sponsorStringId: r.sponsorStringId,
+    sponsorAddress: r.sponsorAddress,
+    directPartnerAddress: r.directPartnerAddress,
+    directPartnerStringId: r.directPartnerStringId,
+    totalReferralIncome: r.totalReferralIncome,
+    isHeld: r.isHeld,
+    blockNumber: r.blockNumber.toString(),
+    txHash: r.txHash,
+    logIndex: r.logIndex,
+    blockTimestamp: r.blockTimestamp,
+  })));
+});
+
 // Real total partner count per sponsor tier, straight from package_purchase_events
 // (not reconstructed from DirectIncome/held feeds, which structurally can't
 // see a cycle's 5th slot — its income routes to the upline, not this

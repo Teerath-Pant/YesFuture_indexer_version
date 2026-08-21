@@ -1,1 +1,1 @@
-ALTER TABLE "level_income_events" ADD COLUMN "package_id" smallint;
+ALTER TABLE "level_income_events" ADD COLUMN IF NOT EXISTS "package_id" smallint;

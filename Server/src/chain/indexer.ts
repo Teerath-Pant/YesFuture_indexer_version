@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "../db/client.js";
 import { contract, provider } from "./contract.js";
 import { seedRootAdmin } from "../db/seed.js";
@@ -70,6 +70,116 @@ async function resolveSponsors(tx: Tx, addresses: string[]): Promise<Map<string,
     .from(schema.userDetails).where(inArray(schema.userDetails.userAddress, unique));
   for (const r of rows) map.set(r.userAddress, r.sponsorAddress);
   return map;
+}
+
+async function resolveStringIds(tx: Tx, addresses: string[]): Promise<Map<string, string>> {
+  const unique = [...new Set(addresses.filter(Boolean))];
+  const map = new Map<string, string>();
+  if (!unique.length) return map;
+  const rows = await tx
+    .select({
+      memberAddress: schema.userRegistrations.memberAddress,
+      stringId: schema.userRegistrations.stringId,
+    })
+    .from(schema.userRegistrations)
+    .where(inArray(schema.userRegistrations.memberAddress, unique));
+  for (const r of rows) map.set(r.memberAddress, r.stringId);
+  return map;
+}
+
+type SponsorCycleSlotInput = {
+  packageId: number;
+  cyclePosition: number;
+  userAddress: string;
+  directPartnerAddress: string;
+  totalReferralIncome: string;
+  isHeld: boolean;
+  blockNumber: bigint;
+  txHash: string;
+  logIndex: number;
+  blockTimestamp: Date;
+};
+
+async function insertSponsorCycleUiRows(tx: Tx, inputRows: SponsorCycleSlotInput[]) {
+  const rows = inputRows
+    .filter((r) => r.packageId > 0 && r.userAddress && r.directPartnerAddress)
+    .sort((a, b) => (
+      a.blockNumber === b.blockNumber
+        ? a.logIndex - b.logIndex
+        : a.blockNumber < b.blockNumber ? -1 : 1
+    ));
+  if (!rows.length) return;
+
+  const addressesForIds = [
+    ...rows.map((r) => r.userAddress),
+    ...rows.map((r) => r.directPartnerAddress),
+  ];
+  const [stringIds, sponsorMap] = await Promise.all([
+    resolveStringIds(tx, addressesForIds),
+    resolveSponsors(tx, rows.map((r) => r.userAddress)),
+  ]);
+  const sponsorStringIds = await resolveStringIds(
+    tx,
+    [...new Set([...sponsorMap.values()].filter((a): a is string => !!a))],
+  );
+
+  const cycleState = new Map<string, { cycle: bigint; position: number }>();
+  const getState = async (userAddress: string, packageId: number) => {
+    const key = `${userAddress}:${packageId}`;
+    const cached = cycleState.get(key);
+    if (cached) return cached;
+
+    const latest = await tx
+      .select({
+        cycle: schema.sponsorCycleUi.cycle,
+        cyclePosition: schema.sponsorCycleUi.cyclePosition,
+      })
+      .from(schema.sponsorCycleUi)
+      .where(and(
+        eq(schema.sponsorCycleUi.userAddress, userAddress),
+        eq(schema.sponsorCycleUi.packageId, packageId),
+      ))
+      .orderBy(desc(schema.sponsorCycleUi.blockNumber), desc(schema.sponsorCycleUi.logIndex))
+      .limit(1);
+
+    const state = latest[0]
+      ? { cycle: latest[0].cycle, position: latest[0].cyclePosition }
+      : { cycle: 1n, position: 0 };
+    cycleState.set(key, state);
+    return state;
+  };
+
+  const values: (typeof schema.sponsorCycleUi.$inferInsert)[] = [];
+  for (const row of rows) {
+    const state = await getState(row.userAddress, row.packageId);
+    const cycle = state.position > 0 && row.cyclePosition <= state.position
+      ? state.cycle + 1n
+      : state.cycle;
+    state.cycle = cycle;
+    state.position = row.cyclePosition;
+
+    const sponsorAddress = sponsorMap.get(row.userAddress) ?? "";
+    values.push({
+      packageId: row.packageId,
+      cycle,
+      cyclePosition: row.cyclePosition,
+      userAddress: row.userAddress,
+      sponsorAddress,
+      sponsorStringId: sponsorStringIds.get(sponsorAddress) ?? "",
+      directPartnerAddress: row.directPartnerAddress,
+      directPartnerStringId: stringIds.get(row.directPartnerAddress) ?? "ID ...",
+      totalReferralIncome: row.isHeld ? "0" : row.totalReferralIncome,
+      isHeld: row.isHeld,
+      blockNumber: row.blockNumber,
+      txHash: row.txHash,
+      logIndex: row.logIndex,
+      blockTimestamp: row.blockTimestamp,
+    });
+  }
+
+  if (values.length) {
+    await tx.insert(schema.sponsorCycleUi).values(values).onConflictDoNothing();
+  }
 }
 
 // --- registration processing (userDetails, dashboard, totalMembersByLevel) --
@@ -371,6 +481,72 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
     const sponsorMap = await resolveSponsors(tx, walletsNeedingSponsor);
     // registrations' own sponsor is already known from the event itself
     for (const log of registrations) sponsorMap.set(lc((log as any).args.user), lc((log as any).args._sponsor));
+
+    const sponsorPurchaseByTxPkg = new Map<string, string>();
+    for (const row of [...manualPurchaseRows, ...autoUpgradeRows]) {
+      if (row.track === "SPONSOR" || row.track === "SPONSOR_AUTO") {
+        sponsorPurchaseByTxPkg.set(`${row.txHash}:${row.packageId}`, row.memberAddress);
+      }
+    }
+    const sponsorReentryByTxPkg = new Map<string, string>();
+    for (const log of sponsorReentries) {
+      sponsorReentryByTxPkg.set(
+        `${log.transactionHash}:${Number((log as any).args.packageId)}`,
+        lc((log as any).args.sponsor),
+      );
+    }
+
+    await insertSponsorCycleUiRows(tx, [
+      ...(await Promise.all(directIncomes.map(async (log) => {
+        const packageId = Number((log as any).args.packageId);
+        const cyclePosition = Number((log as any).args.cycle) || 0;
+        const reentrySponsor = cyclePosition === 5
+          ? sponsorReentryByTxPkg.get(`${log.transactionHash}:${packageId}`)
+          : undefined;
+        return {
+          packageId,
+          cyclePosition,
+          userAddress: lc((log as any).args.receiver),
+          directPartnerAddress: reentrySponsor ?? lc((log as any).args.from),
+          totalReferralIncome: ((log as any).args.amount as bigint).toString(),
+          isHeld: false,
+          blockNumber: BigInt(log.blockNumber),
+          txHash: log.transactionHash,
+          logIndex: log.index,
+          blockTimestamp: await timestampOf(log.blockNumber),
+        };
+      }))),
+      ...(await Promise.all(sponsorIncomeHelds.map(async (log) => {
+        const packageId = Number((log as any).args.packageId);
+        return {
+          packageId,
+          cyclePosition: Number((log as any).args.count) || 0,
+          userAddress: lc((log as any).args.sponsor),
+          directPartnerAddress: sponsorPurchaseByTxPkg.get(`${log.transactionHash}:${packageId}`) ?? "",
+          totalReferralIncome: ((log as any).args.amount as bigint).toString(),
+          isHeld: true,
+          blockNumber: BigInt(log.blockNumber),
+          txHash: log.transactionHash,
+          logIndex: log.index,
+          blockTimestamp: await timestampOf(log.blockNumber),
+        };
+      }))),
+      ...(await Promise.all(sponsorReentries.map(async (log) => {
+        const packageId = Number((log as any).args.packageId);
+        return {
+          packageId,
+          cyclePosition: 5,
+          userAddress: lc((log as any).args.sponsor),
+          directPartnerAddress: sponsorPurchaseByTxPkg.get(`${log.transactionHash}:${packageId}`) ?? "",
+          totalReferralIncome: "0",
+          isHeld: false,
+          blockNumber: BigInt(log.blockNumber),
+          txHash: log.transactionHash,
+          logIndex: log.index,
+          blockTimestamp: await timestampOf(log.blockNumber),
+        };
+      }))),
+    ]);
 
     const txRows: any[] = [];
     for (const log of registrations) {
