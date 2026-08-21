@@ -1,6 +1,5 @@
 import { type LevelData } from "@/components/preview/magic-level/magic-level-card";
 import { ProgramPageHeader } from "@/components/programe-page-header";
-// import DataTable, { type Column } from "@/components/data-table";
 import { RefreshCw } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
@@ -32,7 +31,6 @@ interface TransactionRow {
 }
 
 const MagicLevels = ({ program }: pageProps) => {
-  // const [, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [, setError] = useState<string | null>(null);
   const [userStringId, setUserStringId] = useState("Loading...");
@@ -41,10 +39,7 @@ const MagicLevels = ({ program }: pageProps) => {
   const [activeLevelsCount, setActiveLevelsCount] = useState(0);
   const [totalLevelsCount] = useState(9);
   const [levelsData, setLevelsData] = useState<LevelData[]>([]);
-
   const { address } = useWallet();
-
-  // ✅ UPDATED: Build levels data package-wise for Magic Level (Partners + Total Amount only)
   const buildLevelsData = (
     currentPkg: number,
     isRootUser = false,
