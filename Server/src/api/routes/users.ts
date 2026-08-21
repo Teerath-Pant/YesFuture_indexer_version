@@ -41,16 +41,16 @@ usersRouter.get("/:address/total-invested", async (req, res) => {
 // tree node addresses one call at a time) with a single query.
 //
 // Matrix tree slots aren't always a real registered address — both
-// MatrixReEntry (_matrixReEntry) AND a sponsor cycle completing (count==5 in
+// Level5ReEntry (_level5ReEntry) AND a sponsor cycle completing (count==5 in
 // _releaseDirectIncome) place a synthetic "phantom" address into
 // matrix_placements, which never has its own user_registrations row. Left
 // unresolved, those slots rendered as a blank, unclickable circle even
 // though the slot is real (a filled position from that user's own recycle).
-// contract.sol tracks exactly this via the public matrixRealOwnerByPkg mapping —
+// contract.sol tracks exactly this via the public realOwnerByPkg mapping —
 // deliberately, so off-chain consumers can resolve a phantom back to its
-// real owner. MatrixReEntry phantoms resolve for free from the indexed
+// real owner. Level5ReEntry phantoms resolve for free from the indexed
 // level5_reentries table; SponsorReEntry's phantom address isn't in any
-// event (only matrixRealOwnerByPkg contract state knows it), so that one needs an
+// event (only realOwnerByPkg contract state knows it), so that one needs an
 // optional ?packageId= to fall back to a live read — bounded to just the
 // handful of addresses still unresolved after the DB checks, not every node.
 usersRouter.get("/string-ids", async (req, res) => {
@@ -87,7 +87,7 @@ usersRouter.get("/string-ids", async (req, res) => {
   const packageId = Number(req.query.packageId);
   if (unresolved.length && Number.isInteger(packageId) && packageId > 0) {
     const owners = await Promise.all(
-      unresolved.map((a) => contract.matrixRealOwnerByPkg(packageId, a).catch(() => null)),
+      unresolved.map((a) => contract.realOwnerByPkg(packageId, a).catch(() => null)),
     );
     const ownerAddrs = [...new Set(
       owners.filter((o): o is string => !!o && o !== "0x0000000000000000000000000000000000000000")

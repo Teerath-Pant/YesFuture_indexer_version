@@ -265,7 +265,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
   const [
     registrations, matrixIncomes, directIncomes, levelIncomes,
     manualUpgrades, matrixAutoUpgrades, sponsorAutoUpgrades,
-    matrixPlacements, matrixReentries, sponsorReentries,
+    matrixPlacements, level5Reentries, sponsorReentries,
     matrixIncomeHelds, sponsorIncomeHelds,
     incomeCappeds, sponsorIncomeRedirecteds, levelIncomeRedirecteds,
   ] = await Promise.all([
@@ -277,7 +277,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
     contract.queryFilter(contract.filters.MatrixAutoUpgrade(), fromBlock, toBlock),
     contract.queryFilter(contract.filters.SponsorAutoUpgrade(), fromBlock, toBlock),
     contract.queryFilter(contract.filters.MatrixPlaced(), fromBlock, toBlock),
-    contract.queryFilter(contract.filters.MatrixReEntry(), fromBlock, toBlock),
+    contract.queryFilter(contract.filters.Level5ReEntry(), fromBlock, toBlock),
     contract.queryFilter(contract.filters.SponsorReEntry(), fromBlock, toBlock),
     contract.queryFilter(contract.filters.MatrixIncomeHeld(), fromBlock, toBlock),
     contract.queryFilter(contract.filters.SponsorIncomeHeld(), fromBlock, toBlock),
@@ -290,7 +290,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
   for (const log of [
     ...registrations, ...matrixIncomes, ...directIncomes, ...levelIncomes,
     ...manualUpgrades, ...matrixAutoUpgrades, ...sponsorAutoUpgrades,
-    ...matrixPlacements, ...matrixReentries, ...sponsorReentries,
+    ...matrixPlacements, ...level5Reentries, ...sponsorReentries,
     ...matrixIncomeHelds, ...sponsorIncomeHelds,
     ...incomeCappeds, ...sponsorIncomeRedirecteds, ...levelIncomeRedirecteds,
   ]) blockNumbers.add(log.blockNumber);
@@ -401,20 +401,12 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
     }
 
     if (matrixPlacements.length) {
-      const matrixPlacementSponsors = await resolveSponsors(
-        tx,
-        matrixPlacements.map((log) => lc((log as any).args.user)),
-      );
-      for (const log of registrations) {
-        matrixPlacementSponsors.set(lc((log as any).args.user), lc((log as any).args._sponsor));
-      }
-
       await tx.insert(schema.matrixPlacements).values(
         await Promise.all(matrixPlacements.map(async (log) => ({
           packageId: Number((log as any).args.packageId),
           childAddress: lc((log as any).args.user),
           parentAddress: lc((log as any).args.matrixParent),
-          sponsorAddress: matrixPlacementSponsors.get(lc((log as any).args.user)) ?? "",
+          sponsorAddress: lc((log as any).args.sponsor),
           blockNumber: BigInt(log.blockNumber),
           txHash: log.transactionHash,
           logIndex: log.index,
@@ -423,9 +415,9 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
       ).onConflictDoNothing();
     }
 
-    if (matrixReentries.length) {
+    if (level5Reentries.length) {
       await tx.insert(schema.level5Reentries).values(
-        await Promise.all(matrixReentries.map(async (log) => ({
+        await Promise.all(level5Reentries.map(async (log) => ({
           userAddress: lc((log as any).args.user),
           packageId: Number((log as any).args.packageId),
           cycleNumber: (log as any).args.cycleNumber as bigint,
@@ -478,7 +470,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
       ...matrixAutoUpgrades.map((l) => lc((l as any).args.user)),
       ...sponsorAutoUpgrades.map((l) => lc((l as any).args.sponsor)),
       ...matrixPlacements.map((l) => lc((l as any).args.user)),
-      ...matrixReentries.map((l) => lc((l as any).args.user)),
+      ...level5Reentries.map((l) => lc((l as any).args.user)),
       ...sponsorReentries.map((l) => lc((l as any).args.sponsor)),
       ...matrixIncomeHelds.map((l) => lc((l as any).args.user)),
       ...sponsorIncomeHelds.map((l) => lc((l as any).args.sponsor)),
@@ -614,7 +606,7 @@ async function processChunk(fromBlock: bigint, toBlock: bigint) {
         blockNumber: BigInt(log.blockNumber), txHash: log.transactionHash, logIndex: log.index, blockTimestamp: await timestampOf(log.blockNumber),
       });
     }
-    for (const log of matrixReentries) {
+    for (const log of level5Reentries) {
       const wallet = lc((log as any).args.user);
       txRows.push({
         type: "LEVEL5_REENTRY", walletAddress: wallet, sponsorAddress: sponsorMap.get(wallet) ?? null,
