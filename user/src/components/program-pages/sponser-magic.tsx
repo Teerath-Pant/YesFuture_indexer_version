@@ -9,7 +9,7 @@ import {
   fetchSponsorPackageAndIdWithMax,
   fetchSponsorRecycleCounts,
   fetchSponsorPartnersCounts,
-  fetchDirectPartners,
+  fetchSponsorMissedSummary,
   fetchSponsorHeldSummary,
 } from "@/lib/auth-api";
 import { ethers } from "ethers";
@@ -33,21 +33,17 @@ interface TransactionRow {
 }
 
 const SponserMagic = ({ program }: pageProps) => {
-  // const [, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [, setError] = useState<string | null>(null);
   const [userStringId, setUserStringId] = useState("Loading...");
-  // const [data, setData] = useState<TransactionRow[]>([]);
   const [totalIncome, setTotalIncome] = useState<string>("0");
   const [activeLevelsCount, setActiveLevelsCount] = useState(0);
   const [totalLevelsCount] = useState(9);
   const [levelsData, setLevelsData] = useState<LevelData[]>([]);
 
-  // Generate exactly 5 slots for Sponsor Magic (5-cycle system)
   const generateSlots = (partnersCount: number): ("direct" | "empty")[] => {
     const slots: ("direct" | "empty")[] = [];
     const totalSlots = 5;
-    // const activeDotsCount = partnersCount > 0 && partnersCount % 5 === 0 ? 5 : (partnersCount % 5);
     const activeDotsCount = partnersCount % 5;
     for (let i = 0; i < totalSlots; i++) {
       if (i < activeDotsCount) {
@@ -106,14 +102,13 @@ const SponserMagic = ({ program }: pageProps) => {
       const price = packagePrices[i - 1] || 0;
       const cyclesCount = recycleCounts[i] || 0;
       const totalVisible = levelReferrers[i]?.size || 0;
-      const currentCyclePartnersCount = Math.max(totalVisible - 4 * cyclesCount, 0);
-      // Label shown on the card is the real total across every cycle,
-      // straight from DB (package_purchase_events) — includes each
-      // completed cycle's invisible 5th slot, which the client-side
-      // DirectIncome/held reconstruction above structurally can't see.
-      const totalPartnersCount = partnersCounts[i] ?? totalVisible + cyclesCount;
+      const currentCyclePartnersCount = Math.max(
+        totalVisible - 4 * cyclesCount,
+        0,
+      );
+      const totalPartnersCount =
+        partnersCounts[i] ?? totalVisible + cyclesCount;
 
-      // Generate 5 slots based on the CURRENT cycle's partner count
       const slots = generateSlots(currentCyclePartnersCount);
 
       levels.push({
@@ -152,10 +147,7 @@ const SponserMagic = ({ program }: pageProps) => {
           setLoading(false);
           return;
         }
-
         const walletAddress = accounts[0].address;
-        // console.log("🔑 Wallet Address:", walletAddress);
-
         let pkgId = 1;
         let isRootUser = false;
         try {
@@ -175,28 +167,21 @@ const SponserMagic = ({ program }: pageProps) => {
         } catch (err) {
           setUserStringId("ID ...");
         }
-
-        // ✅ Fetch ONLY Sponsor Income data
-        const [history, total, recycleCounts, directPartners, heldByPackage, partnersCounts] = await Promise.all([
+        const [
+          history,
+          total,
+          recycleCounts,
+          childAheadCounts,
+          heldByPackage,
+          partnersCounts,
+        ] = await Promise.all([
           fetchSponsorIncomeHistory(walletAddress),
           fetchTotalSponsorIncome(walletAddress),
           fetchSponsorRecycleCounts(walletAddress),
-          fetchDirectPartners(walletAddress),
+          fetchSponsorMissedSummary(walletAddress),
           fetchSponsorHeldSummary(walletAddress),
           fetchSponsorPartnersCounts(walletAddress),
         ]);
-
-        // Per tier above the current user's own sponsor package, how many
-        // direct children have already reached it.
-        const childAheadCounts: Record<number, number> = {};
-        for (const p of directPartners) {
-          for (let t = pkgId + 1; t <= p.x3; t++) {
-            childAheadCounts[t] = (childAheadCounts[t] || 0) + 1;
-          }
-        }
-
-        // console.log("📊 Sponsor History:", history);
-        // console.log("💰 Total Sponsor Income:", total);
 
         const formattedData: TransactionRow[] = history.map((item, index) => {
           return {
@@ -213,12 +198,17 @@ const SponserMagic = ({ program }: pageProps) => {
         });
         setTotalIncome(total);
 
-        const levels = buildLevelsData(pkgId, formattedData, isRootUser, recycleCounts, childAheadCounts, heldByPackage, partnersCounts);
+        const levels = buildLevelsData(
+          pkgId,
+          formattedData,
+          isRootUser,
+          recycleCounts,
+          childAheadCounts,
+          heldByPackage,
+          partnersCounts,
+        );
         setLevelsData(levels);
-        // console.log("✅ Levels data:", levels);
-        // console.log("✅ Levels data:", levels);
       } catch (err) {
-        // console.error("❌ Failed to load sponsor income data:", err);
         setError("Failed to load income data. Please try again.");
       } finally {
         setLoading(false);

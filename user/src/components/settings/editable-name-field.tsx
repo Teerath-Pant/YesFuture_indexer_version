@@ -6,6 +6,9 @@ interface EditableNameFieldProps {
   onUpdate: (newName: string) => Promise<void>;
 }
 
+// Only letters and spaces are allowed in the name field
+const NAME_CHAR_REGEX = /^[a-zA-Z\s]*$/;
+
 export function EditableNameField({
   currentName,
   onUpdate,
@@ -26,12 +29,32 @@ export function EditableNameField({
     setError(null);
   };
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const nextValue = e.target.value;
+
+    // Block any character that isn't a letter or a space, and warn the user
+    if (!NAME_CHAR_REGEX.test(nextValue)) {
+      setError("Only letters and spaces are allowed");
+      return;
+    }
+
+    setValue(nextValue);
+    if (error) setError(null);
+  };
+
   const handleUpdate = async () => {
     const trimmed = value.trim();
-    if (trimmed.length < 1 || trimmed.length > 32) {
+
+    if (trimmed.length < 1 || trimmed.length > 20) {
       setError("Name must be 1-20 characters");
       return;
     }
+
+    if (!NAME_CHAR_REGEX.test(trimmed)) {
+      setError("Name can only contain letters and spaces");
+      return;
+    }
+
     try {
       setIsSaving(true);
       setError(null);
@@ -68,7 +91,7 @@ export function EditableNameField({
         <input
           type="text"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={handleNameChange}
           maxLength={20}
           autoFocus
           className="flex-1 w-full rounded-2xl bg-black/20 border border-white/10 px-4 py-2.5 text-sm text-white outline-none focus:border-[#3865ff]"
