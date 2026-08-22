@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x4744a8b0e0b5a475116f89b00c306a726ea6bc55";
 // const CONTRACT_ADDRESS = "0x299724c47e64812a4139034e673f79d9534375fe";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
-const CONTRACT_ADDRESS = "0x36f0ffca1a6786ce72b3b959d3f6cf5244d8b49a";
+const CONTRACT_ADDRESS = "0x271b2df2d443932c2703d14ff3717a799fce8e53";
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
 
@@ -74,6 +74,12 @@ const CORE_ABI = [
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
       },
       {
         "name": "requestedAmount",
@@ -452,31 +458,6 @@ const CORE_ABI = [
     "anonymous": false
   },
   {
-    "name": "PkgUnlocked",
-    "type": "event",
-    "inputs": [
-      {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
-      },
-      {
-        "name": "directCount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
     "name": "SponsorAutoUpgrade",
     "type": "event",
     "inputs": [
@@ -783,18 +764,18 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
-    "name": "directPkgOwners",
+    "name": "directCountByPackage",
     "type": "function",
     "inputs": [
       {
         "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        "type": "address",
+        "internalType": "address"
       },
       {
         "name": "",
-        "type": "address",
-        "internalType": "address"
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "outputs": [
@@ -833,6 +814,11 @@ const CORE_ABI = [
         "name": "user",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "outputs": [
@@ -865,25 +851,6 @@ const CORE_ABI = [
   },
   {
     "name": "getMatrixPrice",
-    "type": "function",
-    "inputs": [
-      {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "name": "getPkgCap",
     "type": "function",
     "inputs": [
       {
@@ -935,30 +902,6 @@ const CORE_ABI = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "name": "isPkgUnlocked",
-    "type": "function",
-    "inputs": [
-      {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "user",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -1665,6 +1608,30 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
+    "name": "userEarnedByPkg",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "name": "userLevelIncome",
     "type": "function",
     "inputs": [
@@ -1689,14 +1656,9 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
-    "name": "userMatrixPkgEarned",
+    "name": "userMaxPackageTier",
     "type": "function",
     "inputs": [
-      {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
       {
         "name": "",
         "type": "address",
@@ -1706,8 +1668,8 @@ const CORE_ABI = [
     "outputs": [
       {
         "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "stateMutability": "view"

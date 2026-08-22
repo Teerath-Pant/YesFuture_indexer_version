@@ -67,6 +67,12 @@ export const CONTRACT_ABI =[
         "internalType": "address"
       },
       {
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": false,
+        "internalType": "uint8"
+      },
+      {
         "name": "requestedAmount",
         "type": "uint256",
         "indexed": false,
@@ -443,31 +449,6 @@ export const CONTRACT_ABI =[
     "anonymous": false
   },
   {
-    "name": "PkgUnlocked",
-    "type": "event",
-    "inputs": [
-      {
-        "name": "user",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "packageId",
-        "type": "uint8",
-        "indexed": true,
-        "internalType": "uint8"
-      },
-      {
-        "name": "directCount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
     "name": "SponsorAutoUpgrade",
     "type": "event",
     "inputs": [
@@ -774,18 +755,18 @@ export const CONTRACT_ABI =[
     "stateMutability": "view"
   },
   {
-    "name": "directPkgOwners",
+    "name": "directCountByPackage",
     "type": "function",
     "inputs": [
       {
         "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
+        "type": "address",
+        "internalType": "address"
       },
       {
         "name": "",
-        "type": "address",
-        "internalType": "address"
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "outputs": [
@@ -824,6 +805,11 @@ export const CONTRACT_ABI =[
         "name": "user",
         "type": "address",
         "internalType": "address"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "outputs": [
@@ -856,25 +842,6 @@ export const CONTRACT_ABI =[
   },
   {
     "name": "getMatrixPrice",
-    "type": "function",
-    "inputs": [
-      {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "name": "getPkgCap",
     "type": "function",
     "inputs": [
       {
@@ -926,30 +893,6 @@ export const CONTRACT_ABI =[
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "name": "isPkgUnlocked",
-    "type": "function",
-    "inputs": [
-      {
-        "name": "packageId",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "user",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool",
-        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -1656,6 +1599,30 @@ export const CONTRACT_ABI =[
     "stateMutability": "view"
   },
   {
+    "name": "userEarnedByPkg",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "name": "userLevelIncome",
     "type": "function",
     "inputs": [
@@ -1680,14 +1647,9 @@ export const CONTRACT_ABI =[
     "stateMutability": "view"
   },
   {
-    "name": "userMatrixPkgEarned",
+    "name": "userMaxPackageTier",
     "type": "function",
     "inputs": [
-      {
-        "name": "",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
       {
         "name": "",
         "type": "address",
@@ -1697,8 +1659,8 @@ export const CONTRACT_ABI =[
     "outputs": [
       {
         "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
+        "type": "uint8",
+        "internalType": "uint8"
       }
     ],
     "stateMutability": "view"
