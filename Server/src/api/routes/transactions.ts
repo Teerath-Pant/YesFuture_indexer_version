@@ -22,12 +22,14 @@ transactionsRouter.get("/", async (req, res) => {
 
   const rows = await db.execute(sql`
     SELECT t.id, t.type, t.source, t.package_id, t.track, t.level, t.amount, t.block_timestamp,
+           EXTRACT(EPOCH FROM t.block_timestamp AT TIME ZONE 'UTC')::bigint AS raw_date,
            ur1.string_id AS receiver_string_id,
            ur2.string_id AS from_string_id
     FROM transactions t
     LEFT JOIN user_registrations ur1 ON ur1.member_address = t.wallet_address
     LEFT JOIN user_registrations ur2 ON ur2.member_address = t.counterparty_address
     WHERE t.type IN ('MATRIX_INCOME', 'DIRECT_INCOME', 'LEVEL_INCOME')
+      AND COALESCE(t.amount, 0) <> 0
       AND ur1.string_id IS DISTINCT FROM 'YF00001'
       AND ur2.string_id IS DISTINCT FROM 'YF00001'
     ORDER BY t.block_timestamp DESC, t.log_index DESC
@@ -45,7 +47,7 @@ transactionsRouter.get("/", async (req, res) => {
     receiverId: r.receiver_string_id ?? "",
     fromId: r.from_string_id ?? "",
     amount: r.amount,
-    rawDate: Math.floor(new Date(r.block_timestamp).getTime() / 1000),
+    rawDate: Number(r.raw_date),
     incomeType: incomeTypeFor(r.type),
     level: r.level ?? undefined,
     packageId: r.package_id ?? undefined,

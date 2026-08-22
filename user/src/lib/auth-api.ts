@@ -5804,11 +5804,19 @@ export async function fetchGlobalIncomeActivity(
     }[]
   >(`/transactions?limit=${maxItems ?? 50}`);
 
-  return (rows ?? []).map((r) => ({
-    ...r,
-    amount: `${parseFloat(ethers.formatUnits(r.amount, 18)).toLocaleString()} USDT`,
-    time: formatDate(r.rawDate),
-  }));
+  return (rows ?? [])
+    .filter((r) => {
+      try {
+        return BigInt(r.amount ?? "0") !== 0n;
+      } catch {
+        return false;
+      }
+    })
+    .map((r) => ({
+      ...r,
+      amount: `${parseFloat(ethers.formatUnits(r.amount, 18)).toLocaleString()} USDT`,
+      time: formatDate(r.rawDate),
+    }));
 }
 
 export interface Platform24hStats {
