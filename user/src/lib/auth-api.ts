@@ -7,7 +7,7 @@ import { ethers } from "ethers";
 // const CONTRACT_ADDRESS = "0x4744a8b0e0b5a475116f89b00c306a726ea6bc55";
 // const CONTRACT_ADDRESS = "0x299724c47e64812a4139034e673f79d9534375fe";
 // const CONTRACT_ADDRESS = "0x03fd416a6bb06d163ed22a1b774d24328cb1f661";
-const CONTRACT_ADDRESS = "0xc097692d44a7445dd648a0bf5c58a8d60bb1d282";
+const CONTRACT_ADDRESS = "0x36f0ffca1a6786ce72b3b959d3f6cf5244d8b49a";
 
 const TAAQO_RPC_URL = "https://rpc.nexischain.com";
 
@@ -452,6 +452,31 @@ const CORE_ABI = [
     "anonymous": false
   },
   {
+    "name": "PkgUnlocked",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": true,
+        "internalType": "uint8"
+      },
+      {
+        "name": "directCount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
     "name": "SponsorAutoUpgrade",
     "type": "event",
     "inputs": [
@@ -758,6 +783,30 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
+    "name": "directPkgOwners",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "name": "displayName",
     "type": "function",
     "inputs": [
@@ -834,6 +883,25 @@ const CORE_ABI = [
     "stateMutability": "view"
   },
   {
+    "name": "getPkgCap",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     "name": "getSponsorPrice",
     "type": "function",
     "inputs": [
@@ -867,6 +935,30 @@ const CORE_ABI = [
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "isPkgUnlocked",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
       }
     ],
     "stateMutability": "view"
@@ -1585,6 +1677,30 @@ const CORE_ABI = [
         "name": "",
         "type": "uint8",
         "internalType": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "userMatrixPkgEarned",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
       }
     ],
     "outputs": [

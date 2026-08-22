@@ -118,6 +118,12 @@ contract meta27 is ReentrancyGuard {
     mapping(uint8 => mapping(address => uint256)) public matrixHoldByPkg;
 
     // ---------------------------------------------------------------
+    // PER-PACKAGE CAP VARIABLES (2x, unlock on 5 directs owning same pkg)
+    // ---------------------------------------------------------------
+    mapping(uint8 => mapping(address => uint256)) public directPkgOwners;   // # directs who own this pkg
+    mapping(uint8 => mapping(address => uint256)) public userMatrixPkgEarned; // capped-income tracker per pkg
+
+    // ---------------------------------------------------------------
     // SPONSOR 5-CYCLE VARIABLES
     // ---------------------------------------------------------------
     mapping(uint8 => mapping(address => uint256)) public sponsorCycleCountByPkg;
@@ -184,6 +190,7 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
     event LevelIncomeRedirected(address indexed wouldBeReceiver, address indexed from, uint8 level, uint8 packageId, uint256 amount);
 
     event IncomeCapped(address indexed user, uint256 requestedAmount, uint256 paidAmount, uint256 redirectedToAdmin);
+    event PkgUnlocked(address indexed user, uint8 indexed packageId, uint256 directCount);
 
     // ---------------------------------------------------------------
     // CONSTRUCTOR
@@ -243,7 +250,7 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
     }
 
     // ---------------------------------------------------------------
-    // EARNINGS CAP (2x total invested, combined across all 3 tracks)
+    // OVERALL EARNINGS (view only, kept for stats/UI — not used for gating anymore)
     // ---------------------------------------------------------------
     function getTotalEarned(address user) public view returns (uint256) {
         return userTotalMatrixIncome[user] + userTotalDirectIncome[user] + userTotalLevelProfit[user];
@@ -253,9 +260,25 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
         return userTotalInvestment[user] * 2;
     }
 
-    function _splitByCap(address user, uint256 desiredAmount) internal view returns (uint256 payableAmount, uint256 excessAmount) {
-        uint256 cap = getEarningsCap(user);
-        uint256 earned = getTotalEarned(user);
+    // ---------------------------------------------------------------
+    // PER-PACKAGE CAP (2x pkg matrix price, unlocked by 5 directs on same pkg)
+    // ---------------------------------------------------------------
+    function isPkgUnlocked(uint8 packageId, address user) public view returns (bool) {
+        return directPkgOwners[packageId][user] >= 5;
+    }
+
+    function getPkgCap(uint8 packageId) public view returns (uint256) {
+        return getMatrixPrice(packageId) * 2;
+    }
+
+    function _splitByPkgCap(uint8 packageId, address user, uint256 desiredAmount)
+        internal view returns (uint256 payableAmount, uint256 excessAmount)
+    {
+        if (isPkgUnlocked(packageId, user)) {
+            return (desiredAmount, 0);
+        }
+        uint256 cap = getPkgCap(packageId);
+        uint256 earned = userMatrixPkgEarned[packageId][user];
         if (earned >= cap) {
             return (0, desiredAmount);
         }
@@ -266,12 +289,46 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
         return (headroom, desiredAmount - headroom);
     }
 
-    function _payCapped(address user, uint256 desiredAmount) internal returns (uint256 paid) {
+    function _payPkgCapped(uint8 packageId, address user, uint256 desiredAmount) internal returns (uint256 paid) {
         if (user == adminWallet) {
             if (desiredAmount > 0) usdt.safeTransfer(adminWallet, desiredAmount);
             return desiredAmount;
         }
-        (uint256 payableAmount, uint256 excessAmount) = _splitByCap(user, desiredAmount);
+        (uint256 payableAmount, uint256 excessAmount) = _splitByPkgCap(packageId, user, desiredAmount);
+        if (payableAmount > 0) {
+            usdt.safeTransfer(user, payableAmount);
+            userMatrixPkgEarned[packageId][user] += payableAmount;
+        }
+        if (excessAmount > 0) {
+            usdt.safeTransfer(adminWallet, excessAmount);
+            emit IncomeCapped(user, desiredAmount, payableAmount, excessAmount);
+        }
+        return payableAmount;
+    }
+
+    function _payCapped(address user, uint256 desiredAmount) internal returns (uint256 paid) {
+        // kept for sponsor/level tracks — still uses overall 2x-invested cap
+        if (user == adminWallet) {
+            if (desiredAmount > 0) usdt.safeTransfer(adminWallet, desiredAmount);
+            return desiredAmount;
+        }
+        uint256 cap = getEarningsCap(user);
+        uint256 earned = getTotalEarned(user);
+        uint256 payableAmount;
+        uint256 excessAmount;
+        if (earned >= cap) {
+            payableAmount = 0;
+            excessAmount = desiredAmount;
+        } else {
+            uint256 headroom = cap - earned;
+            if (desiredAmount <= headroom) {
+                payableAmount = desiredAmount;
+                excessAmount = 0;
+            } else {
+                payableAmount = headroom;
+                excessAmount = desiredAmount - headroom;
+            }
+        }
         if (payableAmount > 0) {
             usdt.safeTransfer(user, payableAmount);
         }
@@ -280,6 +337,15 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
             emit IncomeCapped(user, desiredAmount, payableAmount, excessAmount);
         }
         return payableAmount;
+    }
+
+    function _bumpDirectPkgOwner(uint8 packageId, address directUser) internal {
+        address up = sponsor[directUser];
+        if (up == address(0)) return;
+        directPkgOwners[packageId][up]++;
+        if (directPkgOwners[packageId][up] == 5) {
+            emit PkgUnlocked(up, packageId, 5);
+        }
     }
 
     // ---------------------------------------------------------------
@@ -317,6 +383,8 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
         totalInvestment += fullPrice;
         userTotalInvestment[msg.sender] += fullPrice;
 
+        _bumpDirectPkgOwner(1, msg.sender);
+
         emit ManualUpgrade(msg.sender, 1, "MATRIX");
         emit ManualUpgrade(msg.sender, 1, "SPONSOR");
         emit ManualUpgrade(msg.sender, 1, "LEVEL");
@@ -350,7 +418,7 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
             uint256 held = matrixHoldByPkg[oldPkg][msg.sender];
             if (held > 0) {
                 matrixHoldByPkg[oldPkg][msg.sender] = 0;
-                uint256 paidHeld = _payCapped(msg.sender, held);
+                uint256 paidHeld = _payPkgCapped(oldPkg, msg.sender, held);
                 userTotalMatrixIncome[msg.sender] += paidHeld;
                 emit MatrixHoldRefunded(msg.sender, oldPkg, paidHeld);
             }
@@ -363,6 +431,8 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
 
         matrixPackageId[msg.sender] = packageId;
         if (packageId > maxMatrixPackage[msg.sender]) maxMatrixPackage[msg.sender] = packageId;
+
+        _bumpDirectPkgOwner(packageId, msg.sender);
 
         _placeInPackageTreeIfNeeded(msg.sender, packageId);
         _releaseMatrixIncome(msg.sender, packageId);
@@ -452,7 +522,7 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
     }
 
     // ---------------------------------------------------------------
-    // 1. MATRIX INCOME (32-Member Cycle)
+    // 1. MATRIX INCOME (32-Member Cycle) — per-package 2x cap applied here
     // ---------------------------------------------------------------
     function _releaseMatrixIncome(address buyer, uint8 packageId) internal {
         uint256 matrixPoolAmount = getMatrixPrice(packageId); 
@@ -484,7 +554,7 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
                 address payoutWallet = realOwnerByPkg[packageId][currentParent] != address(0)
                     ? realOwnerByPkg[packageId][currentParent]
                     : currentParent;
-                uint256 paidShare = _payCapped(payoutWallet, share);
+                uint256 paidShare = _payPkgCapped(packageId, payoutWallet, share);
                 userTotalMatrixIncome[payoutWallet] += paidShare;
                 emit MatrixIncome(payoutWallet, buyer, packageId, level, paidShare);
             }
@@ -520,7 +590,7 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
             matrixHoldByPkg[packageId][userA] += share;
             emit MatrixIncomeHeld(userA, packageId, share, count);
         } else {
-            uint256 paidShare = _payCapped(userA, share);
+            uint256 paidShare = _payPkgCapped(packageId, userA, share);
             userTotalMatrixIncome[userA] += paidShare;
             emit MatrixIncome(userA, buyer, packageId, 5, paidShare);
         }
@@ -552,6 +622,8 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
             matrixPackageId[userA] = nextPackageId;
             if (nextPackageId > maxMatrixPackage[userA]) maxMatrixPackage[userA] = nextPackageId;
 
+            _bumpDirectPkgOwner(nextPackageId, userA);
+
             _placeInPackageTreeIfNeeded(userA, nextPackageId);
             _releaseMatrixIncome(userA, nextPackageId);
             emit MatrixAutoUpgrade(userA, packageId, nextPackageId, requiredHeld);
@@ -575,7 +647,7 @@ event SponsorReEntry(address indexed sponsor, address indexed from, uint8 packag
         uint256 reEntryCost = getMatrixPrice(packageId);
         if (matrixHoldByPkg[packageId][userA] >= reEntryCost) {
             matrixHoldByPkg[packageId][userA] -= reEntryCost;
-            uint256 paidCost = _payCapped(eligibleUpline, reEntryCost);
+            uint256 paidCost = _payPkgCapped(packageId, eligibleUpline, reEntryCost);
             userTotalMatrixIncome[eligibleUpline] += paidCost;
             emit MatrixIncome(eligibleUpline, userA, packageId, 5, paidCost);
         }

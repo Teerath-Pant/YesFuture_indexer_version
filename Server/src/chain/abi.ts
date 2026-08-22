@@ -443,9 +443,34 @@ export const CONTRACT_ABI = [
     anonymous: false,
   },
   {
-    name: "SponsorAutoUpgrade",
-    type: "event",
-    inputs: [
+    "name": "PkgUnlocked",
+    "type": "event",
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "indexed": true,
+        "internalType": "uint8"
+      },
+      {
+        "name": "directCount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "name": "SponsorAutoUpgrade",
+    "type": "event",
+    "inputs": [
       {
         name: "sponsor",
         type: "address",
@@ -749,9 +774,33 @@ export const CONTRACT_ABI = [
     stateMutability: "view",
   },
   {
-    name: "displayName",
-    type: "function",
-    inputs: [
+    "name": "directPkgOwners",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "displayName",
+    "type": "function",
+    "inputs": [
       {
         name: "",
         type: "address",
@@ -825,9 +874,28 @@ export const CONTRACT_ABI = [
     stateMutability: "view",
   },
   {
-    name: "getSponsorPrice",
-    type: "function",
-    inputs: [
+    "name": "getPkgCap",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "getSponsorPrice",
+    "type": "function",
+    "inputs": [
       {
         name: "packageId",
         type: "uint8",
@@ -863,6 +931,30 @@ export const CONTRACT_ABI = [
     stateMutability: "view",
   },
   {
+    "name": "isPkgUnlocked",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "packageId",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "user",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
     name: "levelPercent",
     type: "function",
     inputs: [
@@ -870,6 +962,30 @@ export const CONTRACT_ABI = [
         name: "",
         type: "uint256",
         internalType: "uint256",
+      },
+    ],
+    outputs: [
+      {
+        name: "",
+        type: "uint256",
+        internalType: "uint256",
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    name: "level5MemberCountByPkg",
+    type: "function",
+    inputs: [
+      {
+        name: "",
+        type: "uint8",
+        internalType: "uint8",
+      },
+      {
+        name: "",
+        type: "address",
+        internalType: "address",
       },
     ],
     outputs: [
@@ -1564,9 +1680,33 @@ export const CONTRACT_ABI = [
     stateMutability: "view",
   },
   {
-    name: "userTotalDirectIncome",
-    type: "function",
-    inputs: [
+    "name": "userMatrixPkgEarned",
+    "type": "function",
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint8",
+        "internalType": "uint8"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "name": "userTotalDirectIncome",
+    "type": "function",
+    "inputs": [
       {
         name: "",
         type: "address",
